@@ -258,6 +258,25 @@
     padding: 5px 10px;
     font-size: 11px;
   }
+  body.staff-app #section-teacher.active {
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100dvh - var(--topbar-h) - 28px);
+  }
+  body.staff-app #section-teacher.active .page-header { flex-shrink: 0; margin-bottom: 10px; }
+  body.staff-app #section-teacher.active .teacher-registry-card {
+    flex: 1; min-height: 0; margin-bottom: 0; display: flex; flex-direction: column;
+  }
+  body.staff-app #section-teacher.active .teacher-registry-card .table-wrap {
+    flex: 1; min-height: 240px; max-height: none;
+  }
+  body.staff-app #section-teacher table { font-size: 12.5px; }
+  body.staff-app #section-teacher thead th { padding: 9px 10px; font-size: 12px; }
+  body.staff-app #section-teacher tbody td { padding: 7px 10px; vertical-align: middle; }
+  body.staff-app #section-teacher tbody td:nth-child(2) {
+    min-width: 120px; max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  body.staff-app #section-teacher .btn-sm { padding: 5px 10px; font-size: 11px; }
   body.staff-app .stat-grid {
     margin-bottom: 14px;
     gap: 12px;
@@ -303,6 +322,11 @@
     color: var(--green-deep);
     font-weight: 600;
     box-shadow: inset 3px 0 0 var(--green-mid);
+  }
+  /* ผู้บริหาร (ไม่ใช่บัญชี master) — ซ่อนเมนูที่ไม่ใช้ */
+  body.role-admin #sidebar .nav-item[data-hide-for-admin],
+  body.role-admin #sidebar .sidebar-section[data-hide-section-for-admin] {
+    display: none !important;
   }
   .nav-icon { font-size: 16px; width: 20px; text-align: center; }
 
@@ -1645,6 +1669,10 @@
     font-size: 11px;
     line-height: 1.35;
   }
+  body.role-student #dash-calendar-card,
+  body.role-teacher #dash-calendar-card,
+  body.role-student #dash-calendar-row,
+  body.role-teacher #dash-calendar-row { display: none !important; }
   body.dash-admin-view.dash-role-admin #dash-calendar-card { display: none !important; }
   body.dash-admin-view.dash-role-admin #dash-calendar-row {
     display: grid !important;
@@ -2895,25 +2923,25 @@
     </div>
     <div class="sidebar-section">
       <div class="sidebar-label">งานหลัก</div>
-      <div class="nav-item" onclick="showSection('visit')"><span class="nav-icon" id="nav-visit-icon" data-student-icon="📋" data-staff-icon="🩺">🩺</span><span id="nav-visit-label" data-student-text="ผลตรวจสุขภาพ" data-staff-text="บันทึกการรักษา">บันทึกการรักษา</span></div>
+      <div class="nav-item" data-hide-for-admin onclick="showSection('visit')"><span class="nav-icon" id="nav-visit-icon" data-student-icon="📋" data-staff-icon="🩺">🩺</span><span id="nav-visit-label" data-student-text="ผลตรวจสุขภาพ" data-staff-text="บันทึกการรักษา">บันทึกการรักษา</span></div>
       <div class="nav-item" data-student-only style="display:none;" onclick="showSection('visit-record')"><span class="nav-icon">🩺</span>บันทึกการรักษา</div>
-      <div class="nav-item" onclick="showSection('screening')"><span class="nav-icon">🔍</span>ตรวจคัดกรองสุขภาพ</div>
+      <div class="nav-item" data-hide-for-admin onclick="showSection('screening')"><span class="nav-icon">🔍</span>ตรวจคัดกรองสุขภาพ</div>
       <div class="nav-item" onclick="showSection('nutrition')"><span class="nav-icon">⚖️</span>ภาวะโภชนาการ</div>
-      <div class="nav-item" onclick="showSection('vaccine')"><span class="nav-icon">💉</span>วัคซีน &amp; ภูมิคุ้มกัน</div>
+      <div class="nav-item" data-hide-for-admin onclick="showSection('vaccine')"><span class="nav-icon">💉</span>วัคซีน &amp; ภูมิคุ้มกัน</div>
       <div class="nav-item" id="nav-school-calendar" style="display:none;" onclick="showSection('school-calendar')"><span class="nav-icon">📅</span>ปฏิทินโรงเรียน</div>
     </div>
-    <div class="sidebar-section">
+    <div class="sidebar-section" data-hide-section-for-admin>
       <div class="sidebar-label">การดูแลต่อเนื่อง</div>
-      <div class="nav-item" onclick="showSection('chronic')"><span class="nav-icon">🫀</span>โรคประจำตัว/การแพ้อาหาร/การแพ้ยา</div>
-      <div class="nav-item" data-staff-only onclick="showSection('referral')"><span class="nav-icon">🚑</span>ส่งต่อ &amp; ติดตาม</div>
-      <div class="nav-item" data-staff-only onclick="showSection('appointment')"><span class="nav-icon">📅</span>ใบนัด</div>
-      <div class="nav-item" onclick="showSection('mental')"><span class="nav-icon">🧠</span>สุขภาพจิต</div>
+      <div class="nav-item" data-hide-for-admin onclick="showSection('chronic')"><span class="nav-icon">🫀</span>โรคประจำตัว/การแพ้อาหาร/การแพ้ยา</div>
+      <div class="nav-item" data-staff-only data-hide-for-admin onclick="showSection('referral')"><span class="nav-icon">🚑</span>ส่งต่อ &amp; ติดตาม</div>
+      <div class="nav-item" data-staff-only data-hide-for-admin onclick="showSection('appointment')"><span class="nav-icon">📅</span>ใบนัด</div>
+      <div class="nav-item" data-hide-for-admin onclick="showSection('mental')"><span class="nav-icon">🧠</span>สุขภาพจิต</div>
     </div>
-    <div class="sidebar-section">
+    <div class="sidebar-section" data-hide-section-for-admin>
       <div class="sidebar-label">ป้องกันโรค</div>
-      <div class="nav-item" onclick="showSection('disease')"><span class="nav-icon">🦠</span>เฝ้าระวังโรคติดต่อ</div>
-      <div class="nav-item" onclick="showSection('emergency')"><span class="nav-icon">🚨</span>เหตุฉุกเฉิน &amp; ปฐมพยาบาล</div>
-      <div class="nav-item" data-staff-only onclick="showSection('environment')"><span class="nav-icon">🌿</span>อนามัยสิ่งแวดล้อม</div>
+      <div class="nav-item" data-hide-for-admin onclick="showSection('disease')"><span class="nav-icon">🦠</span>เฝ้าระวังโรคติดต่อ</div>
+      <div class="nav-item" data-hide-for-admin onclick="showSection('emergency')"><span class="nav-icon">🚨</span>เหตุฉุกเฉิน &amp; ปฐมพยาบาล</div>
+      <div class="nav-item" data-staff-only data-hide-for-admin onclick="showSection('environment')"><span class="nav-icon">🌿</span>อนามัยสิ่งแวดล้อม</div>
     </div>
     <div class="sidebar-section" id="sidebar-knowledge-section">
       <div class="sidebar-label">สารสนเทศ</div>
@@ -2922,6 +2950,7 @@
     <div class="sidebar-section" id="sidebar-data-section" style="display:none;">
       <div class="sidebar-label">ข้อมูล &amp; รายงาน</div>
       <div class="nav-item" onclick="showSection('student')"><span class="nav-icon">📋</span>ทะเบียนนักเรียน</div>
+      <div class="nav-item" onclick="showSection('teacher')"><span class="nav-icon">👨‍🏫</span>ทะเบียนครู</div>
       <div class="nav-item" onclick="showSection('medicine')"><span class="nav-icon">💊</span>คลังยา &amp; เวชภัณฑ์</div>
       <div class="nav-item" data-nurse-only onclick="showSection('report')"><span class="nav-icon">📊</span>สถิติ &amp; รายงาน</div>
     </div>
@@ -3183,7 +3212,7 @@
       </div>
     </div>
 
-    <!-- ===== SCHOOL CALENDAR (ครู / ผู้บริหาร) ===== -->
+    <!-- ===== SCHOOL CALENDAR (นักเรียน / ครู / ผู้บริหาร — อ่านอย่างเดียว) ===== -->
     <div id="section-school-calendar" class="section-panel">
       <div class="page-header">
         <div class="page-header-icon">📅</div>
@@ -3489,7 +3518,7 @@
       </div>
 
       <div class="two-col" id="dash-calendar-row" data-staff-only style="margin-top:16px;">
-        <div class="card" id="dash-calendar-card">
+        <div class="card" id="dash-calendar-card" data-nurse-edit-only>
           <div class="card-title"><span>📝</span>บันทึกปฏิทินโรงเรียน</div>
           <p style="font-size:12px;color:var(--gray-mid);margin:-4px 0 12px;">กรอกรายละเอียดกิจกรรม แล้วกดบันทึก — จะแสดงบนปฏิทินด้านขวาทันที</p>
           <div class="school-cal-form" id="school-cal-form">
@@ -7343,6 +7372,39 @@
       </div>
     </div>
 
+    <!-- ===== TEACHER REGISTRY ===== -->
+    <div id="section-teacher" class="section-panel">
+      <div class="page-header">
+        <div class="page-header-icon">👨‍🏫</div>
+        <div>
+          <div class="page-header-title">ทะเบียนสุขภาพครูและบุคลากร</div>
+          <div class="page-header-desc" id="teacherPageDesc">ข้อมูลครูและบุคลากรโรงเรียนบ้านไผ่ ปีการศึกษา 2569</div>
+        </div>
+      </div>
+      <div class="card student-registry-card teacher-registry-card">
+        <div class="card-title"><span>🔍</span>ค้นหาครู / บุคลากร</div>
+        <div class="search-bar">
+          <input type="text" placeholder="ค้นหา ชื่อ / รหัส / กลุ่มสาระ / ประจำชั้น..." id="search-teacher">
+          <select id="filter-teacher-group">
+            <option value="">ทุกกลุ่มสาระ</option>
+          </select>
+          <button type="button" class="btn btn-primary" id="btn-search-teacher">🔍 ค้นหา</button>
+          <button type="button" class="btn btn-secondary staff-only-sync" id="btn-sync-teacher-registry" onclick="syncTeacherRegistryNow()" style="display:none">☁️ ซิงค์ทะเบียนไป Google Sheet</button>
+        </div>
+        <div class="student-count" id="teacher-count"></div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>รหัส</th><th>ชื่อ-นามสกุล</th><th>กลุ่มสาระ</th><th>สังกัด</th><th>ประจำชั้น</th>
+              <th>เบอร์โทร</th><th>อีเมล</th><th>โรคประจำตัว</th><th>แพ้ยา</th><th>แพ้อาหาร</th><th>ข้อควรระวัง</th>
+              <th>ข้อมูลพื้นฐาน</th><th>ประวัติ</th>
+            </tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- ===== MEDICINE ===== -->
     <div id="section-medicine" class="section-panel">
       <div class="page-header">
@@ -7855,6 +7917,46 @@
   </div>
 </div>
 
+<!-- MODAL: ข้อมูลพื้นฐานครู -->
+<div class="modal-overlay" id="teacherBasicInfoModal">
+  <div class="modal basic-info-modal">
+    <div class="modal-title">
+      <span>👨‍🏫</span>ข้อมูลพื้นฐานครู / บุคลากร
+      <button class="modal-close" onclick="closeTeacherBasicInfoModal()">✕</button>
+    </div>
+    <div class="basic-info-head">
+      <div class="basic-info-avatar" id="tbiAvatar">👨‍🏫</div>
+      <div>
+        <div class="basic-info-name" id="tbiName">—</div>
+        <div class="basic-info-meta" id="tbiMeta">—</div>
+      </div>
+    </div>
+    <div class="basic-info-section">
+      <div class="basic-info-section-title">ข้อมูลการปฏิบัติงาน</div>
+      <div class="basic-info-grid" id="tbiWork"></div>
+    </div>
+    <div class="basic-info-section">
+      <div class="basic-info-section-title">ติดต่อ</div>
+      <div class="basic-info-grid" id="tbiContact"></div>
+    </div>
+    <div class="basic-info-section" id="tbiHealthSection">
+      <div class="basic-info-section-title">ข้อมูลสุขภาพ / ข้อควรระวัง</div>
+      <div class="basic-info-grid" id="tbiHealth"></div>
+      <div id="tbiHealthEdit" style="display:none;margin-top:12px;">
+        <div class="form-grid">
+          <div class="form-group"><label>แพ้ยา</label><input type="text" id="tbiEditDrug" placeholder="(ถ้ามี)"></div>
+          <div class="form-group"><label>แพ้อาหาร</label><input type="text" id="tbiEditFood" placeholder="(ถ้ามี)"></div>
+          <div class="form-group full-width"><label>ข้อควรระวัง</label><textarea id="tbiEditPrecaution" placeholder="ข้อมูลที่ควรทราบ..." rows="2"></textarea></div>
+        </div>
+        <button type="button" class="btn btn-primary btn-sm" style="margin-top:8px;" onclick="saveTeacherHealthFromBasicModal()">บันทึกข้อมูลสุขภาพ</button>
+      </div>
+    </div>
+    <div style="margin-top:8px;display:flex;justify-content:flex-end;">
+      <button class="btn btn-secondary" onclick="closeTeacherBasicInfoModal()">ปิด</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL: ข้อมูลพื้นฐานนักเรียน -->
 <div class="modal-overlay" id="basicInfoModal">
   <div class="modal basic-info-modal">
@@ -8084,7 +8186,55 @@
     username: '0937107114',
     password: '0937107114'
   };
+  const MASTER_STAFF_LOGIN = {
+    username: '0817697186',
+    password: '0956462949'
+  };
   let pendingStaffRole = '';
+  let loggedInTeacherId = '';
+  let staffMasterAccess = false;
+
+  function normalizeStaffEmail(email) {
+    return String(email || '').trim().toLowerCase();
+  }
+  function normalizeStaffPhone(phone) {
+    var d = String(phone || '').replace(/\D/g, '');
+    if (!d) return '';
+    if (d.length === 9 && d.charAt(0) !== '0') d = '0' + d;
+    return d;
+  }
+  function isAdminTeacher(teacher) {
+    return !!(teacher && String(teacher.subjectGroup || '').indexOf('บริหาร') !== -1);
+  }
+  function teacherHasStaffCredentials(teacher) {
+    if (!teacher) return false;
+    return !!(normalizeStaffEmail(teacher.email) && normalizeStaffPhone(teacher.phone));
+  }
+  function findTeacherByStaffLogin(emailInput, phoneInput) {
+    if (typeof TEACHER_BASIC === 'undefined') return null;
+    var email = normalizeStaffEmail(emailInput);
+    var phone = normalizeStaffPhone(phoneInput);
+    if (!email || !phone) return null;
+    var found = null;
+    Object.keys(TEACHER_BASIC).some(function(k) {
+      var t = TEACHER_BASIC[k];
+      if (!teacherHasStaffCredentials(t)) return false;
+      if (normalizeStaffEmail(t.email) !== email) return false;
+      if (normalizeStaffPhone(t.phone) !== phone) return false;
+      found = t;
+      return true;
+    });
+    return found;
+  }
+  function isLegacyStaffLogin(user, pass) {
+    return user === STAFF_LOGIN.username && pass === STAFF_LOGIN.password;
+  }
+  function isMasterStaffLogin(user, pass) {
+    var u = String(user || '').trim();
+    var p = String(pass || '').trim();
+    return normalizeStaffPhone(u) === normalizeStaffPhone(MASTER_STAFF_LOGIN.username) &&
+      normalizeStaffPhone(p) === normalizeStaffPhone(MASTER_STAFF_LOGIN.password);
+  }
   const ROLES = {
     nurse:   { icon: 'stethoscope', name: 'เจ้าหน้าที่อนามัย / พยาบาล' },
     teacher: { icon: 'book-open', name: 'ครู / อาจารย์ที่ปรึกษา' },
@@ -8093,7 +8243,11 @@
   };
   const STAFF_ROLES = ['nurse', 'admin'];
   const LIMITED_USER_ROLES = ['student', 'teacher'];
-  const STAFF_ONLY_SECTIONS = ['student', 'medicine', 'report', 'referral', 'appointment'];
+  const STAFF_ONLY_SECTIONS = ['student', 'teacher', 'medicine', 'report', 'referral', 'appointment'];
+  const ADMIN_HIDDEN_NAV_SECTIONS = [
+    'visit', 'screening', 'vaccine', 'chronic', 'referral', 'appointment',
+    'mental', 'disease', 'emergency', 'environment'
+  ];
   const PUBLIC_SECTIONS = ['gshps', 'public'];
   let guestMode = '';
   let currentRole = '';
@@ -8104,6 +8258,10 @@
     if (roleKey === 'student' && loggedInStudentId && typeof lookupStudent === 'function') {
       var student = lookupStudent(loggedInStudentId);
       if (student && student.fullName) return student.fullName;
+    }
+    if ((roleKey === 'teacher' || roleKey === 'admin') && loggedInTeacherId && typeof lookupTeacher === 'function') {
+      var teacher = lookupTeacher(loggedInTeacherId);
+      if (teacher && teacher.fullName) return teacher.fullName;
     }
     var r = ROLES[roleKey];
     return (r && r.name) ? r.name : '';
@@ -8147,11 +8305,14 @@
     if (card) card.textContent = fmt;
     const badge = document.getElementById('schoolBadge');
     if (badge) {
-      let staffN = 200;
-      try {
-        const dash = JSON.parse(localStorage.getItem('sh-dashboard') || '{}');
-        if (dash.staffCount != null) staffN = dash.staffCount;
-      } catch (e) {}
+      let staffN = (typeof getTeacherRegistryCount === 'function') ? getTeacherRegistryCount() : 0;
+      if (!staffN) {
+        try {
+          const dash = JSON.parse(localStorage.getItem('sh-dashboard') || '{}');
+          if (dash.staffCount != null) staffN = dash.staffCount;
+        } catch (e) {}
+      }
+      if (!staffN) staffN = 200;
       badge.textContent = '🏫 โรงเรียนบ้านไผ่ | นักเรียน ' + fmt + ' คน | ครู ' + staffN + ' คน';
     }
     const desc = document.getElementById('studentPageDesc');
@@ -8200,6 +8361,60 @@
   function isExecDashboardRole(role) {
     return isFullStaffRole(role);
   }
+  function isAdminHiddenNavSection(id) {
+    return ADMIN_HIDDEN_NAV_SECTIONS.indexOf(id) !== -1;
+  }
+  function syncAdminRoleBodyClasses(role) {
+    document.body.classList.toggle('role-admin', role === 'admin' && !staffMasterAccess);
+    document.body.classList.toggle('role-student', role === 'student');
+    document.body.classList.toggle('role-teacher', role === 'teacher');
+    document.body.classList.toggle('staff-master-access', !!staffMasterAccess);
+  }
+  function applyAdminNavVisibility(role) {
+    role = role || getCurrentRole();
+    var hideForAdmin = role === 'admin' && !staffMasterAccess;
+    syncAdminRoleBodyClasses(role);
+    document.querySelectorAll('[data-hide-for-admin]').forEach(function(el) {
+      if (hideForAdmin) {
+        el.style.setProperty('display', 'none', 'important');
+      } else {
+        el.style.removeProperty('display');
+      }
+    });
+    document.querySelectorAll('[data-hide-section-for-admin]').forEach(function(sec) {
+      if (hideForAdmin) {
+        sec.style.setProperty('display', 'none', 'important');
+      } else {
+        sec.style.removeProperty('display');
+      }
+    });
+    if (!hideForAdmin) {
+      document.querySelectorAll('#sidebar > .sidebar-section').forEach(function(sec) {
+        if (sec.hasAttribute('data-hide-section-for-admin')) return;
+        if (sec.id === 'sidebar-public-section' || sec.id === 'sidebar-info-section' ||
+            sec.id === 'sidebar-data-section' || sec.id === 'sidebar-knowledge-section') return;
+        sec.style.removeProperty('display');
+      });
+      return;
+    }
+    document.querySelectorAll('#sidebar > .sidebar-section').forEach(function(sec) {
+      if (sec.id === 'sidebar-public-section' || sec.id === 'sidebar-info-section' ||
+          sec.id === 'sidebar-data-section' || sec.id === 'sidebar-knowledge-section') return;
+      if (sec.hasAttribute('data-hide-section-for-admin')) return;
+      var items = sec.querySelectorAll('.nav-item');
+      var anyVisible = false;
+      items.forEach(function(item) {
+        if (item.hasAttribute('data-hide-for-admin')) return;
+        if (item.style.display === 'none') return;
+        anyVisible = true;
+      });
+      if (!anyVisible) {
+        sec.style.setProperty('display', 'none', 'important');
+      } else {
+        sec.style.removeProperty('display');
+      }
+    });
+  }
   function isPublicGuest() {
     return getCurrentRole() === 'public';
   }
@@ -8227,9 +8442,10 @@
     } else if (typeof STAFF_ONLY_SECTIONS !== 'undefined' && STAFF_ONLY_SECTIONS.includes(id) && staffRolesReady() && !STAFF_ROLES.includes(role)) {
       return;
     }
+    if (role === 'admin' && isAdminHiddenNavSection(id) && !staffMasterAccess) return;
     if (id === 'environment' && isLimitedUser()) return;
     if (id === 'dashboard' && isLimitedUser()) return;
-    if (id === 'school-calendar' && role !== 'teacher' && role !== 'admin') return;
+    if (id === 'school-calendar' && role !== 'teacher' && role !== 'admin' && role !== 'student' && !staffMasterAccess) return;
     closeMobileNav();
     document.querySelectorAll('.section-panel').forEach(p => p.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
@@ -8289,7 +8505,17 @@
       }
     }
     if (id === 'dashboard') renderDashboard();
-    if (id === 'school-calendar') refreshTeacherSchoolCalendar();
+    if (id === 'school-calendar') {
+      if (isLimitedUserRole(role)) {
+        if (typeof refreshTeacherSchoolCalendar === 'function') {
+          refreshTeacherSchoolCalendar();
+        } else if (typeof syncAllSchoolCalendarViews === 'function') {
+          syncAllSchoolCalendarViews(loadDashboard());
+        }
+      } else {
+        refreshTeacherSchoolCalendar();
+      }
+    }
     if (id === 'emergency') renderEmergencyRecords();
     if (id === 'environment') renderEnvironmentResults();
     if (id === 'visit') {
@@ -8320,6 +8546,11 @@
     if (id === 'student') {
       renderGradeChart();
       refreshStudentRegistryFromSheetForStaff();
+    }
+    if (id === 'teacher') {
+      if (typeof initTeacherRegistryTable === 'function') initTeacherRegistryTable();
+      if (typeof updateTeacherCounts === 'function') updateTeacherCounts();
+      if (typeof refreshTeacherRegistryFromSheetForStaff === 'function') refreshTeacherRegistryFromSheetForStaff();
     }
     if (id === 'gshps' && typeof renderInfoHub === 'function') renderInfoHub();
     if (id === 'public') renderPublicHub();
@@ -10410,6 +10641,7 @@
   function ensureMedicineStockSeed() {
     var records = loadMedicineStock();
     if (records.length) return records;
+    if (typeof isDeployedAppHost === 'function' && isDeployedAppHost()) return records;
     records = [
       { id: 'med-paracetamol', name: 'Paracetamol 500mg', category: 'ลดไข้/แก้ปวด', qty: 850, unit: 'เม็ด', expiry: 'มิ.ย. 70', minStock: 100, urgentStock: 20 },
       { id: 'med-ors', name: 'ORS (เกลือแร่)', category: 'ท้องเสีย', qty: 45, unit: 'ซอง', expiry: 'ธ.ค. 69', minStock: 50, urgentStock: 10 },
@@ -10979,7 +11211,7 @@
   }
   function refreshTeacherSchoolCalendar(callback) {
     var role = getCurrentRole();
-    if (role !== 'teacher' && role !== 'admin') {
+    if (role !== 'teacher' && role !== 'admin' && role !== 'student') {
       if (callback) callback();
       return;
     }
@@ -11978,19 +12210,23 @@
     }).join('');
   }
   function updateVisitCalendarLayout() {
-    var isAdmin = getCurrentRole() === 'admin';
-    var isNurse = getCurrentRole() === 'nurse';
+    var role = getCurrentRole();
+    var isAdmin = role === 'admin';
+    var isNurse = role === 'nurse';
+    var isLimited = typeof isLimitedUserRole === 'function' && isLimitedUserRole(role);
     var calCard = document.getElementById('dash-calendar-card');
     var row = document.getElementById('dash-calendar-row');
     if (calCard) {
-      calCard.style.removeProperty('display');
-      if (isNurse) calCard.style.display = '';
-      else if (isAdmin) calCard.style.display = 'none';
+      calCard.style.display = isNurse ? '' : 'none';
     }
     if (row) {
-      row.style.display = (isAdmin || isNurse) ? '' : 'none';
-      if (isNurse) row.style.removeProperty('grid-template-columns');
-      else if (isAdmin) row.style.gridTemplateColumns = '1fr';
+      if (isLimited) {
+        row.style.display = 'none';
+      } else {
+        row.style.display = (isAdmin || isNurse) ? '' : 'none';
+        if (isNurse) row.style.removeProperty('grid-template-columns');
+        else if (isAdmin) row.style.gridTemplateColumns = '1fr';
+      }
     }
   }
   function updateDashboardLayoutForRole() {
@@ -12647,6 +12883,7 @@
   function ensureEnvironmentSeed() {
     let records = loadEnvironmentInspections();
     if (records.length) return records;
+    if (typeof isDeployedAppHost === 'function' && isDeployedAppHost()) return records;
     const now = Date.now() - 604800000;
     records = [{
       items: ENV_CHECKLIST_ITEMS.map(function(text, i) {
@@ -14715,7 +14952,13 @@
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden) {
       refreshAllLiveCharts();
-      if (typeof isFullStaffRole === 'function' && isFullStaffRole()) {
+      if (typeof isDeployedAppHost === 'function' && isDeployedAppHost() && typeof bootstrapCloudDataFromSheet === 'function') {
+        bootstrapCloudDataFromSheet({ force: true, toast: false }, function() {
+          refreshAllLiveCharts();
+          if (typeof renderDashboard === 'function') renderDashboard();
+          if (typeof renderVisitToday === 'function') renderVisitToday();
+        });
+      } else if (typeof isFullStaffRole === 'function' && isFullStaffRole()) {
         refreshAssessmentDataFromSheetForStaff();
       }
       if (getCurrentRole() === 'student' && loggedInStudentId) {
@@ -14727,7 +14970,7 @@
       }
       var calPanel = document.getElementById('section-school-calendar');
       if (calPanel && calPanel.classList.contains('active') &&
-          (getCurrentRole() === 'teacher' || getCurrentRole() === 'admin') &&
+          (getCurrentRole() === 'teacher' || getCurrentRole() === 'admin' || getCurrentRole() === 'student') &&
           typeof refreshTeacherSchoolCalendar === 'function') {
         refreshTeacherSchoolCalendar();
       }
@@ -15828,6 +16071,115 @@
       if (typeof renderMentalRecords === 'function') renderMentalRecords();
     }
   }
+  var _cloudBootstrapRunning = false;
+  var _cloudBootstrapDone = false;
+  function applyCloudDataBundle(bundle) {
+    if (!bundle) return false;
+    var applied = false;
+    if (bundle.visits && bundle.visits.length) {
+      replaceVisitRecordsFromSheetAll(bundle.visits);
+      applied = true;
+    }
+    if (bundle.assessment) {
+      applyAssessmentDataFromSheet(bundle.assessment);
+      if (bundle.assessment.nutrition && bundle.assessment.nutrition.length) applied = true;
+    }
+    if (bundle.calendar && bundle.calendar.length) {
+      mergeCalendarFromSheet(bundle.calendar);
+      applied = true;
+    }
+    if (bundle.studentRegistry && bundle.studentRegistry.length) {
+      applyStudentRegistryFromSheet(bundle.studentRegistry);
+      applied = true;
+    }
+    if (bundle.teacherRegistry && bundle.teacherRegistry.length) {
+      applyTeacherRegistryFromSheet(bundle.teacherRegistry);
+      applied = true;
+    }
+    if (bundle.vaccine && bundle.vaccine.length) {
+      mergeRecordsIntoLocalStorage_('sh-vaccine', bundle.vaccine, function(r) {
+        return String(r.recordId || ('vac-' + String(r.id || '').trim() + '-' + String(r.vaccine || '')));
+      });
+      applied = true;
+    }
+    if (bundle.emergency && bundle.emergency.length) {
+      mergeRecordsIntoLocalStorage_('sh-emergency', bundle.emergency, function(r) {
+        return 'emg-' + String(r.savedAt || 0) + '-' + String(r.name || '');
+      });
+      applied = true;
+    }
+    if (bundle.referral && bundle.referral.length) {
+      mergeRecordsIntoLocalStorage_('sh-referral', bundle.referral, function(r) {
+        return String(r.uid || r.sourceKey || ('ref-' + String(r.savedAt || 0)));
+      });
+      applied = true;
+    }
+    if (bundle.environment && bundle.environment.length) {
+      mergeRecordsIntoLocalStorage_('sh-environment', bundle.environment, function(r) {
+        return 'env-' + String(r.savedAt || 0);
+      });
+      applied = true;
+    }
+    if (bundle.medicine && bundle.medicine.length) {
+      try { localStorage.setItem('sh-medicine-stock', JSON.stringify(bundle.medicine)); } catch (e) {}
+      medicineStockCache = bundle.medicine;
+      applied = true;
+    }
+    if (applied) {
+      try { localStorage.setItem('sh-cloud-bootstrap-at', String(Date.now())); } catch (e) {}
+      if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
+      if (typeof syncReferralDashboardCount === 'function') syncReferralDashboardCount();
+      invalidateAdminLiveCache();
+      invalidateVisitRecordsCache();
+      if (typeof initStudentRegistryTable === 'function') initStudentRegistryTable();
+      if (typeof initTeacherRegistryTable === 'function') initTeacherRegistryTable();
+      if (typeof updateStudentCounts === 'function') updateStudentCounts();
+    }
+    return applied;
+  }
+  function bootstrapCloudDataFromSheet(opts, callback) {
+    opts = opts || {};
+    if (typeof callback !== 'function' && typeof opts === 'function') {
+      callback = opts;
+      opts = {};
+    }
+    if (_cloudBootstrapRunning) {
+      if (callback) callback(false);
+      return;
+    }
+    if (_cloudBootstrapDone && !opts.force && typeof shouldBootstrapCloudData === 'function' && !shouldBootstrapCloudData(false)) {
+      if (callback) callback(false);
+      return;
+    }
+    if (typeof shouldBootstrapCloudData === 'function' && !shouldBootstrapCloudData(!!opts.force)) {
+      if (callback) callback(false);
+      return;
+    }
+    if (typeof fetchAllCloudDataFromSheet !== 'function') {
+      if (callback) callback(false);
+      return;
+    }
+    _cloudBootstrapRunning = true;
+    if (opts.toast !== false && typeof showSheetToast_ === 'function' && typeof isDeployedAppHost === 'function' && isDeployedAppHost()) {
+      showSheetToast_('กำลังโหลดข้อมูลจาก Google Sheet...');
+    }
+    fetchAllCloudDataFromSheet().then(function(bundle) {
+      _cloudBootstrapRunning = false;
+      var applied = applyCloudDataBundle(bundle);
+      _cloudBootstrapDone = true;
+      if (applied && typeof showSheetToast_ === 'function' && opts.toast !== false) {
+        showSheetToast_('โหลดข้อมูลจาก Google Sheet แล้ว');
+      }
+      if (callback) callback(applied);
+    }).catch(function() {
+      _cloudBootstrapRunning = false;
+      if (typeof showSheetToast_ === 'function' && opts.toast !== false) {
+        showSheetToast_('โหลดข้อมูลจาก Google Sheet ไม่สำเร็จ — ตรวจสอบการเผยแพร่ชีต', true);
+      }
+      if (callback) callback(false);
+    });
+  }
+  window.bootstrapCloudDataFromSheet = bootstrapCloudDataFromSheet;
   var assessmentSheetRefreshPending = false;
   function refreshAssessmentDataFromSheetForStaff(callback) {
     if (typeof isFullStaffRole === 'function' && !isFullStaffRole()) {
@@ -16568,6 +16920,352 @@
     });
   }
 
+  // ===== ทะเบียนครู (จาก Excel) =====
+  var basicInfoTeacherId = '';
+  var _teacherRegistryBuilt = false;
+  function lookupTeacher(id) {
+    if (typeof TEACHER_BASIC === 'undefined' || !id) return null;
+    var key = String(id).trim();
+    if (TEACHER_BASIC[key]) return TEACHER_BASIC[key];
+    var num = parseInt(key, 10);
+    if (!isNaN(num)) {
+      var padded = String(num).padStart(3, '0');
+      if (TEACHER_BASIC[padded]) return TEACHER_BASIC[padded];
+      if (TEACHER_BASIC[String(num)]) return TEACHER_BASIC[String(num)];
+    }
+    var found = Object.keys(TEACHER_BASIC).find(function(k) {
+      return typeof visitIdMatch === 'function' && visitIdMatch(k, key);
+    });
+    return found ? TEACHER_BASIC[found] : null;
+  }
+  function getTeacherRegistryCount() {
+    if (typeof TEACHER_BASIC === 'undefined') return 0;
+    return Object.keys(TEACHER_BASIC).length;
+  }
+  function getTeacherDisplayName(id) {
+    var t = lookupTeacher(id);
+    if (t && t.fullName) return t.fullName;
+    return '';
+  }
+  function loadTeacherHealthExtras() {
+    try { return JSON.parse(localStorage.getItem('sh-teacher-health') || '{}'); } catch (e) { return {}; }
+  }
+  function saveTeacherHealthExtras(map) {
+    try { localStorage.setItem('sh-teacher-health', JSON.stringify(map)); } catch (e) {}
+  }
+  function getTeacherHealthExtra(id) {
+    var extras = loadTeacherHealthExtras();
+    var k = String(id).trim();
+    if (extras[k]) return extras[k];
+    var num = parseInt(k, 10);
+    if (!isNaN(num)) {
+      var padded = String(num).padStart(3, '0');
+      if (extras[padded]) return extras[padded];
+      if (extras[String(num)]) return extras[String(num)];
+    }
+    return {};
+  }
+  function setTeacherHealthExtra(id, data) {
+    var extras = loadTeacherHealthExtras();
+    var t = lookupTeacher(id);
+    var k = t ? t.id : String(id).trim();
+    extras[k] = Object.assign({}, extras[k] || {}, data);
+    saveTeacherHealthExtras(extras);
+    if (typeof syncTeacherRegistryEntryQuiet === 'function' && typeof collectTeacherRegistryEntry === 'function') {
+      var entry = collectTeacherRegistryEntry(k);
+      if (entry) syncTeacherRegistryEntryQuiet(entry);
+    }
+  }
+  function getTeacherRegistryHealth(id) {
+    var extra = getTeacherHealthExtra(id);
+    return {
+      chronic: extra.chronic || '—',
+      drug: extra.drugAllergy || '—',
+      food: extra.foodAllergy || '—',
+      precautions: extra.precautions || '—'
+    };
+  }
+  function collectTeacherRegistryEntry(id) {
+    id = String(id || '').trim();
+    var t = lookupTeacher(id);
+    if (!t) return null;
+    var health = getTeacherRegistryHealth(t.id);
+    function plain(v) { return (v && v !== '—' && v !== '-') ? v : ''; }
+    return {
+      id: t.id,
+      name: t.fullName || '',
+      subjectGroup: t.subjectGroup || '',
+      affiliation: t.affiliation || '',
+      classLevel: t.classLevel || '',
+      phone: t.phone || '',
+      email: t.email || '',
+      chronic: plain(health.chronic),
+      drug: plain(health.drug),
+      food: plain(health.food),
+      precautions: plain(health.precautions),
+      updatedAt: new Date().toLocaleString('th-TH')
+    };
+  }
+  function collectTeacherRegistryEntries() {
+    if (typeof TEACHER_BASIC === 'undefined') return [];
+    return Object.keys(TEACHER_BASIC).map(function(id) {
+      return collectTeacherRegistryEntry(id);
+    }).filter(Boolean);
+  }
+  function buildTeacherRegistryRow(id, name, group, affiliation, cls, phone, email, health) {
+    var tid = String(id).replace(/'/g, "\\'");
+    var isStaff = typeof isFullStaffRole === 'function' && isFullStaffRole();
+    return '<td>' + escStudentCell(id) + '</td>' +
+      '<td>' + escStudentCell(name) + '</td>' +
+      '<td>' + escStudentCell(group) + '</td>' +
+      '<td>' + escStudentCell(affiliation) + '</td>' +
+      '<td>' + escStudentCell(cls) + '</td>' +
+      '<td>' + escStudentCell(phone) + '</td>' +
+      '<td>' + escStudentCell(email) + '</td>' +
+      '<td>' + escStudentCell(health.chronic) + '</td>' +
+      '<td>' + escStudentCell(health.drug) + '</td>' +
+      '<td>' + escStudentCell(health.food) + '</td>' +
+      '<td>' + escStudentCell(health.precautions) + '</td>' +
+      '<td><div class="action-btns"><button type="button" class="btn btn-sm btn-info" onclick="showTeacherBasic(\'' + tid + '\')">ข้อมูลพื้นฐาน</button></div></td>' +
+      '<td><button type="button" class="btn btn-sm btn-secondary" onclick="showTeacherHistory(\'' + tid + '\')">ดูประวัติ</button></td>';
+  }
+  function refreshTeacherRegistryRow(id) {
+    var tbody = document.querySelector('#section-teacher tbody');
+    if (!tbody) return;
+    var t = lookupTeacher(id);
+    if (!t) return;
+    var tr = Array.from(tbody.rows).find(function(r) {
+      return r.cells[0] && visitIdMatch(r.cells[0].textContent.trim(), id);
+    });
+    if (!tr) return;
+    var health = getTeacherRegistryHealth(id);
+    tr.innerHTML = buildTeacherRegistryRow(t.id, t.fullName, t.subjectGroup, t.affiliation, t.classLevel, t.phone, t.email, health);
+  }
+  function initTeacherGroupFilter() {
+    var sel = document.getElementById('filter-teacher-group');
+    if (!sel || sel.options.length > 1 || typeof TEACHER_BASIC === 'undefined') return;
+    var groups = {};
+    Object.keys(TEACHER_BASIC).forEach(function(k) {
+      var g = TEACHER_BASIC[k].subjectGroup;
+      if (g) groups[g] = true;
+    });
+    Object.keys(groups).sort().forEach(function(g) {
+      var opt = document.createElement('option');
+      opt.value = g;
+      opt.textContent = g;
+      sel.appendChild(opt);
+    });
+  }
+  function initTeacherRegistryTable() {
+    if (typeof TEACHER_BASIC === 'undefined') return;
+    var tbody = document.querySelector('#section-teacher tbody');
+    if (!tbody) return;
+    if (!_teacherRegistryBuilt) {
+      tbody.innerHTML = '';
+      var ids = Object.keys(TEACHER_BASIC).sort(function(a, b) {
+        return String(a).localeCompare(String(b), 'th', { numeric: true });
+      });
+      ids.forEach(function(id) {
+        var t = TEACHER_BASIC[id];
+        var health = getTeacherRegistryHealth(t.id);
+        var tr = document.createElement('tr');
+        tr.innerHTML = buildTeacherRegistryRow(t.id, t.fullName, t.subjectGroup, t.affiliation, t.classLevel, t.phone, t.email, health);
+        tbody.appendChild(tr);
+      });
+      _teacherRegistryBuilt = true;
+      initTeacherGroupFilter();
+    }
+    updateTeacherCounts();
+  }
+  function updateTeacherCounts() {
+    var n = getTeacherRegistryCount();
+    var counter = document.getElementById('teacher-count');
+    var desc = document.getElementById('teacherPageDesc');
+    if (counter) counter.innerHTML = 'ทั้งหมด <strong>' + n.toLocaleString('th-TH') + '</strong> คน';
+    if (desc && n) desc.textContent = 'ข้อมูลครูและบุคลากรโรงเรียนบ้านไผ่ จำนวน ' + n.toLocaleString('th-TH') + ' คน (ปีการศึกษา 2569)';
+    updateStudentCounts();
+  }
+  function showTeacherBasic(id) {
+    basicInfoTeacherId = String(id).trim();
+    var t = lookupTeacher(id);
+    if (!t) { alert('ไม่พบข้อมูลครูรหัส ' + id); return; }
+    var health = getTeacherRegistryHealth(id);
+    var extra = getTeacherHealthExtra(id);
+    document.getElementById('tbiAvatar').textContent = '👨‍🏫';
+    document.getElementById('tbiName').textContent = t.fullName || '—';
+    document.getElementById('tbiMeta').textContent = 'รหัส ' + t.id + (t.subjectGroup ? ' · ' + t.subjectGroup : '');
+    document.getElementById('tbiWork').innerHTML =
+      biItem('กลุ่มสาระ', t.subjectGroup) +
+      biItem('สังกัด / ตำแหน่ง', t.affiliation) +
+      biItem('ประจำชั้น', t.classLevel);
+    document.getElementById('tbiContact').innerHTML =
+      biItem('เบอร์โทร', t.phone) +
+      biItem('อีเมล', t.email, true);
+    document.getElementById('tbiHealth').innerHTML =
+      biItem('โรคประจำตัว', health.chronic) +
+      biItem('แพ้ยา', health.drug) +
+      biItem('แพ้อาหาร', health.food) +
+      biItem('ข้อควรระวัง', health.precautions, true);
+    var isStaff = typeof isFullStaffRole === 'function' && isFullStaffRole();
+    var editBox = document.getElementById('tbiHealthEdit');
+    if (editBox) {
+      editBox.style.display = isStaff ? '' : 'none';
+      document.getElementById('tbiEditDrug').value = extra.drugAllergy || (health.drug !== '—' ? health.drug : '');
+      document.getElementById('tbiEditFood').value = extra.foodAllergy || (health.food !== '—' ? health.food : '');
+      document.getElementById('tbiEditPrecaution').value = extra.precautions || (health.precautions !== '—' ? health.precautions : '');
+    }
+    document.getElementById('teacherBasicInfoModal').classList.add('open');
+  }
+  function closeTeacherBasicInfoModal() {
+    basicInfoTeacherId = '';
+    document.getElementById('teacherBasicInfoModal').classList.remove('open');
+  }
+  function saveTeacherHealthFromBasicModal() {
+    if (!basicInfoTeacherId) return;
+    setTeacherHealthExtra(basicInfoTeacherId, {
+      drugAllergy: (document.getElementById('tbiEditDrug').value || '').trim(),
+      foodAllergy: (document.getElementById('tbiEditFood').value || '').trim(),
+      precautions: (document.getElementById('tbiEditPrecaution').value || '').trim()
+    });
+    refreshTeacherRegistryRow(basicInfoTeacherId);
+    showTeacherBasic(basicInfoTeacherId);
+    alert('✅ บันทึกข้อมูลสุขภาพครูเรียบร้อย');
+  }
+  function teacherVisitMatch(r, id, teacher) {
+    if (!r) return false;
+    teacher = teacher || lookupTeacher(id);
+    if (r.id && visitIdMatch(r.id, id)) return true;
+    if (!teacher) return false;
+    var type = String(r.type || '');
+    var isStaffVisit = type.indexOf('ครู') !== -1 || type.indexOf('บุคลากร') !== -1;
+    if (r.name && r.name === teacher.fullName) return true;
+    if (isStaffVisit && r.name && teacher.lastName && r.name.indexOf(teacher.lastName) !== -1) return true;
+    return false;
+  }
+  function showTeacherHistory(id) {
+    var teacherId = String(id).trim();
+    var teacher = lookupTeacher(teacherId);
+    var records = loadVisitRecords().filter(function(r) {
+      return teacherVisitMatch(r, teacherId, teacher);
+    }).sort(function(a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
+    var name = getTeacherDisplayName(teacherId) || (records[0] && records[0].name) || '—';
+    document.getElementById('shAvatar').textContent = '👨‍🏫';
+    document.getElementById('shName').textContent = name;
+    document.getElementById('shMeta').textContent = 'รหัส ' + teacherId + (records.length ? ' · ' + records.length + ' ครั้ง' : '');
+    var tbody = document.getElementById('student-history-body');
+    if (!records.length) {
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:var(--gray-mid);padding:18px;">ยังไม่มีประวัติการรักษา</td></tr>';
+    } else {
+      tbody.innerHTML = records.map(function(r) {
+        return '<tr><td>' + escVisitHtml(r.recordedAt) +
+          '</td><td>' + escVisitHtml(r.symptom || '—') +
+          '</td><td>' + escVisitHtml(r.diagnosis || '—') +
+          '</td><td>' + escVisitHtml(r.treatment || '—') +
+          '</td><td>' + escVisitHtml(r.result || '—') +
+          '</td><td>' + escVisitHtml(r.provider || '—') + '</td></tr>';
+      }).join('');
+    }
+    document.getElementById('studentHistoryModal').classList.add('open');
+  }
+  function applyTeacherRegistryFromSheet(items) {
+    if (!items || !items.length) return;
+    var extras = loadTeacherHealthExtras();
+    items.forEach(function(it) {
+      if (!it || !it.id) return;
+      var k = String(it.id).trim();
+      var patch = {};
+      if (it.drug) patch.drugAllergy = it.drug;
+      if (it.food) patch.foodAllergy = it.food;
+      if (it.precautions) patch.precautions = it.precautions;
+      if (it.chronic) patch.chronic = it.chronic;
+      if (Object.keys(patch).length) extras[k] = Object.assign({}, extras[k] || {}, patch);
+    });
+    saveTeacherHealthExtras(extras);
+    items.forEach(function(it) {
+      if (it && it.id && typeof refreshTeacherRegistryRow === 'function') refreshTeacherRegistryRow(it.id);
+    });
+  }
+  var teacherRegistrySheetRefreshPending = false;
+  function refreshTeacherRegistryFromSheetForStaff(callback) {
+    if (typeof isFullStaffRole === 'function' && !isFullStaffRole()) {
+      if (callback) callback();
+      return;
+    }
+    if (typeof fetchTeacherRegistryFromSheet !== 'function') {
+      if (callback) callback();
+      return;
+    }
+    if (teacherRegistrySheetRefreshPending) {
+      if (callback) callback();
+      return;
+    }
+    teacherRegistrySheetRefreshPending = true;
+    fetchTeacherRegistryFromSheet().then(function(items) {
+      teacherRegistrySheetRefreshPending = false;
+      if (items && items.length) applyTeacherRegistryFromSheet(items);
+      if (callback) callback();
+    }).catch(function() {
+      teacherRegistrySheetRefreshPending = false;
+      if (callback) callback();
+    });
+  }
+  var _teacherRegistrySyncRunning = false;
+  function syncAllTeacherRegistryToSheet() {
+    if (_teacherRegistrySyncRunning) return Promise.resolve(0);
+    if (typeof syncTeacherRegistryBatchQuiet !== 'function' || typeof buildTeacherRegistrySheetRow !== 'function') {
+      return Promise.resolve(0);
+    }
+    var entries = collectTeacherRegistryEntries();
+    if (!entries.length) return Promise.resolve(0);
+    _teacherRegistrySyncRunning = true;
+    var chunkSize = 40;
+    var i = 0;
+    var total = entries.length;
+    return new Promise(function(resolve) {
+      function next() {
+        if (i >= total) {
+          _teacherRegistrySyncRunning = false;
+          if (typeof showSheetToast_ === 'function') {
+            showSheetToast_('ซิงค์ทะเบียนครู ' + total.toLocaleString('th-TH') + ' คนเสร็จแล้ว');
+          }
+          resolve(total);
+          return;
+        }
+        var chunk = entries.slice(i, i + chunkSize);
+        i += chunkSize;
+        var rows = chunk.map(function(e) { return buildTeacherRegistrySheetRow(e); });
+        syncTeacherRegistryBatchQuiet(rows).then(function() {
+          setTimeout(next, 300);
+        }).catch(function() {
+          setTimeout(next, 500);
+        });
+      }
+      if (typeof showSheetToast_ === 'function') {
+        showSheetToast_('กำลังซิงค์ทะเบียนครู ' + total.toLocaleString('th-TH') + ' คน...');
+      }
+      next();
+    });
+  }
+  function syncTeacherRegistryNow() {
+    if (typeof isFullStaffRole === 'function' && !isFullStaffRole()) return;
+    syncAllTeacherRegistryToSheet();
+  }
+  window.syncTeacherRegistryNow = syncTeacherRegistryNow;
+  window.showTeacherBasic = showTeacherBasic;
+  window.showTeacherHistory = showTeacherHistory;
+  function initWhenTeacherDataReady() {
+    if (typeof TEACHER_BASIC === 'undefined') {
+      setTimeout(initWhenTeacherDataReady, 80);
+      return;
+    }
+    if (typeof initTeacherRegistryTable === 'function') initTeacherRegistryTable();
+    if (loggedInTeacherId && typeof updateRoleBadge === 'function') updateRoleBadge();
+    if (typeof isFullStaffRole === 'function' && isFullStaffRole()) {
+      var syncBtn = document.getElementById('btn-sync-teacher-registry');
+      if (syncBtn) syncBtn.style.display = '';
+    }
+  }
+
   // ===== ข้อมูลพื้นฐานนักเรียน (จาก Excel) =====
   var basicInfoStudentId = '';
   function formatStudentGender(g) {
@@ -17286,7 +17984,10 @@
         }));
         return;
       }
-      sessionStorage.setItem('sh-session', JSON.stringify({ kind: 'staff', role: currentRole }));
+      var staffSession = { kind: 'staff', role: currentRole };
+      if (loggedInTeacherId) staffSession.teacherId = loggedInTeacherId;
+      if (staffMasterAccess) staffSession.masterAccess = true;
+      sessionStorage.setItem('sh-session', JSON.stringify(staffSession));
     } catch (e) {}
   }
   function restoreStudentSessionForms() {
@@ -17309,6 +18010,8 @@
         return true;
       }
       if (s.kind === 'staff' && s.role && ROLES[s.role]) {
+        loggedInTeacherId = s.teacherId || '';
+        staffMasterAccess = !!s.masterAccess;
         enterApp(s.role);
         return true;
       }
@@ -17324,7 +18027,10 @@
   function showWelcomeScreen() {
     currentRole = '';
     loggedInStudentId = '';
+    loggedInTeacherId = '';
+    staffMasterAccess = false;
     guestMode = '';
+    document.body.classList.remove('role-admin', 'staff-master-access');
     document.body.classList.remove('staff-app');
     try { sessionStorage.removeItem('sh-session'); } catch (e) {}
     const screen = document.getElementById('role-screen');
@@ -17379,10 +18085,14 @@
     });
     return found ? STUDENT_BASIC[found] : null;
   }
-  function initWhenStudentDataReady() {
+  function initWhenStudentDataReady(onReady) {
     if (typeof STUDENT_BASIC === 'undefined') {
-      setTimeout(initWhenStudentDataReady, 80);
+      setTimeout(function() { initWhenStudentDataReady(onReady); }, 80);
       return;
+    }
+    var studentCount = Object.keys(STUDENT_BASIC).length;
+    if (studentCount < 100 && typeof isDeployedAppHost === 'function' && isDeployedAppHost()) {
+      console.warn('[SH] student-basic-data.js อาจไม่ครบบน Vercel — พบนักเรียน', studentCount, 'คน');
     }
     if (typeof initStudentRegistryTable === 'function') initStudentRegistryTable();
     updateStudentCounts();
@@ -17392,6 +18102,7 @@
       var syncBtn = document.getElementById('btn-sync-student-registry');
       if (syncBtn) syncBtn.style.display = '';
     }
+    if (typeof onReady === 'function') onReady();
   }
   function openStudentLogin() {
     const modal = document.getElementById('studentLoginModal');
@@ -17445,6 +18156,22 @@
     if (passEl) passEl.value = '';
     if (errEl) { errEl.style.display = 'none'; errEl.textContent = ''; }
     if (subEl) subEl.textContent = ROLES[roleKey].name;
+    if (userEl) {
+      userEl.type = 'text';
+      if (roleKey === 'teacher' || roleKey === 'admin') {
+        userEl.placeholder = 'อีเมล @banphai.ac.th';
+      } else {
+        userEl.placeholder = 'ชื่อผู้ใช้';
+      }
+    }
+    if (passEl) {
+      passEl.type = 'password';
+      if (roleKey === 'teacher' || roleKey === 'admin') {
+        passEl.placeholder = 'เบอร์โทรศัพท์';
+      } else {
+        passEl.placeholder = 'รหัสผ่าน';
+      }
+    }
     if (modal) modal.classList.add('open');
     if (userEl) userEl.focus();
   }
@@ -17476,13 +18203,43 @@
       showStaffLoginError('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
       return;
     }
-    if (user !== STAFF_LOGIN.username || pass !== STAFF_LOGIN.password) {
-      showStaffLoginError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-      return;
-    }
     const roleKey = resolvePendingStaffRole();
     if (!roleKey || !ROLES[roleKey]) {
       showStaffLoginError('ไม่พบบทบาทที่เลือก กรุณาปิดหน้าต่างแล้วเลือกบทบาทอีกครั้ง');
+      return;
+    }
+    loggedInTeacherId = '';
+    staffMasterAccess = false;
+    if (isMasterStaffLogin(user, pass)) {
+      staffMasterAccess = true;
+      clearStaffLoginError();
+      dismissBlockingOverlays();
+      enterApp(roleKey);
+      return;
+    }
+    if (roleKey === 'nurse') {
+      if (!isLegacyStaffLogin(user, pass)) {
+        showStaffLoginError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+        return;
+      }
+    } else if (roleKey === 'teacher' || roleKey === 'admin') {
+      var teacher = findTeacherByStaffLogin(user, pass);
+      if (teacher) {
+        if (roleKey === 'admin' && !isAdminTeacher(teacher)) {
+          showStaffLoginError('บัญชีนี้ไม่ใช่ผู้บริหาร กรุณาเลือกเข้าสู่ระบบในฐานะครู');
+          return;
+        }
+        if (roleKey === 'teacher' && isAdminTeacher(teacher)) {
+          showStaffLoginError('ผู้บริหารกรุณาเลือกเข้าสู่ระบบในฐานะผู้บริหารโรงเรียน');
+          return;
+        }
+        loggedInTeacherId = teacher.id || '';
+      } else if (!isLegacyStaffLogin(user, pass)) {
+        showStaffLoginError('อีเมลหรือเบอร์โทรไม่ถูกต้อง (หากยังไม่มีข้อมูลในระบบ ให้ใช้รหัสเดิม)');
+        return;
+      }
+    } else if (!isLegacyStaffLogin(user, pass)) {
+      showStaffLoginError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
       return;
     }
     clearStaffLoginError();
@@ -17625,6 +18382,10 @@
     renderVaccineSchedule();
   }
   function scheduleDeferredStaffSheetSync(role) {
+    if (_cloudBootstrapDone && Date.now() - parseInt(localStorage.getItem('sh-cloud-bootstrap-at') || '0', 10) < 120000) {
+      renderVisitToday();
+      return;
+    }
     if (typeof isFullStaffRole === 'function' && isFullStaffRole(role)) {
       setTimeout(function() {
         if (getCurrentRole() !== role) return;
@@ -17647,6 +18408,7 @@
           }
         });
         refreshStudentRegistryFromSheetForStaff();
+        refreshTeacherRegistryFromSheetForStaff();
       }, isExecDashboardRole(role) ? 400 : 120);
       return;
     }
@@ -17668,6 +18430,7 @@
   function applyRolePermissions(roleKey) {
     setupLimitedUserFormHandlers();
     const role = roleKey || getCurrentRole();
+    syncAdminRoleBodyClasses(role);
     document.body.classList.toggle('staff-app', isFullStaffRole(role));
     updateLimitedUserVisitLabels(role);
     const isStaff = isFullStaffRole(role);
@@ -17702,6 +18465,8 @@
     });
     var syncRegBtn = document.getElementById('btn-sync-student-registry');
     if (syncRegBtn) syncRegBtn.style.display = isStaff ? '' : 'none';
+    var syncTeacherBtn = document.getElementById('btn-sync-teacher-registry');
+    if (syncTeacherBtn) syncTeacherBtn.style.display = isStaff ? '' : 'none';
     document.querySelectorAll('.visit-col-staff').forEach(function(el) {
       el.style.display = isStaff ? '' : 'none';
     });
@@ -17730,6 +18495,10 @@
     document.querySelectorAll('[data-nurse-only]').forEach(function(el) {
       el.style.display = isNurseOrAdmin ? '' : 'none';
     });
+    document.querySelectorAll('[data-nurse-edit-only]').forEach(function(el) {
+      el.style.display = isNurse ? '' : 'none';
+    });
+    updateVisitCalendarLayout();
     if (isLimited) {
       fillStudentVaccineForm();
       fillStudentChronicForm();
@@ -17754,8 +18523,8 @@
     renderDiseaseReports();
     renderEnvironmentResults();
     var calNav = document.getElementById('nav-school-calendar');
-    if (calNav) calNav.style.display = (role === 'teacher' || role === 'admin') ? '' : 'none';
-    if (role === 'teacher' || role === 'admin') refreshTeacherSchoolCalendar();
+    if (calNav) calNav.style.display = (role === 'teacher' || role === 'admin' || role === 'student' || staffMasterAccess) ? '' : 'none';
+    if (role === 'teacher' || role === 'admin' || role === 'student' || staffMasterAccess) refreshTeacherSchoolCalendar();
     scheduleDeferredStaffSheetSync(role);
     if (typeof renderNurseAlerts === 'function') renderNurseAlerts();
     const limitedUserBlockedActive = isLimited && (
@@ -17772,6 +18541,14 @@
     );
     if (limitedUserBlockedActive) {
       showLimitedUserHome();
+    }
+    applyAdminNavVisibility(role);
+    if (role === 'admin' && !staffMasterAccess) {
+      var activePanel = document.querySelector('.section-panel.active');
+      if (activePanel && activePanel.id) {
+        var activeId = activePanel.id.replace(/^section-/, '');
+        if (isAdminHiddenNavSection(activeId)) showSection('dashboard');
+      }
     }
   }
   function enterGuestAccess(mode) {
@@ -17814,6 +18591,7 @@
     } catch (e) {
       console.error('[SH login]', e);
       document.body.classList.toggle('staff-app', isFullStaffRole(roleKey));
+      try { applyAdminNavVisibility(roleKey); } catch (e4) {}
       if (isLimitedUserRole(roleKey)) {
         try { showLimitedUserHome(); } catch (e3) {}
       } else {
@@ -17893,13 +18671,24 @@
     initMentalForms();
     renderPhysChecklists();
     var hadSession = restoreAppSession();
-    initWhenStudentDataReady();
-    safeBootData();
-    if (!hadSession && !getCurrentRole()) {
-      showWelcomeScreen();
-    } else if (getCurrentRole()) {
-      dismissBlockingOverlays();
+    function finishInitialBoot() {
+      safeBootData();
+      if (!hadSession && !getCurrentRole()) {
+        showWelcomeScreen();
+      } else if (getCurrentRole()) {
+        dismissBlockingOverlays();
+      }
     }
+    initWhenStudentDataReady(function() {
+      if (typeof bootstrapCloudDataFromSheet === 'function') {
+        bootstrapCloudDataFromSheet(function() {
+          finishInitialBoot();
+        });
+      } else {
+        finishInitialBoot();
+      }
+    });
+    initWhenTeacherDataReady();
   });
 
   // ===== ADDED: Light / Dark theme toggle (persisted) =====
@@ -17958,6 +18747,55 @@
     render();
   })();
 
+  // ===== Teacher registry search =====
+  (function () {
+    function boot() {
+      if (typeof TEACHER_BASIC === 'undefined') {
+        setTimeout(boot, 100);
+        return;
+      }
+      var tbody = document.querySelector('#section-teacher tbody');
+      if (!tbody || !tbody.rows.length) {
+        if (typeof initTeacherRegistryTable === 'function') initTeacherRegistryTable();
+        setTimeout(boot, 120);
+        return;
+      }
+      var rows = Array.from(tbody.rows).map(function(tr) {
+        return {
+          tr: tr,
+          text: Array.from(tr.cells).slice(0, 7).map(function(c) { return c.textContent; }).join(' ').toLowerCase(),
+          group: tr.cells[2] ? tr.cells[2].textContent.trim() : ''
+        };
+      });
+      var total = rows.length;
+      var input = document.getElementById('search-teacher');
+      var sel = document.getElementById('filter-teacher-group');
+      var counter = document.getElementById('teacher-count');
+      function render() {
+        var q = (input && input.value ? input.value : '').trim().toLowerCase();
+        var g = (sel && sel.value) ? sel.value : '';
+        var shown = 0;
+        rows.forEach(function(r) {
+          var ok = (!q || r.text.indexOf(q) !== -1) && (!g || r.group === g);
+          r.tr.style.display = ok ? '' : 'none';
+          if (ok) shown++;
+        });
+        if (counter) {
+          counter.innerHTML = 'แสดง <strong>' + shown.toLocaleString('th-TH') +
+            '</strong> / ' + total.toLocaleString('th-TH') + ' คน';
+        }
+      }
+      var t;
+      var debounced = function() { clearTimeout(t); t = setTimeout(render, 150); };
+      if (input) input.addEventListener('input', debounced);
+      if (sel) sel.addEventListener('change', render);
+      var btn = document.getElementById('btn-search-teacher');
+      if (btn) btn.addEventListener('click', function(e) { e.preventDefault(); render(); });
+      render();
+    }
+    boot();
+  })();
+
   // ===== ADDED: Scroll-to-top button =====
   (function () {
     const main = document.querySelector('.main');
@@ -17980,5 +18818,6 @@
 </script>
 <script src="info-hub-restore.js"></script>
 <script src="student-basic-data.js"></script>
+<script src="teacher-basic-data.js"></script>
 </body>
 </html>

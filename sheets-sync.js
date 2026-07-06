@@ -27,7 +27,8 @@ var SHEET_NAMES = {
   nurseAlert: 'แจ้งเตือนงานอนามัย',
   knowledge: 'ความรู้ด้านอนามัย',
   studentHealth: 'ข้อมูลสุขภาพนักเรียน',
-  studentRegistry: 'ทะเบียนนักเรียน'
+  studentRegistry: 'ทะเบียนนักเรียน',
+  teacherRegistry: 'ทะเบียนครู'
 };
 
 function getSyncRoleLabel() {
@@ -746,6 +747,98 @@ function fetchStudentRegistryFromSheet() {
   return fetchGvizSheet_(SHEET_NAMES.studentRegistry).then(function(data) {
     if (!data) return [];
     return parseGvizStudentRegistryRows_(data);
+  });
+}
+
+function buildTeacherRegistrySheetRow(entry) {
+  entry = entry || {};
+  function cell(v) {
+    if (v == null || v === '' || v === '—' || v === '-') return '';
+    return String(v);
+  }
+  return {
+    'รหัสครู': entry.id || '',
+    'ชื่อ-นามสกุล': entry.name || '',
+    'กลุ่มสาระ': entry.subjectGroup || '',
+    'สังกัด': entry.affiliation || '',
+    'ประจำชั้น': entry.classLevel || '',
+    'เบอร์โทร': entry.phone || '',
+    'อีเมล': entry.email || '',
+    'โรคประจำตัว': cell(entry.chronic),
+    'แพ้ยา': cell(entry.drug),
+    'แพ้อาหาร': cell(entry.food),
+    'ข้อควรระวัง': cell(entry.precautions),
+    'วันที่อัปเดต': entry.updatedAt || new Date().toLocaleString('th-TH'),
+    id: entry.id || '',
+    name: entry.name || ''
+  };
+}
+
+function syncTeacherRegistryEntryQuiet(entry) {
+  if (!SHEET_NAMES.teacherRegistry || !entry || !entry.id) return;
+  syncUpsertRowQuiet(SHEET_NAMES.teacherRegistry, 'รหัสครู', buildTeacherRegistrySheetRow(entry));
+}
+
+function syncTeacherRegistryBatchQuiet(rows) {
+  if (!SHEET_NAMES.teacherRegistry || !rows || !rows.length) {
+    return Promise.resolve({ ok: false });
+  }
+  var payload = {
+    action: 'batchUpsertRows',
+    sheet: SHEET_NAMES.teacherRegistry,
+    matchKey: 'รหัสครู',
+    rows: rows
+  };
+  ensureSheetSyncDom_();
+  return syncPayload_(payload).catch(function() {
+    syncViaHiddenForm_(payload);
+    return { ok: false, method: 'form' };
+  });
+}
+
+function parseGvizTeacherRegistryRows_(gvizData) {
+  var table = gvizData && gvizData.table;
+  if (!table || !Array.isArray(table.rows)) return [];
+  var cols = table.cols || [];
+  var idxId = findGvizColIndex_(cols, ['รหัสครู', 'รหัส', 'id']);
+  var idxName = findGvizColIndex_(cols, ['ชื่อ-นามสกุล', 'ชื่อนามสกุล', 'name']);
+  var idxGroup = findGvizColIndex_(cols, ['กลุ่มสาระ', 'subjectgroup']);
+  var idxAff = findGvizColIndex_(cols, ['สังกัด', 'affiliation']);
+  var idxClass = findGvizColIndex_(cols, ['ประจำชั้น', 'class']);
+  var idxPhone = findGvizColIndex_(cols, ['เบอร์โทร', 'phone']);
+  var idxEmail = findGvizColIndex_(cols, ['อีเมล', 'email']);
+  var idxChronic = findGvizColIndex_(cols, ['โรคประจำตัว', 'chronic']);
+  var idxDrug = findGvizColIndex_(cols, ['แพ้ยา', 'drug']);
+  var idxFood = findGvizColIndex_(cols, ['แพ้อาหาร', 'food']);
+  var idxPrec = findGvizColIndex_(cols, ['ข้อควรระวัง', 'precautions']);
+  var items = [];
+  table.rows.forEach(function(row) {
+    var id = idxId >= 0 ? gvizCell_(row, idxId) : '';
+    if (!id) return;
+    items.push({
+      id: String(id).trim(),
+      name: idxName >= 0 ? gvizCell_(row, idxName) : '',
+      subjectGroup: idxGroup >= 0 ? gvizCell_(row, idxGroup) : '',
+      affiliation: idxAff >= 0 ? gvizCell_(row, idxAff) : '',
+      classLevel: idxClass >= 0 ? gvizCell_(row, idxClass) : '',
+      phone: idxPhone >= 0 ? gvizCell_(row, idxPhone) : '',
+      email: idxEmail >= 0 ? gvizCell_(row, idxEmail) : '',
+      chronic: idxChronic >= 0 ? gvizCell_(row, idxChronic) : '',
+      drug: idxDrug >= 0 ? gvizCell_(row, idxDrug) : '',
+      food: idxFood >= 0 ? gvizCell_(row, idxFood) : '',
+      precautions: idxPrec >= 0 ? gvizCell_(row, idxPrec) : ''
+    });
+  });
+  return items;
+}
+
+function fetchTeacherRegistryFromSheet() {
+  if (!SHEETS_CONFIG.ENABLED || !SHEET_NAMES.teacherRegistry) {
+    return Promise.resolve([]);
+  }
+  return fetchGvizSheet_(SHEET_NAMES.teacherRegistry).then(function(data) {
+    if (!data) return [];
+    return parseGvizTeacherRegistryRows_(data);
   });
 }
 
@@ -1733,6 +1826,247 @@ function fetchAllAssessmentDataFromSheet() {
     return out;
   });
 }
+
+function isDeployedAppHost() {
+  var h = String((typeof location !== 'undefined' && location.hostname) || '').toLowerCase();
+  return !!(h && h !== 'localhost' && h !== '127.0.0.1');
+}
+
+function localStorageNeedsSheetBootstrap() {
+  var keys = ['sh-visit', 'sh-nutrition', 'sh-chronic', 'sh-screening', 'sh-vaccine', 'sh-emergency', 'sh-referral'];
+  for (var i = 0; i < keys.length; i++) {
+    try {
+      var raw = localStorage.getItem(keys[i]);
+      if (!raw || raw === '[]' || raw === '{}') continue;
+      var parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length) return false;
+      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length) return false;
+    } catch (e) {}
+  }
+  return true;
+}
+
+function shouldBootstrapCloudData(force) {
+  if (!SHEETS_CONFIG.ENABLED || !SHEETS_CONFIG.SPREADSHEET_ID) return false;
+  if (force) return true;
+  if (isDeployedAppHost()) return true;
+  return localStorageNeedsSheetBootstrap();
+}
+
+function parseGvizVaccineRows_(gvizData) {
+  var table = gvizData && gvizData.table;
+  if (!table || !Array.isArray(table.rows)) return [];
+  var cols = table.cols || [];
+  var idxRecordId = findGvizColIndex_(cols, ['รหัสรายการ', 'recordid']);
+  var idxId = findGvizColIndex_(cols, ['เลขประจำตัว', 'รหัสนักเรียน', 'id']);
+  var idxName = findGvizColIndex_(cols, ['ชื่อนามสกุล', 'ชื่อ-นามสกุล', 'name']);
+  var idxVac = findGvizColIndex_(cols, ['วัคซีนที่ฉีด', 'vaccine']);
+  var idxDate = findGvizColIndex_(cols, ['วันที่ฉีด', 'date']);
+  var idxRecorded = findGvizColIndex_(cols, ['วันที่บันทึก', 'recordedat']);
+  var items = [];
+  table.rows.forEach(function(row, rowIndex) {
+    var id = idxId >= 0 ? gvizCell_(row, idxId) : '';
+    var vaccine = idxVac >= 0 ? gvizCell_(row, idxVac) : '';
+    if (!id || !vaccine) return;
+    var savedAt = sheetRowSavedAt_(row, idxRecorded, rowIndex, cols);
+    items.push({
+      recordId: idxRecordId >= 0 ? gvizCell_(row, idxRecordId) : ('vac-sheet-' + rowIndex + '-' + id),
+      id: String(id).trim(),
+      name: idxName >= 0 ? gvizCell_(row, idxName) : '',
+      vaccine: vaccine,
+      date: idxDate >= 0 ? gvizCell_(row, idxDate) : '',
+      recordedAt: idxRecorded >= 0 ? gvizCell_(row, idxRecorded) : '',
+      savedAt: savedAt,
+      fromSheet: true
+    });
+  });
+  return items;
+}
+
+function parseGvizEmergencyRows_(gvizData) {
+  var table = gvizData && gvizData.table;
+  if (!table || !Array.isArray(table.rows)) return [];
+  var cols = table.cols || [];
+  var idxWhen = findGvizColIndex_(cols, ['วันที่เวลา', 'eventat']);
+  var idxName = findGvizColIndex_(cols, ['ชื่อผู้บาดเจ็บ/เจ็บป่วย', 'ชื่อ', 'name']);
+  var idxType = findGvizColIndex_(cols, ['ประเภทเหตุการณ์', 'type']);
+  var idxLoc = findGvizColIndex_(cols, ['สถานที่เกิดเหตุ', 'location']);
+  var idxAid = findGvizColIndex_(cols, ['การปฐมพยาบาล', 'firstaid']);
+  var idxResult = findGvizColIndex_(cols, ['ผลลัพธ์', 'result']);
+  var items = [];
+  table.rows.forEach(function(row, rowIndex) {
+    var name = idxName >= 0 ? gvizCell_(row, idxName) : '';
+    if (!name) return;
+    var eventAt = idxWhen >= 0 ? gvizCell_(row, idxWhen) : '';
+    var savedAt = parseVisitRecordedAt(eventAt) || sheetRowSavedAt_(row, idxWhen, rowIndex, cols);
+    items.push({
+      name: name,
+      type: idxType >= 0 ? gvizCell_(row, idxType) : '',
+      location: idxLoc >= 0 ? gvizCell_(row, idxLoc) : '',
+      firstaid: idxAid >= 0 ? gvizCell_(row, idxAid) : '',
+      result: idxResult >= 0 ? gvizCell_(row, idxResult) : '',
+      eventAt: eventAt,
+      recordedAt: eventAt,
+      savedAt: savedAt,
+      fromSheet: true
+    });
+  });
+  return items;
+}
+
+function parseGvizReferralRows_(gvizData) {
+  var table = gvizData && gvizData.table;
+  if (!table || !Array.isArray(table.rows)) return [];
+  var cols = table.cols || [];
+  var idxUid = findGvizColIndex_(cols, ['รหัสรายการ', 'uid']);
+  var idxId = findGvizColIndex_(cols, ['รหัส', 'เลขประจำตัว', 'id']);
+  var idxName = findGvizColIndex_(cols, ['ชื่อ-นามสกุล', 'ชื่อนามสกุล', 'name']);
+  var idxClass = findGvizColIndex_(cols, ['ชั้น', 'class']);
+  var idxHospital = findGvizColIndex_(cols, ['สถานพยาบาล', 'hospital']);
+  var idxUrgency = findGvizColIndex_(cols, ['ความเร่งด่วน', 'urgency']);
+  var idxReason = findGvizColIndex_(cols, ['สาเหตุ/อาการ', 'reason']);
+  var idxParent = findGvizColIndex_(cols, ['แจ้งผู้ปกครอง', 'parentnotified']);
+  var idxNote = findGvizColIndex_(cols, ['หมายเหตุ', 'note']);
+  var idxStatus = findGvizColIndex_(cols, ['สถานะ', 'status']);
+  var idxFollow = findGvizColIndex_(cols, ['ผลติดตาม', 'followupnote']);
+  var idxSource = findGvizColIndex_(cols, ['แหล่งข้อมูล', 'source']);
+  var idxDate = findGvizColIndex_(cols, ['วันที่บันทึก', 'recordedat']);
+  var items = [];
+  table.rows.forEach(function(row, rowIndex) {
+    var name = idxName >= 0 ? gvizCell_(row, idxName) : '';
+    if (!name) return;
+    var recordedAt = idxDate >= 0 ? gvizCell_(row, idxDate) : '';
+    var savedAt = sheetRowSavedAt_(row, idxDate, rowIndex, cols);
+    items.push({
+      uid: idxUid >= 0 ? gvizCell_(row, idxUid) : ('ref-sheet-' + rowIndex),
+      id: idxId >= 0 ? gvizCell_(row, idxId) : '',
+      name: name,
+      class: idxClass >= 0 ? gvizCell_(row, idxClass) : '',
+      hospital: idxHospital >= 0 ? gvizCell_(row, idxHospital) : '',
+      urgency: idxUrgency >= 0 ? gvizCell_(row, idxUrgency) : '',
+      reason: idxReason >= 0 ? gvizCell_(row, idxReason) : '',
+      parentNotified: idxParent >= 0 ? gvizCell_(row, idxParent) : '',
+      note: idxNote >= 0 ? gvizCell_(row, idxNote) : '',
+      status: idxStatus >= 0 ? gvizCell_(row, idxStatus) : 'รอติดตาม',
+      followupNote: idxFollow >= 0 ? gvizCell_(row, idxFollow) : '',
+      source: idxSource >= 0 ? gvizCell_(row, idxSource) : 'sheet',
+      sourceKey: 'sheet:' + rowIndex,
+      recordedAt: recordedAt,
+      savedAt: savedAt,
+      fromSheet: true
+    });
+  });
+  return items;
+}
+
+function parseGvizEnvironmentRows_(gvizData) {
+  var table = gvizData && gvizData.table;
+  if (!table || !Array.isArray(table.rows)) return [];
+  var cols = table.cols || [];
+  var idxDate = findGvizColIndex_(cols, ['วันที่ตรวจ', 'recordedat']);
+  var idxResult = findGvizColIndex_(cols, ['ผลการตรวจ', 'result']);
+  var idxPassed = findGvizColIndex_(cols, ['รายการที่ผ่าน', 'passed']);
+  var idxFailed = findGvizColIndex_(cols, ['รายการที่ยังไม่ผ่าน', 'failed']);
+  var idxBy = findGvizColIndex_(cols, ['ผู้บันทึก', 'recordedby']);
+  var items = [];
+  table.rows.forEach(function(row, rowIndex) {
+    var recordedAt = idxDate >= 0 ? gvizCell_(row, idxDate) : '';
+    if (!recordedAt) return;
+    var passedRaw = idxPassed >= 0 ? gvizCell_(row, idxPassed) : '';
+    var failedRaw = idxFailed >= 0 ? gvizCell_(row, idxFailed) : '';
+    var envItems = [];
+    if (passedRaw) passedRaw.split(/\s*\|\s*/).forEach(function(t) { if (t) envItems.push({ text: t, checked: true }); });
+    if (failedRaw) failedRaw.split(/\s*\|\s*/).forEach(function(t) { if (t) envItems.push({ text: t, checked: false }); });
+    var passCount = envItems.filter(function(it) { return it.checked; }).length;
+    var resultText = idxResult >= 0 ? gvizCell_(row, idxResult) : '';
+    var m = resultText.match(/(\d+)\s*\/\s*(\d+)/);
+    if (m) {
+      passCount = parseInt(m[1], 10) || passCount;
+      var totalFromResult = parseInt(m[2], 10);
+    }
+    items.push({
+      items: envItems,
+      passCount: passCount,
+      total: m ? (parseInt(m[2], 10) || envItems.length) : envItems.length,
+      recordedAt: recordedAt,
+      recordedBy: idxBy >= 0 ? gvizCell_(row, idxBy) : '',
+      savedAt: sheetRowSavedAt_(row, idxDate, rowIndex, cols),
+      fromSheet: true
+    });
+  });
+  return items;
+}
+
+function parseGvizMedicineRows_(gvizData) {
+  var table = gvizData && gvizData.table;
+  if (!table || !Array.isArray(table.rows)) return [];
+  var cols = table.cols || [];
+  var idxId = findGvizColIndex_(cols, ['รหัสยา', 'id']);
+  var idxName = findGvizColIndex_(cols, ['ชื่อยา', 'name']);
+  var idxCat = findGvizColIndex_(cols, ['ประเภท', 'category']);
+  var idxQty = findGvizColIndex_(cols, ['จำนวนคงเหลือ', 'qty']);
+  var idxUnit = findGvizColIndex_(cols, ['หน่วย', 'unit']);
+  var idxExpiry = findGvizColIndex_(cols, ['วันหมดอายุ', 'expiry']);
+  var idxStatus = findGvizColIndex_(cols, ['สถานะ', 'status']);
+  var idxDate = findGvizColIndex_(cols, ['วันที่บันทึก', 'recordedat']);
+  var byId = {};
+  table.rows.forEach(function(row, rowIndex) {
+    var id = idxId >= 0 ? gvizCell_(row, idxId) : '';
+    if (!id) return;
+    var savedAt = sheetRowSavedAt_(row, idxDate, rowIndex, cols);
+    var item = {
+      id: String(id).trim(),
+      name: idxName >= 0 ? gvizCell_(row, idxName) : '',
+      category: idxCat >= 0 ? gvizCell_(row, idxCat) : '',
+      qty: idxQty >= 0 ? (parseInt(gvizCell_(row, idxQty), 10) || 0) : 0,
+      unit: idxUnit >= 0 ? gvizCell_(row, idxUnit) : '',
+      expiry: idxExpiry >= 0 ? gvizCell_(row, idxExpiry) : '',
+      status: idxStatus >= 0 ? gvizCell_(row, idxStatus) : '',
+      savedAt: savedAt,
+      fromSheet: true
+    };
+    if (!byId[item.id] || (item.savedAt || 0) >= (byId[item.id].savedAt || 0)) {
+      byId[item.id] = item;
+    }
+  });
+  return Object.keys(byId).map(function(k) { return byId[k]; });
+}
+
+function fetchAllCloudDataFromSheet() {
+  if (!SHEETS_CONFIG.ENABLED || !SHEETS_CONFIG.SPREADSHEET_ID) {
+    return Promise.resolve(null);
+  }
+  return Promise.all([
+    fetchAllVisitRecordsFromGviz().catch(function() { return []; }),
+    fetchAllAssessmentDataFromSheet().catch(function() { return {}; }),
+    fetchAllCalendarFromGviz().catch(function() { return []; }),
+    fetchStudentRegistryFromSheet().catch(function() { return []; }),
+    fetchTeacherRegistryFromSheet().catch(function() { return []; }),
+    fetchGvizSheet_(SHEET_NAMES.vaccine).then(function(d) { return d ? parseGvizVaccineRows_(d) : []; }).catch(function() { return []; }),
+    fetchGvizSheet_(SHEET_NAMES.emergency).then(function(d) { return d ? parseGvizEmergencyRows_(d) : []; }).catch(function() { return []; }),
+    fetchGvizSheet_(SHEET_NAMES.referral).then(function(d) { return d ? parseGvizReferralRows_(d) : []; }).catch(function() { return []; }),
+    fetchGvizSheet_(SHEET_NAMES.environment).then(function(d) { return d ? parseGvizEnvironmentRows_(d) : []; }).catch(function() { return []; }),
+    fetchGvizSheet_(SHEET_NAMES.medicine).then(function(d) { return d ? parseGvizMedicineRows_(d) : []; }).catch(function() { return []; })
+  ]).then(function(parts) {
+    return {
+      visits: parts[0] || [],
+      assessment: parts[1] || {},
+      calendar: parts[2] || [],
+      studentRegistry: parts[3] || [],
+      teacherRegistry: parts[4] || [],
+      vaccine: parts[5] || [],
+      emergency: parts[6] || [],
+      referral: parts[7] || [],
+      environment: parts[8] || [],
+      medicine: parts[9] || []
+    };
+  });
+}
+
+window.isDeployedAppHost = isDeployedAppHost;
+window.localStorageNeedsSheetBootstrap = localStorageNeedsSheetBootstrap;
+window.shouldBootstrapCloudData = shouldBootstrapCloudData;
+window.fetchAllCloudDataFromSheet = fetchAllCloudDataFromSheet;
 
 document.addEventListener('DOMContentLoaded', function() {
   ensureSheetSyncDom_();

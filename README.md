@@ -8,6 +8,7 @@
 |------|-----------|
 | `index.html` | หน้าแอปหลัก (~1.4 MB) |
 | `student-basic-data.js` | ข้อมูลนักเรียน 2,725 คน (~2.4 MB) **ต้องมี** |
+| `teacher-basic-data.js` | ข้อมูลครู 180 คน (~60 KB) **ต้องมี** |
 | `sheets-sync.js` | ซิงค์ Google Sheet |
 | `auth-gate.js` | ล็อกอิน |
 | `info-hub-restore.js` | ศูนย์ข้อมูล |
@@ -24,4 +25,6 @@
 ## หมายเหตุ
 
 - ข้อมูลใน `localStorage` บนเครื่องคุณ **ไม่ไปกับ Vercel** — ข้อมูลบน Vercel มาจาก Google Sheet + ไฟล์ใน repo
-- ถ้าข้อมูลไม่ตรง ให้ตรวจว่า `student-basic-data.js` ถูก push ขึ้น GitHub ครบหรือไม่
+- เมื่อเปิดบน Vercel ระบบจะ **โหลดข้อมูลจาก Google Sheet อัตโนมัติ** ทุกครั้งที่เปิดหน้า
+- Google Sheet ต้องตั้งค่า **Anyone with the link → Viewer** เพื่อให้อ่านข้อมูลผ่าน gviz ได้
+- ถ้าข้อมูลไม่ตรง ให้ตรวจว่า `student-basic-data.js` และ `teacher-basic-data.js` ถูก push ขึ้น GitHub ครบหรือไม่ (นักเรียนควร ~2,725 คน)
