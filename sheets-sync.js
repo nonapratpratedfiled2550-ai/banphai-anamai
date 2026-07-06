@@ -399,7 +399,6 @@ function syncUpsertRowQuiet(sheetName, matchKey, row) {
     row: row
   };
   ensureSheetSyncDom_();
-  syncViaHiddenForm_(payload);
   syncPayloadQuiet(payload);
 }
 
@@ -412,7 +411,6 @@ function syncDeleteRowQuiet(sheetName, matchKey, matchValue) {
     matchValue: String(matchValue)
   };
   ensureSheetSyncDom_();
-  syncViaHiddenForm_(payload);
   syncPayloadQuiet(payload);
 }
 
@@ -701,7 +699,7 @@ function syncStudentRegistryBatchQuiet(rows) {
   ensureSheetSyncDom_();
   return syncPayload_(payload).catch(function() {
     syncViaHiddenForm_(payload);
-    return { ok: true, method: 'form' };
+    return { ok: false, method: 'form' };
   });
 }
 
@@ -847,7 +845,6 @@ function syncMentalToSheetQuiet(record, type) {
     row: buildMentalSheetRow(record, type)
   };
   ensureSheetSyncDom_();
-  syncViaHiddenForm_(payload);
   syncPayloadQuiet(payload);
 }
 
@@ -882,7 +879,6 @@ function syncAppointmentToSheetQuiet(studentId, apptData) {
     row: buildAppointmentSheetRow(studentId, apptData)
   };
   ensureSheetSyncDom_();
-  syncViaHiddenForm_(payload);
   syncPayloadQuiet(payload);
 }
 
@@ -894,7 +890,6 @@ function deleteAppointmentFromSheetQuiet(studentId) {
     studentId: String(studentId || '').trim()
   };
   ensureSheetSyncDom_();
-  syncViaHiddenForm_(payload);
   syncPayloadQuiet(payload);
 }
 

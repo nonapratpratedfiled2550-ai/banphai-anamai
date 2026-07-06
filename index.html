@@ -8203,8 +8203,22 @@
   function isPublicGuest() {
     return getCurrentRole() === 'public';
   }
+  function getActiveGuestMode() {
+    if (guestMode) return guestMode;
+    try {
+      var s = JSON.parse(sessionStorage.getItem('sh-session') || 'null');
+      if (s && s.kind === 'guest' && s.guestMode) return s.guestMode;
+    } catch (e) {}
+    return '';
+  }
   function showSection(id) {
-    const role = getCurrentRole();
+    var role = getCurrentRole();
+    var activeGuestMode = getActiveGuestMode();
+    if (!role && activeGuestMode) {
+      currentRole = 'public';
+      guestMode = activeGuestMode;
+      role = 'public';
+    }
     if (id === 'gshps' && !isPublicGuest()) return;
     if (isPublicGuest()) {
       if (guestMode === 'knowledge' && id !== 'knowledge') return;
@@ -8555,6 +8569,9 @@
     el.innerHTML = buildClassRoomOptionsHtml(false);
   }
   function getStudentFullClassFromRegistry(id) {
+    var classMap = getStudentRegistryClassMap();
+    var mapCls = classMap[canonicalStudentIdKey(id)] || classMap[String(id).trim()];
+    if (mapCls && mapCls !== '—') return mapCls;
     const tr = Array.from(document.querySelectorAll('#section-student tbody tr')).find(function(r) {
       return r.cells[0] && visitIdMatch(r.cells[0].textContent.trim(), id);
     });
@@ -8631,6 +8648,14 @@
     }
     const student = (typeof lookupStudent === 'function') ? lookupStudent(id) : null;
     if (student) applyStudentToNutritionForm(id, student);
+    else {
+      ['nut-name', 'nut-age', 'nut-weight', 'nut-height', 'nut-bmi'].forEach(function(fid) {
+        const el = document.getElementById(fid);
+        if (el) el.value = '';
+      });
+      const r = document.getElementById('nut-result');
+      if (r) { r.className = 'alert alert-info'; r.textContent = 'กรอกน้ำหนักและส่วนสูงเพื่อดูผล'; }
+    }
   }
   function fillStudentNutritionForm() {
     const idEl = document.getElementById('nut-id');
@@ -8681,6 +8706,12 @@
     }
     var student = (typeof lookupStudent === 'function') ? lookupStudent(id) : null;
     if (student) applyStudentToMentalForm(id, student);
+    else {
+      ['mental-name', 'mental-age'].forEach(function(fid) {
+        var el = document.getElementById(fid);
+        if (el) el.value = '';
+      });
+    }
   }
   function fillStudentMentalForm() {
     var idEl = document.getElementById('mental-id');
@@ -9383,6 +9414,11 @@
       applyStudentToScreeningFields(prefix, id, student);
       if (prefix === 'scr-vis') updateVisionResult();
       if (prefix === 'blood') updateBloodResult();
+    } else {
+      ['-name', '-age'].forEach(function(s) {
+        var el = document.getElementById(prefix + s);
+        if (el) el.value = '';
+      });
     }
   }
   var SCREENING_FORM_IDS = [
@@ -10323,7 +10359,7 @@
     }
     saveChronicToStorage(records);
     filterChronicRecords();
-    syncToSheetQuiet(SHEET_NAMES.chronic, buildChronicSheetRow(record));
+    syncUpsertRowQuiet(SHEET_NAMES.chronic, 'รหัสนักเรียน', buildChronicSheetRow(record));
     renderStudentChronicHistory();
     if (typeof refreshAllScreeningResultViews === 'function') refreshAllScreeningResultViews(record.id);
     notifyReportDataChanged();
@@ -13493,7 +13529,7 @@
         if (!tr.cells || !tr.cells[0]) continue;
         var id = tr.cells[0].textContent.trim();
         var cls = tr.cells[2] ? tr.cells[2].textContent.trim() : '';
-        var gender = tr.cells[6] ? tr.cells[6].textContent.trim() : '';
+        var gender = tr.cells[4] ? tr.cells[4].textContent.trim() : '';
         var student = (typeof lookupStudent === 'function') ? lookupStudent(id) : null;
         var isFemale = gender.indexOf('หญิง') !== -1 || (student && student.gender === 'ญ');
         if (isFemale && cls.indexOf('ม.2') === 0) ids[id] = true;
@@ -15219,12 +15255,9 @@
     return repairVisitRecordTimestamp(record, orphanIndex);
   }
   function getStudentClassForVisit(id) {
-    var tr = Array.from(document.querySelectorAll('#section-student tbody tr')).find(function(r) {
-      return r.cells[0] && visitIdMatch(r.cells[0].textContent.trim(), id);
-    });
-    if (tr && tr.cells[2]) {
-      var cls = tr.cells[2].textContent.trim();
-      if (cls && cls !== '—') return cls;
+    if (typeof getStudentFullClassFromRegistry === 'function') {
+      var cls = getStudentFullClassFromRegistry(id);
+      if (cls) return cls;
     }
     return '';
   }
@@ -15701,12 +15734,8 @@
   }
   function replaceVisitRecordsFromSheetAll(sheetVisits) {
     if (!sheetVisits || !sheetVisits.length) return;
-    var localToday = [];
-    try {
-      localToday = JSON.parse(localStorage.getItem('sh-visit') || '[]').filter(function(r) {
-        return isVisitToday(r) && r.recordId && String(r.recordId).indexOf('v-sheet-') !== 0;
-      });
-    } catch (e) {}
+    var local = [];
+    try { local = JSON.parse(localStorage.getItem('sh-visit') || '[]'); } catch (e) {}
     var keys = {};
     var merged = [];
     sheetVisits.forEach(function(r) {
@@ -15721,12 +15750,13 @@
       keys[key] = true;
       merged.push(r);
     });
-    localToday.forEach(function(r) {
+    local.forEach(function(r) {
+      if (!r) return;
       enrichVisitFromStudentRegistry(r);
       var key = visitRecordMergeKey(r);
       if (keys[key]) return;
       keys[key] = true;
-      merged.unshift(r);
+      merged.push(r);
     });
     merged.sort(function(a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
     saveVisitRecords(merged);
@@ -15745,7 +15775,7 @@
       if (!k) return;
       if (index[k] !== undefined) {
         var existing = local[index[k]];
-        if ((r.savedAt || 0) >= (existing.savedAt || 0) || r.fromSheet) {
+        if ((r.savedAt || 0) >= (existing.savedAt || 0)) {
           local[index[k]] = Object.assign({}, existing, r);
         }
       } else {
@@ -16040,13 +16070,10 @@
   }
   function applyVisitRecordStudentMeta(id) {
     if (!id) return;
-    var tr = Array.from(document.querySelectorAll('#section-student tbody tr')).find(function(r) {
-      return r.cells[0] && visitIdMatch(r.cells[0].textContent.trim(), id);
-    });
-    if (tr && tr.cells[2]) {
+    var cls = (typeof getStudentFullClassFromRegistry === 'function') ? getStudentFullClassFromRegistry(id) : '';
+    if (cls && cls !== '—') {
       var classEl = document.getElementById('vis-rec-class');
-      var cls = tr.cells[2].textContent.trim();
-      if (classEl && cls && cls !== '—') {
+      if (classEl) {
         for (var i = 0; i < classEl.options.length; i++) {
           var opt = classEl.options[i];
           if (opt.text === cls || opt.value === cls) {
@@ -16412,6 +16439,7 @@
     }
     var fromRegistry = (typeof getStudentDisplayName === 'function') ? getStudentDisplayName(id) : '';
     if (fromRegistry) nameEl.value = fromRegistry;
+    else nameEl.value = '';
   }
   function fillVisitNameFromId() {
     var idEl = document.getElementById('vis-id');
@@ -16421,13 +16449,10 @@
   }
   function applyVisitStudentMeta(id) {
     if (!id) return;
-    var tr = Array.from(document.querySelectorAll('#section-student tbody tr')).find(function(r) {
-      return r.cells[0] && visitIdMatch(r.cells[0].textContent.trim(), id);
-    });
-    if (tr && tr.cells[2]) {
+    var cls = (typeof getStudentFullClassFromRegistry === 'function') ? getStudentFullClassFromRegistry(id) : '';
+    if (cls && cls !== '—') {
       var classEl = document.getElementById('vis-class');
-      var cls = tr.cells[2].textContent.trim();
-      if (classEl && cls && cls !== '—') {
+      if (classEl) {
         for (var i = 0; i < classEl.options.length; i++) {
           var opt = classEl.options[i];
           if (opt.text === cls || opt.value === cls) {
@@ -16700,6 +16725,13 @@
       var idKey = canonicalStudentIdKey(studentId);
       if (appt && appt.date) {
         setStudentHealthExtra(idKey, { appointment: appt });
+      } else {
+        var extras = loadStudentHealthExtras();
+        if (extras[idKey] && extras[idKey].appointment) {
+          delete extras[idKey].appointment;
+          saveStudentHealthExtras(extras);
+          if (typeof refreshStudentRegistryRow === 'function') refreshStudentRegistryRow(studentId);
+        }
       }
       renderStudentMyAppointment();
       if (callback) callback();
@@ -16953,15 +16985,18 @@
     renderAppointmentList();
     closeStudentAppointmentModal();
   }
-  function getStudentRegistryClassMap() {
+  function getStudentRegistryClassMap(fillMissingFromDom) {
     var map = {};
     try { Object.assign(map, JSON.parse(localStorage.getItem('sh-student-registry-class') || '{}')); } catch (e) {}
-    document.querySelectorAll('#section-student tbody tr').forEach(function(tr) {
-      if (!tr.cells || !tr.cells[0]) return;
-      var sid = tr.cells[0].textContent.trim();
-      var cls = tr.cells[2] ? tr.cells[2].textContent.trim() : '';
-      if (sid && cls && cls !== '—') map[sid] = cls;
-    });
+    if (fillMissingFromDom !== false) {
+      document.querySelectorAll('#section-student tbody tr').forEach(function(tr) {
+        if (!tr.cells || !tr.cells[0]) return;
+        var sid = tr.cells[0].textContent.trim();
+        var cls = tr.cells[2] ? tr.cells[2].textContent.trim() : '';
+        var k = sid;
+        if (sid && cls && cls !== '—' && !map[sid] && !map[canonicalStudentIdKey(sid)]) map[sid] = cls;
+      });
+    }
     return map;
   }
   function saveStudentRegistryClassMap(map) {
@@ -16983,7 +17018,7 @@
       id: k,
       name: student.fullName || '',
       class: cls,
-      age: student.age != null ? student.age : '',
+      age: (typeof calcAgeFromDob === 'function' ? calcAgeFromDob(student.dob) : null) || student.age || '',
       gender: student.gender || '',
       genderLabel: formatStudentGender(student.gender),
       chronic: plain(health.chronic),
@@ -17002,21 +17037,30 @@
   }
   function applyStudentRegistryFromSheet(items) {
     if (!items || !items.length) return;
-    var classMap = getStudentRegistryClassMap();
+    var classMap = getStudentRegistryClassMap(false);
+    var extras = loadStudentHealthExtras();
     items.forEach(function(it) {
       if (!it || !it.id) return;
       var k = canonicalStudentIdKey(it.id);
       if (it.class && it.class !== '—') classMap[k] = it.class;
+      var patch = {};
+      if (it.drug) patch.drugAllergy = it.drug;
+      if (it.food) patch.foodAllergy = it.food;
+      if (it.precautions) patch.precautions = it.precautions;
+      if (it.guardianPhone) patch.guardianPhone = it.guardianPhone;
+      if (Object.keys(patch).length) extras[k] = Object.assign({}, extras[k] || {}, patch);
     });
     saveStudentRegistryClassMap(classMap);
+    if (Object.keys(extras).length) saveStudentHealthExtras(extras);
     var tbody = document.querySelector('#section-student tbody');
     if (!tbody) return;
     items.forEach(function(it) {
-      if (!it || !it.id || !it.class) return;
+      if (!it || !it.id) return;
       var tr = Array.from(tbody.rows).find(function(r) {
         return r.cells[0] && visitIdMatch(r.cells[0].textContent.trim(), it.id);
       });
-      if (tr && tr.cells[2]) tr.cells[2].textContent = it.class;
+      if (tr && it.class && tr.cells[2]) tr.cells[2].textContent = it.class;
+      if (typeof refreshStudentRegistryRow === 'function') refreshStudentRegistryRow(it.id);
     });
   }
   var studentRegistrySheetRefreshPending = false;
@@ -17130,31 +17174,26 @@
     var name = tr.cells[1].textContent.trim();
     var cls = tr.cells[2].textContent.trim();
     var student = (typeof lookupStudent === 'function') ? lookupStudent(id) : null;
-    var age = (student && student.age) ? student.age : (tr.cells[3] ? tr.cells[3].textContent.trim() : '—');
+    var age = (student && (calcAgeFromDob(student.dob) || student.age)) ? (calcAgeFromDob(student.dob) || student.age) : (tr.cells[3] ? tr.cells[3].textContent.trim() : '—');
     var health = getStudentRegistryHealth(id);
     tr.innerHTML = buildStudentRegistryRow(id, name, cls, age, health, formatStudentGender(student && student.gender));
-    if (typeof syncStudentRegistryEntryQuiet === 'function' && typeof collectStudentRegistryEntry === 'function') {
-      var regEntry = collectStudentRegistryEntry(id);
-      if (regEntry) syncStudentRegistryEntryQuiet(regEntry);
-    }
   }
   function initStudentRegistryTable() {
     var tbody = document.querySelector('#section-student tbody');
     if (!tbody) return;
+    var classMap = getStudentRegistryClassMap(false);
     for (var i = 0; i < tbody.rows.length; i++) {
       var tr = tbody.rows[i];
       var id = tr.cells[0].textContent.trim();
-      var name = tr.cells[1].textContent.trim();
-      var cls = tr.cells[2].textContent.trim();
-      var ageCell = tr.cells[3] ? tr.cells[3].textContent.trim() : '';
-      var oldChronic = tr.cells[4] ? tr.cells[4].textContent.trim() : '-';
-      var oldDrug = tr.cells[5] ? tr.cells[5].textContent.trim() : '-';
+      var cls = tr.cells[2] ? tr.cells[2].textContent.trim() : '';
+      var k = canonicalStudentIdKey(id);
+      if (classMap[k] || classMap[id]) cls = classMap[k] || classMap[id];
       var student = (typeof lookupStudent === 'function') ? lookupStudent(id) : null;
-      var age = (student && student.age) ? student.age : ageCell;
-      var health = getStudentRegistryHealth(id, oldChronic, oldDrug);
+      var name = student ? (student.fullName || tr.cells[1].textContent.trim()) : tr.cells[1].textContent.trim();
+      var age = student ? (calcAgeFromDob(student.dob) || student.age || '') : (tr.cells[3] ? tr.cells[3].textContent.trim() : '');
+      var health = getStudentRegistryHealth(id);
       tr.innerHTML = buildStudentRegistryRow(id, name, cls, age, health, formatStudentGender(student && student.gender));
     }
-    saveStudentRegistryClassMap(getStudentRegistryClassMap());
   }
   function saveStudentHealthFromBasicModal() {
     if (!basicInfoStudentId) return;
@@ -17258,6 +17297,7 @@
     fillStudentNutritionForm();
     fillStudentMentalForm();
     fillVisitMyForm();
+    fillVisitRecordForm();
   }
   function restoreAppSession() {
     try {
@@ -17289,8 +17329,10 @@
     try { sessionStorage.removeItem('sh-session'); } catch (e) {}
     const screen = document.getElementById('role-screen');
     if (screen) screen.classList.remove('role-screen-hidden');
-    updateRoleBadge();
-    applyRolePermissions('student');
+    document.querySelectorAll('.section-panel').forEach(function(p) { p.classList.remove('active'); });
+    document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
+    var badge = document.getElementById('roleBadge');
+    if (badge) { badge.style.display = 'none'; badge.textContent = ''; }
   }
   function safeBootData() {
     var skipDashRefresh = !!getCurrentRole();
@@ -17332,7 +17374,10 @@
     if (STUDENT_BASIC[key]) return STUDENT_BASIC[key];
     const num = parseInt(key, 10);
     if (!isNaN(num) && STUDENT_BASIC[String(num)]) return STUDENT_BASIC[String(num)];
-    return null;
+    var found = Object.keys(STUDENT_BASIC).find(function(k) {
+      return typeof visitIdMatch === 'function' && visitIdMatch(k, key);
+    });
+    return found ? STUDENT_BASIC[found] : null;
   }
   function initWhenStudentDataReady() {
     if (typeof STUDENT_BASIC === 'undefined') {
@@ -17445,28 +17490,26 @@
     enterApp(roleKey);
   }
   function submitStudentLogin() {
-    const user = (document.getElementById('studentLoginUser').value || '').trim();
-    const pass = (document.getElementById('studentLoginPass').value || '').trim();
-    const errEl = document.getElementById('studentLoginError');
+    var userEl = document.getElementById('studentLoginUser');
+    var passEl = document.getElementById('studentLoginPass');
+    var errEl = document.getElementById('studentLoginError');
+    const user = ((userEl && userEl.value) || '').trim();
+    const pass = ((passEl && passEl.value) || '').trim();
     if (!user || !pass) {
-      errEl.style.display = '';
-      errEl.textContent = 'กรุณากรอกเลขประจำตัวและวันเดือนปีเกิด';
+      if (errEl) { errEl.style.display = ''; errEl.textContent = 'กรุณากรอกเลขประจำตัวและวันเดือนปีเกิด'; }
       return;
     }
     if (typeof STUDENT_BASIC === 'undefined') {
-      errEl.style.display = '';
-      errEl.textContent = 'ไม่พบข้อมูลนักเรียน กรุณารีเฟรชหน้าเว็บ';
+      if (errEl) { errEl.style.display = ''; errEl.textContent = 'ไม่พบข้อมูลนักเรียน กรุณารีเฟรชหน้าเว็บ'; }
       return;
     }
     const student = lookupStudent(user);
     if (!student) {
-      errEl.style.display = '';
-      errEl.textContent = 'ไม่พบเลขประจำตัวนักเรียนในระบบ';
+      if (errEl) { errEl.style.display = ''; errEl.textContent = 'ไม่พบเลขประจำตัวนักเรียนในระบบ'; }
       return;
     }
     if (normalizeDob(pass) !== normalizeDob(student.dob || '')) {
-      errEl.style.display = '';
-      errEl.textContent = 'วันเดือนปีเกิดไม่ถูกต้อง';
+      if (errEl) { errEl.style.display = ''; errEl.textContent = 'วันเดือนปีเกิดไม่ถูกต้อง'; }
       return;
     }
     loggedInStudentId = Object.keys(STUDENT_BASIC).find(k => STUDENT_BASIC[k] === student) ||
@@ -17496,7 +17539,9 @@
     });
   }
   function fillLimitedUserFromId(idFieldId, nameFieldId, afterFill) {
-    const id = (document.getElementById(idFieldId).value || '').trim();
+    var idEl = document.getElementById(idFieldId);
+    if (!idEl) return;
+    const id = (idEl.value || '').trim();
     if (!id || typeof lookupStudent !== 'function') return;
     const student = lookupStudent(id);
     if (!student) return;
@@ -17513,7 +17558,8 @@
       'section-vaccine': 'vac-stu-id',
       'section-chronic': 'chr-stu-id',
       'section-disease': 'dis-stu-id',
-      'section-visit': 'vis-my-id'
+      'section-visit': 'vis-my-id',
+      'section-visit-record': 'vis-rec-id'
     };
     const fieldId = fieldMap[active.id];
     return fieldId ? (document.getElementById(fieldId).value || '').trim() : '';
@@ -17600,9 +17646,7 @@
             if (dash && dash.classList.contains('active')) renderDashboardNow();
           }
         });
-        refreshStudentRegistryFromSheetForStaff(function() {
-          maybeAutoSyncStudentRegistry();
-        });
+        refreshStudentRegistryFromSheetForStaff();
       }, isExecDashboardRole(role) ? 400 : 120);
       return;
     }
@@ -17682,8 +17726,9 @@
       el.style.display = role === 'teacher' ? '' : 'none';
     });
     const isNurse = role === 'nurse';
+    const isNurseOrAdmin = role === 'nurse' || role === 'admin';
     document.querySelectorAll('[data-nurse-only]').forEach(function(el) {
-      el.style.display = isNurse ? '' : 'none';
+      el.style.display = isNurseOrAdmin ? '' : 'none';
     });
     if (isLimited) {
       fillStudentVaccineForm();
@@ -17769,7 +17814,11 @@
     } catch (e) {
       console.error('[SH login]', e);
       document.body.classList.toggle('staff-app', isFullStaffRole(roleKey));
-      try { showSection(isLimitedUserRole(roleKey) ? getLimitedUserHomeSection(roleKey) : 'dashboard'); } catch (e2) {}
+      if (isLimitedUserRole(roleKey)) {
+        try { showLimitedUserHome(); } catch (e3) {}
+      } else {
+        try { showSection('dashboard'); } catch (e2) {}
+      }
     }
     saveAppSession();
   }
@@ -17789,7 +17838,12 @@
   window.submitStaffLogin = submitStaffLogin;
   window.submitStudentLogin = submitStudentLogin;
   window.changeRole = changeRole;
+  window._showSectionImpl = showSection;
   window.showSection = showSection;
+  if (window.__pendingShowSection) {
+    showSection(window.__pendingShowSection);
+    window.__pendingShowSection = '';
+  }
   window.showWelcomeScreen = showWelcomeScreen;
 
   window._openStaffLoginImpl = openStaffLogin;
@@ -17838,9 +17892,10 @@
     });
     initMentalForms();
     renderPhysChecklists();
+    var hadSession = restoreAppSession();
     initWhenStudentDataReady();
     safeBootData();
-    if (!restoreAppSession() && !getCurrentRole()) {
+    if (!hadSession && !getCurrentRole()) {
       showWelcomeScreen();
     } else if (getCurrentRole()) {
       dismissBlockingOverlays();

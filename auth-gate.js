@@ -105,12 +105,12 @@
     if (main) main.scrollTop = 0;
   };
 
-  function whenMainReady(run, loadingMsg) {
+  function whenMainReady(run, loadingMsg, btnSelector) {
     if (w.__shMainReady && run()) return;
     var waited = 0;
     var step = 120;
     var maxWait = 60000;
-    var btn = document.querySelector('#staffLoginModal .student-login-submit, #studentLoginModal .student-login-submit');
+    var btn = btnSelector ? document.querySelector(btnSelector) : null;
     var btnText = btn ? btn.textContent : '';
     if (btn && loadingMsg) {
       btn.disabled = true;
@@ -144,6 +144,11 @@
     })();
   }
 
+  w.showSection = function (id) {
+    if (w.__shMainReady && w._showSectionImpl) return w._showSectionImpl(id);
+    w.__pendingShowSection = id;
+  };
+
   w.submitStaffLogin = function () {
     whenMainReady(function () {
       if (w._submitStaffLoginImpl) {
@@ -151,7 +156,7 @@
         return true;
       }
       return false;
-    }, 'กำลังโหลดระบบ...');
+    }, 'กำลังโหลดระบบ...', '#staffLoginModal .student-login-submit');
   };
 
   w.submitStudentLogin = function () {
@@ -162,7 +167,7 @@
         return true;
       }
       return false;
-    }, 'กำลังโหลดข้อมูลนักเรียน...');
+    }, 'กำลังโหลดข้อมูลนักเรียน...', '#studentLoginModal .student-login-submit');
   };
 
   w.__shAuthGate = true;
