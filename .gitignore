@@ -1,0 +1,9 @@
+node_modules/
+_chrome_err.txt
+_chrome_out.txt
+.DS_Store
+Thumbs.db
+*.xlsx
+*.xls
+.env
+.env.*
