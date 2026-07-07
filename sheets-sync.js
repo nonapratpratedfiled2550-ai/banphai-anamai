@@ -4,7 +4,7 @@
 var SHEETS_CONFIG = {
   ENABLED: true,
   SPREADSHEET_ID: '15IlAOVYRi3MixwzvhwO10ZkDonm_oam_wzSM-3-BpIw',
-  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbyeK2J9qq8w9L14MjnYtVoVVrPupv2lOhKf0nzwst1KvUWAUM9649OmKGfcLYimVG6-lg/exec',
+  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbzfCP2OdTtxkESARSLdDoe8NjvmG87g05Lh50d07_QvJWM-iYwLZo5BQ9W2vNH4fF0sJw/exec',
   QUEUE_KEY: 'sh-sheets-queue',
   IS_WORKSPACE: false
 };
@@ -186,9 +186,14 @@ function flushSheetQueue_() {
   var q = loadSheetQueue_();
   if (!q.length || !SHEETS_CONFIG.WEB_APP_URL) return;
   var item = q[0];
-  var payload = item.action
-    ? { action: item.action, sheet: item.sheet, matchKey: item.matchKey, row: item.row }
-    : buildPayload_(item.sheet, item.row);
+  var payload;
+  if (item.action) {
+    payload = { action: item.action, sheet: item.sheet, matchKey: item.matchKey };
+    if (item.rows) payload.rows = item.rows;
+    else payload.row = item.row;
+  } else {
+    payload = buildPayload_(item.sheet, item.row);
+  }
   syncPayload_(payload).then(function(res) {
     if (res && res.ok) {
       q.shift();
@@ -699,6 +704,7 @@ function syncStudentRegistryBatchQuiet(rows) {
   };
   ensureSheetSyncDom_();
   return syncPayload_(payload).catch(function() {
+    enqueueSheetSync_(payload);
     syncViaHiddenForm_(payload);
     return { ok: false, method: 'form' };
   });
@@ -791,6 +797,7 @@ function syncTeacherRegistryBatchQuiet(rows) {
   };
   ensureSheetSyncDom_();
   return syncPayload_(payload).catch(function() {
+    enqueueSheetSync_(payload);
     syncViaHiddenForm_(payload);
     return { ok: false, method: 'form' };
   });
@@ -1849,8 +1856,8 @@ function localStorageNeedsSheetBootstrap() {
 function shouldBootstrapCloudData(force) {
   if (!SHEETS_CONFIG.ENABLED || !SHEETS_CONFIG.SPREADSHEET_ID) return false;
   if (force) return true;
-  if (isDeployedAppHost()) return true;
-  return localStorageNeedsSheetBootstrap();
+  /* โหลดจาก Google Sheet ทุกครั้งที่เปิดหน้า — ให้ localhost กับ Vercel แสดงข้อมูลชุดเดียวกัน */
+  return true;
 }
 
 function parseGvizVaccineRows_(gvizData) {
@@ -2067,6 +2074,14 @@ window.isDeployedAppHost = isDeployedAppHost;
 window.localStorageNeedsSheetBootstrap = localStorageNeedsSheetBootstrap;
 window.shouldBootstrapCloudData = shouldBootstrapCloudData;
 window.fetchAllCloudDataFromSheet = fetchAllCloudDataFromSheet;
+window.fetchStudentRegistryFromSheet = fetchStudentRegistryFromSheet;
+window.fetchTeacherRegistryFromSheet = fetchTeacherRegistryFromSheet;
+window.buildStudentRegistrySheetRow = buildStudentRegistrySheetRow;
+window.buildTeacherRegistrySheetRow = buildTeacherRegistrySheetRow;
+window.syncStudentRegistryEntryQuiet = syncStudentRegistryEntryQuiet;
+window.syncTeacherRegistryEntryQuiet = syncTeacherRegistryEntryQuiet;
+window.syncStudentRegistryBatchQuiet = syncStudentRegistryBatchQuiet;
+window.syncTeacherRegistryBatchQuiet = syncTeacherRegistryBatchQuiet;
 
 document.addEventListener('DOMContentLoaded', function() {
   ensureSheetSyncDom_();

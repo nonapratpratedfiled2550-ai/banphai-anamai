@@ -100,6 +100,12 @@ var FIELD_ALIASES = {
   'รหัสรายการ': ['recordId', 'uid', 'id'],
   'วันที่เวลา': ['recordedAt', 'eventAt'],
   'รหัสนักเรียน': ['รหัส', 'id', 'เลขประจำตัว', 'เลขประจำตัวนักเรียน'],
+  'รหัสครู': ['รหัส', 'id'],
+  'กลุ่มสาระ': ['subjectGroup'],
+  'สังกัด': ['affiliation'],
+  'ประจำชั้น': ['classLevel', 'ชั้น'],
+  'เบอร์โทร': ['phone', 'เบอร์ผู้ปกครอง'],
+  'อีเมล': ['email'],
   'ชื่อ': ['ชื่อ-นามสกุล', 'ชื่อนามสกุล', 'name'],
   'ชื่อ-นามสกุล': ['ชื่อ', 'ชื่อนามสกุล', 'name'],
   'ระบดับชั้น/ตำแหน่ง': ['ระดับชั้น/ตำแหน่ง', 'ชั้น/ตำแหน่ง', 'ชั้น', 'class'],
@@ -438,7 +444,7 @@ function findHeaderIndex_(headers, headerName) {
   return -1;
 }
 
-var MENTAL_MATCH_KEYS_ = ['เลขประจำตัวนักเรียน', 'รหัสนักเรียน', 'เลขประจำตัว', 'รหัส', 'id'];
+var MENTAL_MATCH_KEYS_ = ['เลขประจำตัวนักเรียน', 'รหัสนักเรียน', 'รหัสครู', 'เลขประจำตัว', 'รหัส', 'id'];
 
 function resolveMentalMatch_(headers, matchKey, rowObject) {
   var keys = [matchKey].concat(MENTAL_MATCH_KEYS_);
@@ -463,7 +469,7 @@ function upsertMentalRow_(sheetName, matchKey, rowObject) {
   var matchIndex = match.index;
   if (matchIndex < 0) throw new Error('Missing match column: ' + matchKey);
   var matchValue = match.value;
-  if (!matchValue) throw new Error('Missing student id for upsert');
+  if (!matchValue) throw new Error('Missing match id for upsert');
 
   var lastRow = sheet.getLastRow();
   var foundRow = -1;
