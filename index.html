@@ -2418,6 +2418,18 @@
       border-radius: 16px 16px 0 0;
       max-height: 92dvh;
     }
+    .student-login-overlay.open {
+      align-items: center;
+      justify-content: center;
+      overflow-y: auto;
+      padding: max(12px, env(safe-area-inset-top, 0px)) 12px max(12px, env(safe-area-inset-bottom, 0px));
+    }
+    .student-login-overlay .student-login-modal {
+      width: calc(100% - 24px);
+      max-width: 340px;
+      margin: auto;
+      flex-shrink: 0;
+    }
   }
 
   @media (max-width: 600px) {
@@ -2785,13 +2797,56 @@
   #role-screen {
     position: fixed; inset: 0; z-index: 500;
     display: flex; flex-direction: column;
-    overflow-y: auto; background: #052e1c;
+    overflow-x: hidden;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-y: contain;
+    touch-action: pan-y;
+    background: #052e1c;
     font-family: 'Inter', 'Sarabun', 'IBM Plex Sans Thai', sans-serif;
   }
   @media (min-width: 1024px) {
     #role-screen { flex-direction: row; }
     #role-screen > aside { width: 420px; min-height: 100vh; flex-shrink: 0; }
     #role-screen > main { flex: 1; }
+  }
+  @media (max-width: 1023px) {
+    html.role-welcome-open,
+    body.role-welcome-open {
+      overflow: hidden;
+      height: 100%;
+      width: 100%;
+    }
+    body.role-welcome-open #role-screen {
+      height: 100dvh;
+      max-height: 100dvh;
+    }
+    #role-screen > aside {
+      flex-shrink: 0;
+      min-height: 0;
+    }
+    #role-screen > aside > div {
+      height: auto;
+      min-height: 0;
+    }
+    #role-screen > main.role-main-shell {
+      flex: none;
+      min-height: auto;
+      overflow: visible;
+      justify-content: flex-start;
+      padding-top: 1.25rem;
+      padding-bottom: max(2rem, env(safe-area-inset-bottom, 0px));
+    }
+    #role-screen .role-main-content {
+      padding-bottom: 0.5rem;
+    }
+    #role-screen .role-welcome-block {
+      margin-bottom: 1.25rem;
+      padding: 1rem 1.1rem;
+    }
+    #role-screen .role-motion-card .role-card-body {
+      padding: 1.1rem 1.1rem 1rem;
+    }
   }
   #role-screen .role-ico {
     display: inline-flex; align-items: center; justify-content: center;
@@ -3422,9 +3477,15 @@
     z-index: 600;
     background: rgba(14, 40, 28, 0.32);
     backdrop-filter: blur(6px);
+    -webkit-overflow-scrolling: touch;
   }
   .student-login-overlay.open {
     display: flex;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    align-items: center;
+    justify-content: center;
+    padding: max(16px, env(safe-area-inset-top, 0px)) 12px max(16px, env(safe-area-inset-bottom, 0px));
   }
   .student-login-overlay:not(.open) {
     display: none !important;
@@ -16407,6 +16468,8 @@
     guestMode = '';
     document.body.classList.remove('role-admin', 'staff-master-access');
     document.body.classList.remove('staff-app');
+    document.documentElement.classList.add('role-welcome-open');
+    document.body.classList.add('role-welcome-open');
     try { sessionStorage.removeItem('sh-session'); } catch (e) {}
     const screen = document.getElementById('role-screen');
     if (screen) screen.classList.remove('role-screen-hidden');
@@ -16551,6 +16614,8 @@
     closeStaffLogin();
     closeStudentLogin();
     closeMobileNav();
+    document.documentElement.classList.remove('role-welcome-open');
+    document.body.classList.remove('role-welcome-open');
     var staffBtn = document.querySelector('#staffLoginModal .student-login-submit');
     if (staffBtn) { staffBtn.disabled = false; staffBtn.textContent = 'เข้าสู่ระบบ'; }
     var studentBtn = document.querySelector('#studentLoginModal .student-login-submit');
