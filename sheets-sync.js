@@ -1289,7 +1289,10 @@ function parseGvizVisitRows_(gvizData, studentId) {
   var idxProvider = findGvizColIndex_(cols, ['ผู้ให้บริการ', 'provider']);
   var idxProviderRole = findGvizColIndex_(cols, ['ตำแหน่งผู้ให้บริการ', 'providerrole']);
   var idxProviderClass = findGvizColIndex_(cols, ['ระดับชั้นผู้ให้บริการ (นักเรียน)', 'providerclass']);
-  var legacyLayout = !compactLayout && idxId === 0 && idxDate < 0 && cols[0] && cols[0].type === 'number';
+  var idxMedicine = findGvizColIndex_(cols, ['ยาที่ให้', 'medicine']);
+  /* ใช้ legacy เฉพาะชีตเก่าที่ไม่มีหัวคอลัมน์ชื่อ/อาการ — อย่าทับ index ที่หาได้จากหัวตาราง */
+  var legacyLayout = !compactLayout && idxDate < 0 && idxId === 0 && cols[0] && cols[0].type === 'number'
+    && idxName < 0 && idxSymptom < 0;
   if (legacyLayout) {
     idxId = 0;
     idxName = 1;
@@ -1315,6 +1318,7 @@ function parseGvizVisitRows_(gvizData, studentId) {
       return;
     }
     var id = idxId >= 0 ? gvizCell_(row, idxId) : '';
+    id = String(id || '').trim();
     if (!id || (studentId && !sheetIdsMatch_(id, studentId))) return;
     var recordedAt = idxDate >= 0 ? gvizCell_(row, idxDate) : '';
     var savedAt = idxDate >= 0 ? parseGvizVisitDateTime_(row, idxDate) : 0;
@@ -1342,6 +1346,12 @@ function parseGvizVisitRows_(gvizData, studentId) {
       fromSheet: true
     });
     var rec = visits[visits.length - 1];
+    if (!rec.symptom && rec.diagnosis) rec.symptom = rec.diagnosis;
+    var meds = idxMedicine >= 0 ? gvizCell_(row, idxMedicine) : '';
+    if (meds) {
+      rec.treatment = rec.treatment ? (rec.treatment + ' · ' + meds) : meds;
+    }
+    if (!rec.type) rec.type = 'นักเรียน';
     if (savedAt && isValidVisitSavedAt(savedAt)) {
       rec.savedAt = savedAt;
       rec.recordId = rec.recordId || ('v-sheet-r' + rec.sheetRow + '-' + id);
