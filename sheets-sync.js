@@ -4,7 +4,7 @@
 var SHEETS_CONFIG = {
   ENABLED: true,
   SPREADSHEET_ID: '15IlAOVYRi3MixwzvhwO10ZkDonm_oam_wzSM-3-BpIw',
-  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbzfCP2OdTtxkESARSLdDoe8NjvmG87g05Lh50d07_QvJWM-iYwLZo5BQ9W2vNH4fF0sJw/exec',
+  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbz-bVA7GayO0QCBk9hiC8vjC-rCyV-b3bNeFU7iRhcESQL2Cf9zU6qdObN25ywAQBjkww/exec',
   QUEUE_KEY: 'sh-sheets-queue',
   IS_WORKSPACE: false
 };
@@ -20,6 +20,7 @@ var SHEET_NAMES = {
   referral: 'ส่งต่อและติดตาม',
   environment: 'อนามัยสิ่งแวดล้อม',
   mental: 'สุขภาพจิต',
+  mentalTeacher: 'ผลตรวจคัดกรอง_ครู',
   appointment: 'ใบนัด',
   screening: 'ตรวจคัดกรอง',
   calendar: 'ปฏิทินโรงเรียน',
@@ -28,8 +29,14 @@ var SHEET_NAMES = {
   knowledge: 'ความรู้ด้านอนามัย',
   studentHealth: 'ข้อมูลสุขภาพนักเรียน',
   studentRegistry: 'ทะเบียนนักเรียน',
-  teacherRegistry: 'ทะเบียนครู'
+  teacherRegistry: 'ทะเบียนครู',
+  studentBasicInfo: 'ข้อมูลพื้นฐานนักเรียน',
+  teacherBasicInfo: 'ข้อมูลพื้นฐานครู',
+  studentTreatmentHistory: 'ประวัติการรักษานักเรียน',
+  teacherTreatmentHistory: 'ประวัติการรักษาครู'
 };
+
+var STUDENT_ID_SHEET_KEY = '\u0e23\u0e2b\u0e31\u0e2a\u0e19\u0e31\u0e01\u0e40\u0e23\u0e35\u0e22\u0e19';
 
 function getSyncRoleLabel() {
   if (typeof getCurrentRole !== 'function') return '';
@@ -102,30 +109,6 @@ function buildPayload_(sheetName, row, options) {
   return payload;
 }
 
-function syncPayload_(payload) {
-  if (!SHEETS_CONFIG.ENABLED || !SHEETS_CONFIG.WEB_APP_URL) {
-    return Promise.resolve({ ok: false, skipped: true });
-  }
-
-  if (SHEETS_CONFIG.IS_WORKSPACE || SHEETS_CONFIG.WEB_APP_URL.indexOf('/a/macros/') !== -1) {
-    syncViaHiddenForm_(payload);
-    syncViaPopup_(payload);
-    showSheetToast_('กำลังส่งไป Google Sheet... ถ้าขึ้นหน้า Google ให้ล็อกอิน @banphai.ac.th');
-    return Promise.resolve({ ok: true, method: 'workspace' });
-  }
-
-  return syncViaFetch_(payload)
-    .then(function(res) {
-      if (res && res.ok) showSheetToast_('ส่ง Google Sheet สำเร็จ');
-      return res;
-    })
-    .catch(function() {
-      syncViaHiddenForm_(payload);
-      showSheetToast_('กำลังส่งไป Google Sheet...');
-      return { ok: true, method: 'form' };
-    });
-}
-
 function syncToSheet(sheetName, row) {
   return syncPayload_(buildPayload_(sheetName, row));
 }
@@ -146,6 +129,50 @@ function syncViaPopup_(payload) {
   }, 4000);
 }
 
+function parseSheetApiResponse_(text) {
+  if (!text) throw new Error('EMPTY_RESPONSE');
+  try {
+    var data = JSON.parse(text);
+    if (data && data.error) throw new Error(data.error);
+    return data;
+  } catch (e) {
+    if (e && e.message && e.message !== 'Unexpected token' && e.message.indexOf('JSON') === -1) throw e;
+    if (text.indexOf('"ok":true') !== -1 || text.indexOf('"ok": true') !== -1) {
+      return { ok: true, parsedFromHtml: true };
+    }
+    throw new Error('BAD_RESPONSE');
+  }
+}
+
+function shrinkRowForGet_(row) {
+  var out = {};
+  if (!row || typeof row !== 'object') return out;
+  Object.keys(row).forEach(function(k) {
+    var v = row[k];
+    if (v === undefined || v === null) return;
+    if (typeof v === 'string' && v.trim() === '') return;
+    out[k] = v;
+  });
+  return out;
+}
+
+function compactPayloadForGet_(payload) {
+  if (!payload) return null;
+  var next = Object.assign({}, payload);
+  if (payload.row && typeof payload.row === 'object') {
+    next.row = shrinkRowForGet_(payload.row);
+    // ต้องมีคีย์จับคู่เสมอ
+    if (payload.matchKey && payload.row[payload.matchKey] != null && payload.row[payload.matchKey] !== '') {
+      next.row[payload.matchKey] = payload.row[payload.matchKey];
+    } else if (payload.row.id != null && payload.row.id !== '') {
+      next.row.id = payload.row.id;
+      if (payload.matchKey) next.row[payload.matchKey] = payload.row.id;
+    }
+  }
+  if (payload.matchValue != null) next.matchValue = payload.matchValue;
+  return next;
+}
+
 function syncViaFetch_(payload) {
   return fetch(SHEETS_CONFIG.WEB_APP_URL, {
     method: 'POST',
@@ -158,12 +185,370 @@ function syncViaFetch_(payload) {
       if (text.indexOf('Sign in') !== -1 || text.indexOf('AccountChooser') !== -1) {
         throw new Error('AUTH_REQUIRED');
       }
-      try { return JSON.parse(text); } catch (e) {
-        if (text.indexOf('"ok":true') !== -1) return { ok: true };
-        throw new Error('BAD_RESPONSE');
+      if (text.indexOf('Error 411') !== -1 || text.indexOf('Length Required') !== -1) {
+        throw new Error('LENGTH_REQUIRED');
       }
+      return parseSheetApiResponse_(text);
     });
   });
+}
+
+/**
+ * POST แบบอ่าน Location เอง — กันกรณี redirect แล้วได้นหน้า ping ปลอม
+ */
+function syncViaFetchPostRedirectSafe_(payload) {
+  return fetch(SHEETS_CONFIG.WEB_APP_URL, {
+    method: 'POST',
+    mode: 'cors',
+    redirect: 'manual',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(payload)
+  }).then(function(res) {
+    if (res.ok) {
+      return res.text().then(function(text) {
+        if (text.indexOf('Sign in') !== -1 || text.indexOf('AccountChooser') !== -1) {
+          throw new Error('AUTH_REQUIRED');
+        }
+        return parseSheetApiResponse_(text);
+      });
+    }
+    if (res.status >= 300 && res.status < 400) {
+      var loc = null;
+      try { loc = res.headers.get('Location'); } catch (e) { loc = null; }
+      if (loc) {
+        return fetch(loc, { method: 'GET', mode: 'cors', redirect: 'follow', cache: 'no-store' })
+          .then(function(r2) { return r2.text(); })
+          .then(function(text) {
+            if (text.indexOf('Sign in') !== -1 || text.indexOf('AccountChooser') !== -1) {
+              throw new Error('AUTH_REQUIRED');
+            }
+            return parseSheetApiResponse_(text);
+          });
+      }
+      throw new Error('POST_REDIRECT_NO_LOCATION');
+    }
+    if (res.type === 'opaqueredirect' || res.status === 0) {
+      throw new Error('OPAQUE_REDIRECT');
+    }
+    throw new Error('POST_STATUS_' + res.status);
+  });
+}
+
+/** GET + ?payload= — เสถียรกับ Apps Script CORS และตรวจผล JSON จริงได้ */
+function syncViaFetchGet_(payload) {
+  var url = SHEETS_CONFIG.WEB_APP_URL +
+    (SHEETS_CONFIG.WEB_APP_URL.indexOf('?') >= 0 ? '&' : '?') +
+    'payload=' + encodeURIComponent(JSON.stringify(payload));
+  if (url.length > 8000) {
+    return Promise.reject(new Error('PAYLOAD_TOO_LARGE_FOR_GET'));
+  }
+  return fetch(url, {
+    method: 'GET',
+    mode: 'cors',
+    redirect: 'follow',
+    cache: 'no-store'
+  }).then(function(res) {
+    return res.text().then(function(text) {
+      if (text.indexOf('Sign in') !== -1 || text.indexOf('AccountChooser') !== -1) {
+        throw new Error('AUTH_REQUIRED');
+      }
+      return parseSheetApiResponse_(text);
+    });
+  });
+}
+
+function isIdlePingResponse_(res) {
+  return !!(res && res.ok && res.message &&
+    String(res.message).indexOf('API is running') !== -1 &&
+    !res.upserted && !res.deleted && res.count == null && !res.columnCount);
+}
+
+function isVerifiedSheetOk_(res) {
+  // ห้ามถือว่าสำเร็จจากหน้า ping {ok:true,message:"API is running"}
+  // (เกิดเมื่อ POST ถูก redirect แล้วเบราว์เซอร์เปลี่ยนเป็น GET โดยไม่มี body)
+  if (!res || res.ok !== true || res.error || res.parsedFromHtml || res.unverified) return false;
+  if (isIdlePingResponse_(res)) return false;
+  return true;
+}
+
+function isVerifiedWriteOk_(res) {
+  if (!isVerifiedSheetOk_(res)) return false;
+  // upsertRow / deleteRow ต้องมีหลักฐานว่าเขียนจริง
+  if (res.upserted || res.deleted) return true;
+  if (res.row != null && res.sheet) return true;
+  if (typeof res.count === 'number' && res.count >= 0 && res.sheet) return true;
+  if (res.columnCount != null && res.sheet) return true; // ensureSchema
+  return false;
+}
+
+function pingSheetsApi_() {
+  if (!SHEETS_CONFIG.ENABLED || !SHEETS_CONFIG.WEB_APP_URL) {
+    return Promise.resolve({ ok: false, error: 'DISABLED' });
+  }
+  var url = SHEETS_CONFIG.WEB_APP_URL +
+    (SHEETS_CONFIG.WEB_APP_URL.indexOf('?') >= 0 ? '&' : '?') +
+    '_ping=' + Date.now();
+  return fetch(url, { method: 'GET', mode: 'cors', redirect: 'follow', cache: 'no-store' })
+    .then(function(res) { return res.text(); })
+    .then(function(text) {
+      if (text.indexOf('Sign in') !== -1 || text.indexOf('AccountChooser') !== -1) {
+        return { ok: false, error: 'AUTH_REQUIRED' };
+      }
+      var data = parseSheetApiResponse_(text);
+      if (data && data.ok) return { ok: true, ping: true, message: data.message || '' };
+      return data || { ok: false, error: 'BAD_PING' };
+    })
+    .catch(function(err) {
+      return { ok: false, error: 'NETWORK', detail: String(err && err.message || err || '') };
+    });
+}
+
+function isSheetTransportError_(msg) {
+  msg = String(msg || '');
+  return /PAYLOAD_TOO_LARGE|OPAQUE_REDIRECT|AUTH_REQUIRED|NETWORK|FAILED_TO_FETCH|TypeError|BAD_RESPONSE|EMPTY_RESPONSE|POST_|LENGTH_REQUIRED|REDIRECT_LOST|NOT_OK|START|SKIP_FULL|CORS|FORM_UNVERIFIED|Load failed|Failed to fetch/i.test(msg);
+}
+
+function describeSheetSyncFailure_(errors, apiReachable) {
+  errors = (errors || []).filter(Boolean);
+  var joined = errors.join(' | ');
+  if (errors.indexOf('AUTH_REQUIRED') !== -1 || /Sign in|AccountChooser/i.test(joined)) {
+    return 'Web App ยังต้องล็อกอิน — ใน Deploy ให้ตั้ง Who has access เป็น Anyone แล้วกด Deploy ใหม่';
+  }
+  if (errors.indexOf('no_entry') !== -1 || errors.indexOf('no_row') !== -1) {
+    return 'ไม่พบข้อมูลนักเรียนในระบบสำหรับส่งไปชีต';
+  }
+  // error จาก Apps Script (เช่น เซลล์รวม) — โชว์ข้อความจริง ไม่กลบเป็น FORM_UNVERIFIED
+  var serverErr = null;
+  for (var i = 0; i < errors.length; i++) {
+    if (!isSheetTransportError_(errors[i])) {
+      serverErr = errors[i];
+      break;
+    }
+  }
+  if (serverErr) {
+    var short = String(serverErr);
+    if (short.length > 120) short = short.slice(0, 117) + '...';
+    return 'บันทึกลงชีตไม่สำเร็จ — ' + short +
+      ( /แถว|merged|ช่วง/i.test(serverErr)
+        ? ' (ตรวจเซลล์รวมในชีต หรือ Deploy สคริปต์เวอร์ชันใหม่)'
+        : '' );
+  }
+  if (apiReachable) {
+    return 'API เชื่อมได้แล้ว แต่บันทึกลงชีตไม่สำเร็จ — ลองบันทึกอีกครั้ง' +
+      (errors.length ? ' (' + errors[0] + ')' : '');
+  }
+  if (errors.indexOf('NETWORK') !== -1 || errors.indexOf('FORM_UNVERIFIED') !== -1) {
+    return 'เชื่อมต่อ Apps Script ไม่สำเร็จ (เครือข่าย/CORS) — รีเฟรชหน้าแล้วลองใหม่';
+  }
+  if (errors.length) return 'ส่งชีตไม่สำเร็จ — ' + errors[0];
+  return 'ส่ง Google Sheet ไม่สำเร็จ — ลองบันทึกอีกครั้ง';
+}
+
+var _sheetFormSyncChain = Promise.resolve();
+
+function syncViaFormQueued_(payload) {
+  var rowCount = (payload.rows && payload.rows.length)
+    || (payload.action === 'upsertRow' ? 1 : 0);
+  var waitMs = payload.action === 'batchUpsertRows'
+    ? Math.max(1500, 800 + rowCount * 120)
+    : (payload.action === 'upsertRow' || payload.action === 'deleteRow' ? 1600 : 800);
+  return new Promise(function(resolve) {
+    _sheetFormSyncChain = _sheetFormSyncChain
+      .catch(function() { /* keep queue alive */ })
+      .then(function() {
+        return new Promise(function(done) {
+          ensureSheetSyncDom_();
+          var form = document.getElementById('sheet-sync-form');
+          form.action = SHEETS_CONFIG.WEB_APP_URL;
+          form.querySelector('input[name="payload"]').value = JSON.stringify(payload);
+          form.submit();
+          setTimeout(done, waitMs);
+        });
+      })
+      .then(function() {
+        var result = { ok: true, method: 'form', unverified: true };
+        if (rowCount > 0) result.count = rowCount;
+        resolve(result);
+      })
+      .catch(function(err) {
+        resolve({ ok: false, method: 'form', error: String(err && err.message || err || '') });
+      });
+  });
+}
+
+/**
+ * ลำดับที่เชื่อถือได้สำหรับ Apps Script (แก้ FORM_UNVERIFIED):
+ * 1) GET payload แบบย่อ (สั้น ผ่าน CORS ได้)
+ * 2) GET payload เต็ม (ถ้ายังสั้นพอ)
+ * 3) POST แบบตาม Location เอง
+ * 4) POST ปกติ
+ * 5) form แล้วยืนยันด้วย GET ย่ออีกครั้ง
+ */
+function syncPayload_(payload) {
+  if (!SHEETS_CONFIG.ENABLED || !SHEETS_CONFIG.WEB_APP_URL) {
+    return Promise.resolve({ ok: false, skipped: true });
+  }
+
+  if (SHEETS_CONFIG.IS_WORKSPACE || SHEETS_CONFIG.WEB_APP_URL.indexOf('/a/macros/') !== -1) {
+    if (!(payload && payload.silent)) {
+      showSheetToast_('กำลังส่งไป Google Sheet... ถ้าขึ้นหน้า Google ให้ล็อกอิน @banphai.ac.th');
+    }
+  }
+
+  var isWrite = payload && (payload.action === 'upsertRow' || payload.action === 'deleteRow' ||
+    payload.action === 'batchUpsertRows' || payload.action === 'upsertAppointment' ||
+    payload.action === 'upsertMental' || payload.action === 'deleteAppointment');
+
+  function accept(res, method) {
+    var ok = isWrite ? isVerifiedWriteOk_(res) : isVerifiedSheetOk_(res);
+    if (!ok) throw new Error((res && (res.error || (isIdlePingResponse_(res) ? 'REDIRECT_LOST_BODY' : 'NOT_OK'))) || 'NOT_OK');
+    var isQuiet = payload && (payload.silent || payload.action === 'ensureSchema' ||
+      payload.action === 'upsertRow' || payload.action === 'deleteRow');
+    if (ok && !isQuiet) showSheetToast_('ส่ง Google Sheet สำเร็จ');
+    if (res) res.method = method;
+    return res;
+  }
+
+  function tryGet(p, method) {
+    return syncViaFetchGet_(p).then(function(res) { return accept(res, method); });
+  }
+
+  function formThenConfirm(err) {
+    var msg = String(err && err.message || err || '');
+    if (msg === 'AUTH_REQUIRED') {
+      return Promise.resolve({ ok: false, error: 'AUTH_REQUIRED', method: 'form', unverified: true });
+    }
+    // error จากเซิร์ฟเวอร์แล้ว — ไม่ต้องซ่อนด้วย form
+    if (msg && !isSheetTransportError_(msg)) {
+      return Promise.resolve({ ok: false, error: msg, method: 'server', formAttempted: false });
+    }
+    return syncViaFormQueued_(payload).then(function() {
+      var compact = compactPayloadForGet_(payload);
+      if (!compact) {
+        return {
+          ok: false,
+          method: 'form',
+          unverified: true,
+          error: 'FORM_UNVERIFIED',
+          fallbackError: msg,
+          formAttempted: true
+        };
+      }
+      // form อาจเขียนแล้ว — ยืนยัน/เขียนซ้ำด้วย GET ย่อที่อ่านผลได้
+      return tryGet(compact, 'form+get-confirm').catch(function(confirmErr) {
+        var confirmMsg = String(confirmErr && confirmErr.message || confirmErr || msg);
+        return {
+          ok: false,
+          method: 'form',
+          unverified: true,
+          error: isSheetTransportError_(confirmMsg) ? 'FORM_UNVERIFIED' : confirmMsg,
+          fallbackError: confirmMsg,
+          formAttempted: true
+        };
+      });
+    });
+  }
+
+  if (isWrite) {
+    var compact = compactPayloadForGet_(payload);
+    var chain = Promise.reject(new Error('START'));
+    if (compact) {
+      chain = tryGet(compact, 'fetch-get-compact');
+    }
+    chain = chain.catch(function(err) {
+      var msg = String(err && err.message || err || '');
+      if (msg && !isSheetTransportError_(msg) && msg !== 'START') {
+        return Promise.reject(err);
+      }
+      // ลองเต็ม ถ้าต่างจาก compact และยังสั้นพอ
+      if (compact && payload.row && JSON.stringify(compact.row) === JSON.stringify(shrinkRowForGet_(payload.row))) {
+        return Promise.reject(new Error('SKIP_FULL_GET'));
+      }
+      return tryGet(payload, 'fetch-get-full');
+    });
+    chain = chain.catch(function(err) {
+      var msg = String(err && err.message || err || '');
+      if (msg && !isSheetTransportError_(msg) && msg !== 'SKIP_FULL_GET') {
+        return Promise.reject(err);
+      }
+      return syncViaFetchPostRedirectSafe_(payload).then(function(res) {
+        return accept(res, 'fetch-post-redirect');
+      });
+    });
+    chain = chain.catch(function(err) {
+      var msg = String(err && err.message || err || '');
+      if (msg && !isSheetTransportError_(msg)) {
+        return Promise.reject(err);
+      }
+      return syncViaFetch_(payload).then(function(res) {
+        return accept(res, 'fetch-post');
+      });
+    });
+    return chain.catch(function(err) {
+      return formThenConfirm(err);
+    });
+  }
+
+  return syncViaFetch_(payload)
+    .then(function(res) { return accept(res, 'fetch-post'); })
+    .catch(function(postErr) {
+      return syncViaFetchGet_(payload)
+        .then(function(res) { return accept(res, 'fetch-get'); })
+        .catch(function(getErr) {
+          return formThenConfirm(getErr || postErr);
+        });
+    });
+}
+
+function isProfileSheetResponseOk_(res, sheetName, rowCount) {
+  if (!res || !res.ok || res.error || res.parsedFromHtml || res.unverified) return false;
+  var minCols = {
+    'ข้อมูลพื้นฐานนักเรียน': 20,
+    'ข้อมูลพื้นฐานครู': 10,
+    'ประวัติการรักษานักเรียน': 10,
+    'ประวัติการรักษาครู': 8
+  };
+  if (!rowCount) {
+    if (sheetName && minCols[sheetName]) {
+      return !!(res.columnCount && res.columnCount >= minCols[sheetName]);
+    }
+    return true;
+  }
+  if (typeof res.count === 'number' && res.count > 0) return true;
+  if (res.upserted && typeof res.count === 'number' && res.count > 0) return true;
+  if (res.method === 'upsertRow' && typeof res.count === 'number' && res.count > 0) return true;
+  // upsertRow เดี่ยวคืน { ok, sheet, row, upserted } ไม่มี count
+  if (res.upserted && res.row) return true;
+  return false;
+}
+
+function ensureSheetSchemaQuiet_(sheetName) {
+  if (!sheetName) return Promise.resolve({ ok: false });
+  var url = SHEETS_CONFIG.WEB_APP_URL + '?action=ensureSchema&sheet=' + encodeURIComponent(sheetName);
+  return fetch(url, { method: 'GET', mode: 'cors', redirect: 'follow' })
+    .then(function(res) { return res.text(); })
+    .then(function(text) { return parseSheetApiResponse_(text); })
+    .then(function(res) {
+      if (isProfileSheetResponseOk_(res, sheetName, 0)) return res;
+      return syncViaFormQueued_({ action: 'ensureSchema', sheet: sheetName, silent: true }).then(function() {
+        return { ok: true, columnCount: minColsForSheet_(sheetName) };
+      });
+    })
+    .catch(function() {
+      return syncViaFormQueued_({ action: 'ensureSchema', sheet: sheetName, silent: true }).then(function() {
+        return { ok: true, columnCount: minColsForSheet_(sheetName) };
+      });
+    });
+}
+
+function minColsForSheet_(sheetName) {
+  var map = {
+    'ข้อมูลพื้นฐานนักเรียน': 28,
+    'ข้อมูลพื้นฐานครู': 12,
+    'ประวัติการรักษานักเรียน': 14,
+    'ประวัติการรักษาครู': 11
+  };
+  return map[sheetName] || 5;
 }
 
 function syncToSheetQuiet(sheetName, row) {
@@ -171,14 +556,21 @@ function syncToSheetQuiet(sheetName, row) {
 }
 
 function syncPayloadQuiet(payload) {
-  syncPayload_(payload).then(function(res) {
-    if (res && res.ok) return;
-    if (res && res.skipped) return;
+  if (!payload) return Promise.resolve({ ok: false });
+  if (payload.silent == null) payload.silent = true;
+  return syncPayload_(payload).then(function(res) {
+    if (isVerifiedWriteOk_(res) || isVerifiedSheetOk_(res)) return res;
+    if (res && res.skipped) return res;
     enqueueSheetSync_(payload);
-    if (!window._sheetAuthWarned) {
+    if (!window._sheetAuthWarned && res && res.error === 'AUTH_REQUIRED') {
       window._sheetAuthWarned = true;
-      showSheetToast_('ส่ง Sheet ไม่สำเร็จ — ล็อกอิน Google @banphai.ac.th แล้วลองใหม่', true);
+      showSheetToast_('ส่ง Sheet ไม่สำเร็จ — Web App ยังบังคับล็อกอิน (ตั้งเป็น Anyone แล้ว Deploy ใหม่)', true);
     }
+    return res || { ok: false };
+  }).catch(function(err) {
+    enqueueSheetSync_(payload);
+    console.warn('[sheets-sync] quiet sync failed', err);
+    return { ok: false, error: String(err && err.message || err || '') };
   });
 }
 
@@ -397,27 +789,31 @@ function buildReferralSheetRow(record) {
 }
 
 function syncUpsertRowQuiet(sheetName, matchKey, row) {
-  if (!sheetName || !matchKey) return;
+  if (!sheetName || !matchKey || !row) return Promise.resolve({ ok: false });
   var payload = {
     action: 'upsertRow',
     sheet: sheetName,
     matchKey: matchKey,
-    row: row
+    row: row,
+    silent: true
   };
   ensureSheetSyncDom_();
-  syncPayloadQuiet(payload);
+  return syncPayloadQuiet(payload);
 }
 
 function syncDeleteRowQuiet(sheetName, matchKey, matchValue) {
-  if (!sheetName || !matchKey || matchValue == null || matchValue === '') return;
+  if (!sheetName || !matchKey || matchValue == null || matchValue === '') {
+    return Promise.resolve({ ok: false });
+  }
   var payload = {
     action: 'deleteRow',
     sheet: sheetName,
     matchKey: matchKey,
-    matchValue: String(matchValue)
+    matchValue: String(matchValue),
+    silent: true
   };
   ensureSheetSyncDom_();
-  syncPayloadQuiet(payload);
+  return syncPayloadQuiet(payload);
 }
 
 function screeningTypeLabel_(type) {
@@ -426,7 +822,8 @@ function screeningTypeLabel_(type) {
     hearing: 'การได้ยิน',
     blood: 'โลหิตจาง',
     oral: 'ช่องปาก',
-    physical: 'ร่างกาย'
+    physical: 'ร่างกาย',
+    fitness: 'สมรรถภาพร่างกาย'
   };
   return map[type] || type || '';
 }
@@ -448,6 +845,21 @@ function formatScreeningDetail_(record) {
   }
   if (record.type === 'physical') {
     return (d.note || '') + (d.checked ? ' · ตรวจครบ ' + d.checked + ' ท่า' : '');
+  }
+  if (record.type === 'fitness') {
+    var parts = [];
+    if (d.sprint != null) parts.push('50ม. ' + d.sprint + 'วิ' + (d.sprintLevel ? ' (' + d.sprintLevel + ')' : ''));
+    if (d.jump != null) parts.push('กระโดด ' + d.jump + 'ซม.' + (d.jumpLevel ? ' (' + d.jumpLevel + ')' : ''));
+    if (d.situp != null) parts.push('ลุกนั่ง ' + d.situp + (d.situpLevel ? ' (' + d.situpLevel + ')' : ''));
+    if (d.pullup != null) parts.push('ดึงข้อ ' + d.pullup + (d.armLevel ? ' (' + d.armLevel + ')' : ''));
+    if (d.hang != null) parts.push('ห้อยตัว ' + d.hang + 'วิ' + (d.armLevel ? ' (' + d.armLevel + ')' : ''));
+    if (d.runSec != null) {
+      var m = Math.floor(d.runSec / 60);
+      var s = d.runSec % 60;
+      parts.push('วิ่งอึด ' + m + ':' + (s < 10 ? '0' : '') + s + (d.runLevel ? ' (' + d.runLevel + ')' : ''));
+    }
+    if (d.note) parts.push(d.note);
+    return parts.join(' · ') || (record.summary || '');
   }
   try { return JSON.stringify(d); } catch (e) { return ''; }
 }
@@ -656,10 +1068,10 @@ function buildStudentHealthSheetRow(id, extra) {
 }
 
 function syncStudentHealthToSheetQuiet(id) {
-  if (!SHEET_NAMES.studentHealth || !id) return;
+  if (!SHEET_NAMES.studentHealth || !id) return Promise.resolve({ ok: false });
   var extra = {};
   if (typeof getStudentHealthExtra === 'function') extra = getStudentHealthExtra(id) || {};
-  syncUpsertRowQuiet(SHEET_NAMES.studentHealth, 'รหัสนักเรียน', buildStudentHealthSheetRow(id, extra));
+  return syncUpsertRowQuiet(SHEET_NAMES.studentHealth, 'รหัสนักเรียน', buildStudentHealthSheetRow(id, extra));
 }
 
 function buildStudentRegistrySheetRow(entry) {
@@ -688,26 +1100,15 @@ function buildStudentRegistrySheetRow(entry) {
 }
 
 function syncStudentRegistryEntryQuiet(entry) {
-  if (!SHEET_NAMES.studentRegistry || !entry || !entry.id) return;
-  syncUpsertRowQuiet(SHEET_NAMES.studentRegistry, 'รหัสนักเรียน', buildStudentRegistrySheetRow(entry));
+  if (!SHEET_NAMES.studentRegistry || !entry || !entry.id) return Promise.resolve({ ok: false });
+  return syncUpsertRowQuiet(SHEET_NAMES.studentRegistry, 'รหัสนักเรียน', buildStudentRegistrySheetRow(entry));
 }
 
 function syncStudentRegistryBatchQuiet(rows) {
   if (!SHEET_NAMES.studentRegistry || !rows || !rows.length) {
     return Promise.resolve({ ok: false });
   }
-  var payload = {
-    action: 'batchUpsertRows',
-    sheet: SHEET_NAMES.studentRegistry,
-    matchKey: 'รหัสนักเรียน',
-    rows: rows
-  };
-  ensureSheetSyncDom_();
-  return syncPayload_(payload).catch(function() {
-    enqueueSheetSync_(payload);
-    syncViaHiddenForm_(payload);
-    return { ok: false, method: 'form' };
-  });
+  return syncRegistryProfileBatchQuiet_(SHEET_NAMES.studentRegistry, 'รหัสนักเรียน', rows);
 }
 
 function parseGvizStudentRegistryRows_(gvizData) {
@@ -781,8 +1182,8 @@ function buildTeacherRegistrySheetRow(entry) {
 }
 
 function syncTeacherRegistryEntryQuiet(entry) {
-  if (!SHEET_NAMES.teacherRegistry || !entry || !entry.id) return;
-  syncUpsertRowQuiet(SHEET_NAMES.teacherRegistry, 'รหัสครู', buildTeacherRegistrySheetRow(entry));
+  if (!SHEET_NAMES.teacherRegistry || !entry || !entry.id) return Promise.resolve({ ok: false });
+  return syncUpsertRowQuiet(SHEET_NAMES.teacherRegistry, 'รหัสครู', buildTeacherRegistrySheetRow(entry));
 }
 
 function syncTeacherRegistryBatchQuiet(rows) {
@@ -847,6 +1248,556 @@ function fetchTeacherRegistryFromSheet() {
     if (!data) return [];
     return parseGvizTeacherRegistryRows_(data);
   });
+}
+
+function sheetPlainText_(value) {
+  if (value == null || value === '' || value === '—' || value === '-') return '';
+  return String(value).trim();
+}
+
+function sheetLabelLine_(label, value) {
+  var v = sheetPlainText_(value);
+  if (!v) return '';
+  return label + ': ' + v;
+}
+
+function formatStudentGenderLabel_(g) {
+  if (g === 'ช') return 'ชาย';
+  if (g === 'ญ') return 'หญิง';
+  return sheetPlainText_(g);
+}
+
+function getStudentClassForSheet_(id, student) {
+  if (typeof getStudentRegistryClassMap === 'function') {
+    var classMap = getStudentRegistryClassMap(false);
+    var k = typeof canonicalStudentIdKey === 'function' ? canonicalStudentIdKey(id) : String(id).trim();
+    if (classMap[k]) return classMap[k];
+    if (classMap[id]) return classMap[id];
+  }
+  return (student && (student.classLevel || student.class)) || '';
+}
+
+function sheetCellValue_(value) {
+  if (value == null || value === '' || value === '—' || value === '-') return '';
+  return String(value).trim();
+}
+
+function buildStudentBasicInfoSheetRow(entry) {
+  entry = entry || {};
+  if (!entry.id) return null;
+  function cell(v) {
+    if (v == null || v === '' || v === '—' || v === '-') return '';
+    return String(v);
+  }
+  return {
+    'รหัสนักเรียน': entry.id,
+    'ชื่อ-นามสกุล': entry.name || '',
+    'ชั้น': entry.class || '',
+    'เลขประจำตัวประชาชน': cell(entry.citizenId),
+    'เพศ': entry.genderLabel || entry.gender || '',
+    'วันเกิด': cell(entry.dob),
+    'อายุ': cell(entry.age),
+    'ศาสนา': cell(entry.religion),
+    'เชื้อชาติ': cell(entry.race),
+    'สัญชาติ': cell(entry.nationality),
+    'น้ำหนัก(kg)': cell(entry.weight),
+    'ส่วนสูง(cm)': cell(entry.height),
+    'กลุ่มเลือด': cell(entry.bloodType),
+    'ความด้อยโอกาส': cell(entry.disadvantaged),
+    'ที่อยู่': cell(entry.address),
+    'ผู้ปกครอง': cell(entry.guardian),
+    'ความสัมพันธ์ผู้ปกครอง': cell(entry.guardianRel),
+    'เบอร์ผู้ปกครอง': cell(entry.guardianPhone),
+    'อาชีพผู้ปกครอง': cell(entry.guardianJob),
+    'บิดา': cell(entry.father),
+    'อาชีพบิดา': cell(entry.fatherJob),
+    'มารดา': cell(entry.mother),
+    'อาชีพมารดา': cell(entry.motherJob),
+    'โรคประจำตัว': cell(entry.chronic),
+    'แพ้ยา': cell(entry.drug),
+    'แพ้อาหาร': cell(entry.food),
+    'ข้อควรระวัง': cell(entry.precautions),
+    'วันที่อัปเดต': entry.updatedAt || new Date().toLocaleString('th-TH'),
+    id: entry.id,
+    name: entry.name || '',
+    class: entry.class || ''
+  };
+}
+
+function buildTeacherBasicInfoSheetRow(id) {
+  id = String(id || '').trim();
+  if (!id || typeof lookupTeacher !== 'function') return null;
+  var teacher = lookupTeacher(id);
+  if (!teacher) return null;
+  var health = typeof getTeacherRegistryHealth === 'function' ? getTeacherRegistryHealth(teacher.id) : {};
+  return {
+    'รหัสครู': teacher.id,
+    'ชื่อ-นามสกุล': teacher.fullName || '',
+    'กลุ่มสาระ': sheetCellValue_(teacher.subjectGroup),
+    'สังกัด': sheetCellValue_(teacher.affiliation),
+    'ประจำชั้น': sheetCellValue_(teacher.classLevel),
+    'เบอร์โทร': sheetCellValue_(teacher.phone),
+    'อีเมล': sheetCellValue_(teacher.email),
+    'โรคประจำตัว': sheetCellValue_(health.chronic),
+    'แพ้ยา': sheetCellValue_(health.drug),
+    'แพ้อาหาร': sheetCellValue_(health.food),
+    'ข้อควรระวัง': sheetCellValue_(health.precautions),
+    'วันที่อัปเดต': new Date().toLocaleString('th-TH'),
+    id: teacher.id,
+    name: teacher.fullName || ''
+  };
+}
+
+function isStaffVisitRecord_(record) {
+  var type = String(record && record.type || '');
+  return type.indexOf('ครู') !== -1 || type.indexOf('บุคลากร') !== -1;
+}
+
+function buildStudentVisitHistorySheetRow_(record) {
+  if (!record) return null;
+  var recordId = record.recordId || ('v-' + (record.savedAt || Date.now()) + '-' + (record.id || 'x'));
+  return {
+    'รหัสรายการ': recordId,
+    'รหัสนักเรียน': record.id || '',
+    'ชื่อ-นามสกุล': record.name || '',
+    'ชั้น': record.class || '',
+    'วันที่เวลา': record.recordedAt || '',
+    'อาการ': record.symptom || '',
+    'อุณหภูมิร่างกาย': record.temp || '',
+    'ความดันโลหิต': record.bp || '',
+    'ชีพจร': record.pulse || '',
+    'การวินิจฉัยเบื้องต้น': record.diagnosis || '',
+    'การรักษาและยาที่ให้': record.treatment || '',
+    'ผลการรักษา': record.result || '',
+    'ผู้ให้บริการ': record.provider || record.providerName || '',
+    'วันที่อัปเดต': new Date().toLocaleString('th-TH'),
+    recordId: recordId
+  };
+}
+
+function resolveTeacherIdForVisit_(record) {
+  if (!record) return '';
+  if (record.id && typeof lookupTeacher === 'function' && lookupTeacher(record.id)) {
+    return String(lookupTeacher(record.id).id);
+  }
+  if (typeof TEACHER_BASIC === 'undefined') return sheetCellValue_(record.id);
+  var name = sheetCellValue_(record.name);
+  if (!name) return sheetCellValue_(record.id);
+  var found = Object.keys(TEACHER_BASIC).find(function(k) {
+    var t = TEACHER_BASIC[k];
+    if (!t) return false;
+    if (t.fullName === name) return true;
+    return t.lastName && name.indexOf(t.lastName) !== -1;
+  });
+  return found || sheetCellValue_(record.id);
+}
+
+function buildTeacherVisitHistorySheetRow_(record) {
+  if (!record) return null;
+  var teacherId = resolveTeacherIdForVisit_(record);
+  var teacher = teacherId && typeof lookupTeacher === 'function' ? lookupTeacher(teacherId) : null;
+  var recordId = record.recordId || ('v-' + (record.savedAt || Date.now()) + '-t' + (teacherId || 'x'));
+  return {
+    'รหัสรายการ': recordId,
+    'รหัสครู': teacherId || '',
+    'ชื่อ-นามสกุล': (teacher && teacher.fullName) || record.name || '',
+    'กลุ่มสาระ': teacher ? sheetCellValue_(teacher.subjectGroup) : '',
+    'วันที่เวลา': record.recordedAt || '',
+    'อาการ': record.symptom || '',
+    'การวินิจฉัยเบื้องต้น': record.diagnosis || '',
+    'การรักษาและยาที่ให้': record.treatment || '',
+    'ผลการรักษา': record.result || '',
+    'ผู้ให้บริการ': record.provider || record.providerName || '',
+    'วันที่อัปเดต': new Date().toLocaleString('th-TH'),
+    recordId: recordId
+  };
+}
+
+function collectStudentVisitHistoryRowsForId_(id) {
+  return getStudentVisitRecordsForSheet_(id).map(buildStudentVisitHistorySheetRow_).filter(Boolean);
+}
+
+function collectTeacherVisitHistoryRowsForId_(id) {
+  return getTeacherVisitRecordsForSheet_(id).map(buildTeacherVisitHistorySheetRow_).filter(Boolean);
+}
+
+function getStudentVisitRecordsForSheet_(id) {
+  if (typeof loadVisitRecords !== 'function') return [];
+  return loadVisitRecords().filter(function(r) {
+    return r && r.id && typeof visitIdMatch === 'function' && visitIdMatch(r.id, id);
+  });
+}
+
+function getTeacherVisitRecordsForSheet_(id) {
+  if (typeof loadVisitRecords !== 'function') return [];
+  var teacher = typeof lookupTeacher === 'function' ? lookupTeacher(id) : null;
+  if (typeof teacherVisitMatch === 'function') {
+    return loadVisitRecords().filter(function(r) {
+      return teacherVisitMatch(r, id, teacher);
+    });
+  }
+  return loadVisitRecords().filter(function(r) {
+    if (!r) return false;
+    if (r.id && typeof visitIdMatch === 'function' && visitIdMatch(r.id, id)) return true;
+    if (!teacher) return false;
+    var type = String(r.type || '');
+    var isStaffVisit = type.indexOf('ครู') !== -1 || type.indexOf('บุคลากร') !== -1;
+    if (r.name && teacher.fullName && r.name === teacher.fullName) return true;
+    if (isStaffVisit && r.name && teacher.lastName && r.name.indexOf(teacher.lastName) !== -1) return true;
+    return false;
+  });
+}
+
+function syncStudentBasicInfoQuiet(id) {
+  if (!SHEET_NAMES.studentBasicInfo || !id) return Promise.resolve({ ok: false });
+  var entry = typeof collectStudentBasicInfoEntry === 'function'
+    ? collectStudentBasicInfoEntry(id)
+    : null;
+  if (!entry) return Promise.resolve({ ok: false, error: 'no_entry' });
+  var row = buildStudentBasicInfoSheetRow(entry);
+  if (!row) return Promise.resolve({ ok: false, error: 'no_row' });
+  return syncUpsertRowQuiet(SHEET_NAMES.studentBasicInfo, STUDENT_ID_SHEET_KEY, row);
+}
+
+function syncTeacherBasicInfoQuiet(id) {
+  if (!SHEET_NAMES.teacherBasicInfo || !id) return Promise.resolve({ ok: false });
+  var row = buildTeacherBasicInfoSheetRow(id);
+  if (!row) return Promise.resolve({ ok: false, error: 'no_row' });
+  return syncUpsertRowQuiet(SHEET_NAMES.teacherBasicInfo, 'รหัสครู', row);
+}
+
+/**
+ * ซิงค์โปรไฟล์นักเรียนไปชีตทีละชุด (ข้อมูลพื้นฐาน → ทะเบียน → สุขภาพ)
+ * ตรวจ API ก่อน — ไม่โทษสิทธิ์ Anyone ถ้า API ตอบได้แล้ว
+ */
+function syncStudentProfileToSheetsReliable(id, opts) {
+  opts = opts || {};
+  id = String(id || '').trim();
+  if (!id) return Promise.resolve({ ok: false });
+
+  return pingSheetsApi_().then(function(ping) {
+    var apiReachable = !!(ping && ping.ok);
+    if (!apiReachable && ping && ping.error === 'AUTH_REQUIRED') {
+      if (opts.toast !== false && typeof showSheetToast_ === 'function') {
+        showSheetToast_(describeSheetSyncFailure_(['AUTH_REQUIRED'], false), true);
+      }
+      return { ok: false, error: 'AUTH_REQUIRED' };
+    }
+
+    var steps = [];
+    if (typeof syncStudentBasicInfoQuiet === 'function') {
+      steps.push(function() { return syncStudentBasicInfoQuiet(id); });
+    }
+    if (typeof syncStudentRegistryEntryQuiet === 'function' && typeof collectStudentRegistryEntry === 'function') {
+      steps.push(function() {
+        var regEntry = collectStudentRegistryEntry(id);
+        if (!regEntry) return Promise.resolve({ ok: false, error: 'no_entry' });
+        return syncStudentRegistryEntryQuiet(regEntry);
+      });
+    }
+    if (typeof syncStudentHealthToSheetQuiet === 'function') {
+      steps.push(function() { return syncStudentHealthToSheetQuiet(id); });
+    }
+
+    var chain = Promise.resolve({ ok: true });
+    var okCount = 0;
+    var methods = [];
+    var errors = [];
+    steps.forEach(function(step) {
+      chain = chain.then(function() {
+        return Promise.resolve(step()).then(function(res) {
+          if (isVerifiedWriteOk_(res) || isVerifiedSheetOk_(res)) {
+            okCount++;
+            if (res.method) methods.push(res.method);
+          } else if (res && res.error) {
+            errors.push(res.error);
+          } else if (res && res.fallbackError) {
+            errors.push(res.fallbackError);
+          } else {
+            errors.push('SYNC_FAILED');
+          }
+          return res;
+        });
+      });
+    });
+
+    return chain.then(function() {
+      var result = {
+        ok: okCount > 0,
+        count: okCount,
+        methods: methods,
+        apiReachable: apiReachable,
+        errors: errors
+      };
+      if (opts.toast !== false && typeof showSheetToast_ === 'function') {
+        if (result.ok) {
+          showSheetToast_('อัปเดต Google Sheet สำเร็จแล้ว (' + okCount + '/' + steps.length + ' ชีต)');
+        } else {
+          showSheetToast_(describeSheetSyncFailure_(errors, apiReachable), true);
+        }
+      }
+      return result;
+    });
+  }).catch(function(err) {
+    if (opts.toast !== false && typeof showSheetToast_ === 'function') {
+      showSheetToast_(describeSheetSyncFailure_([String(err && err.message || err || 'UNKNOWN')], false), true);
+    }
+    return { ok: false, error: String(err && err.message || err || '') };
+  });
+}
+window.syncStudentProfileToSheetsReliable = syncStudentProfileToSheetsReliable;
+window.pingSheetsApi_ = pingSheetsApi_;
+
+function syncStudentTreatmentHistoryQuiet(id) {
+  if (!SHEET_NAMES.studentTreatmentHistory || !id) return;
+  var rows = collectStudentVisitHistoryRowsForId_(id);
+  if (!rows.length) return;
+  syncStudentTreatmentHistoryBatchQuiet(rows);
+}
+
+function syncTeacherTreatmentHistoryQuiet(id) {
+  if (!SHEET_NAMES.teacherTreatmentHistory || !id) return;
+  var rows = collectTeacherVisitHistoryRowsForId_(id);
+  if (!rows.length) return;
+  syncTeacherTreatmentHistoryBatchQuiet(rows);
+}
+
+function syncProfileRowsViaUpsertQuiet_(sheetName, matchKey, rows) {
+  if (!sheetName || !matchKey || !rows || !rows.length) {
+    return Promise.resolve({ ok: false });
+  }
+  var chain = Promise.resolve();
+  rows.forEach(function(row) {
+    chain = chain.then(function() {
+      return syncViaFormQueued_({
+        action: 'upsertRow',
+        sheet: sheetName,
+        matchKey: matchKey,
+        row: row,
+        silent: true
+      });
+    });
+  });
+  return chain.then(function() {
+    return { ok: true, count: rows.length, method: 'upsertRow', upserted: true };
+  });
+}
+
+function syncRegistryProfileBatchQuiet_(sheetName, matchKey, rows) {
+  if (!sheetName || !matchKey || !rows || !rows.length) {
+    return Promise.resolve({ ok: false });
+  }
+  var payload = {
+    action: 'batchUpsertRows',
+    sheet: sheetName,
+    matchKey: matchKey,
+    rows: rows,
+    silent: true
+  };
+  return syncViaFetch_(payload).then(function(res) {
+    if (isProfileSheetResponseOk_(res, sheetName, rows.length)) return res;
+    return syncViaFormQueued_(payload);
+  }).then(function(res) {
+    if (isProfileSheetResponseOk_(res, sheetName, rows.length)) return res;
+    enqueueSheetSync_(payload);
+    return { ok: false, error: 'batch_failed' };
+  }).catch(function() {
+    return syncViaFormQueued_(payload).then(function(res) {
+      if (isProfileSheetResponseOk_(res, sheetName, rows.length)) return res;
+      enqueueSheetSync_(payload);
+      return { ok: false, error: 'batch_failed' };
+    });
+  });
+}
+
+function syncStudentBasicInfoBatchQuiet(rows) {
+  if (!SHEET_NAMES.studentBasicInfo || !rows || !rows.length) {
+    return Promise.resolve({ ok: false });
+  }
+  var sheetName = SHEET_NAMES.studentBasicInfo;
+  return syncRegistryProfileBatchQuiet_(sheetName, STUDENT_ID_SHEET_KEY, rows).then(function(res) {
+    if (isProfileSheetResponseOk_(res, sheetName, rows.length)) return res;
+    return syncProfileRowsViaUpsertQuiet_(sheetName, STUDENT_ID_SHEET_KEY, rows);
+  });
+}
+
+function syncTeacherBasicInfoBatchQuiet(rows) {
+  if (!SHEET_NAMES.teacherBasicInfo || !rows || !rows.length) return Promise.resolve({ ok: false });
+  return syncRegistryProfileBatchQuiet_(SHEET_NAMES.teacherBasicInfo, 'รหัสครู', rows);
+}
+
+function syncStudentTreatmentHistoryBatchQuiet(rows) {
+  if (!SHEET_NAMES.studentTreatmentHistory || !rows || !rows.length) return Promise.resolve({ ok: false });
+  return syncRegistryProfileBatchQuiet_(SHEET_NAMES.studentTreatmentHistory, 'รหัสรายการ', rows);
+}
+
+function syncTeacherTreatmentHistoryBatchQuiet(rows) {
+  if (!SHEET_NAMES.teacherTreatmentHistory || !rows || !rows.length) return Promise.resolve({ ok: false });
+  return syncRegistryProfileBatchQuiet_(SHEET_NAMES.teacherTreatmentHistory, 'รหัสรายการ', rows);
+}
+
+function collectStudentBasicInfoSheetRows() {
+  if (typeof collectStudentBasicInfoEntries === 'function') {
+    var rows = collectStudentBasicInfoEntries();
+    if (rows && rows.length) return rows;
+  }
+  if (typeof STUDENT_BASIC === 'undefined') return [];
+  return Object.keys(STUDENT_BASIC).map(function(id) {
+    if (typeof collectStudentBasicInfoEntry === 'function') {
+      var entry = collectStudentBasicInfoEntry(id);
+      return entry && typeof buildStudentBasicInfoSheetRow === 'function'
+        ? buildStudentBasicInfoSheetRow(entry)
+        : null;
+    }
+    return null;
+  }).filter(Boolean);
+}
+
+function collectTeacherBasicInfoSheetRows() {
+  if (typeof TEACHER_BASIC === 'undefined') return [];
+  return Object.keys(TEACHER_BASIC).map(function(id) {
+    return buildTeacherBasicInfoSheetRow(id);
+  }).filter(Boolean);
+}
+
+function collectStudentTreatmentHistorySheetRows() {
+  if (typeof loadVisitRecords !== 'function') return [];
+  return loadVisitRecords().filter(function(r) {
+    return r && r.id && !isStaffVisitRecord_(r);
+  }).map(buildStudentVisitHistorySheetRow_).filter(Boolean);
+}
+
+function collectTeacherTreatmentHistorySheetRows() {
+  if (typeof loadVisitRecords !== 'function') return [];
+  return loadVisitRecords().filter(function(r) {
+    return r && isStaffVisitRecord_(r) && !!resolveTeacherIdForVisit_(r);
+  }).map(buildTeacherVisitHistorySheetRow_).filter(Boolean);
+}
+
+function runRegistryProfileBatchSync_(collectRows, batchFn, options) {
+  options = options || {};
+  var rows = collectRows();
+  if (!rows.length || typeof batchFn !== 'function') {
+    if (!options.silent && typeof showSheetToast_ === 'function') {
+      showSheetToast_('ไม่พบข้อมูลสำหรับซิงค์', true);
+    }
+    return Promise.resolve(0);
+  }
+  var chunkSize = options.chunkSize || 20;
+  var i = 0;
+  var total = rows.length;
+  var sent = 0;
+  var failed = 0;
+  var sheetName = options.sheetName || '';
+  return ensureSheetSchemaQuiet_(sheetName).then(function() {
+    return new Promise(function(resolve) {
+      function next() {
+        if (i >= total) {
+          if (!options.silent && typeof showSheetToast_ === 'function') {
+            if (failed > 0) {
+              showSheetToast_('ซิงค์เสร็จแต่ล้มเหลว ' + failed.toLocaleString('th-TH') + ' รายการ — ลองใหม่หรือ redeploy Apps Script', true);
+            } else {
+              showSheetToast_(options.doneMessage || ('ซิงค์ข้อมูล ' + total.toLocaleString('th-TH') + ' รายการเสร็จแล้ว'));
+            }
+          }
+          resolve(sent);
+          return;
+        }
+        var chunk = rows.slice(i, i + chunkSize);
+        i += chunkSize;
+        if (!options.silent && typeof showSheetToast_ === 'function' && (i === chunkSize || i % (chunkSize * 5) === 0 || i >= total)) {
+          showSheetToast_((options.progressLabel || 'กำลังซิงค์') + ' ' + Math.min(i, total).toLocaleString('th-TH') + ' / ' + total.toLocaleString('th-TH'));
+        }
+        batchFn(chunk).then(function(res) {
+          if (isProfileSheetResponseOk_(res, sheetName, chunk.length)) {
+            sent += chunk.length;
+          } else {
+            failed += chunk.length;
+          }
+          setTimeout(next, options.delayMs || 450);
+        }).catch(function() {
+          failed += chunk.length;
+          setTimeout(next, (options.delayMs || 450) + 400);
+        });
+      }
+      if (!options.silent && options.startMessage && typeof showSheetToast_ === 'function') {
+        showSheetToast_(options.startMessage);
+      }
+      next();
+    });
+  });
+}
+
+function ensureStudentBasicInfoSheetSchema_() {
+  return ensureSheetSchemaQuiet_(SHEET_NAMES.studentBasicInfo);
+}
+
+var _studentBasicInfoSyncRunning = false;
+
+function syncAllStudentBasicInfoToSheet(options) {
+  options = options || {};
+  if (_studentBasicInfoSyncRunning) return Promise.resolve(0);
+  _studentBasicInfoSyncRunning = true;
+  return runRegistryProfileBatchSync_(collectStudentBasicInfoSheetRows, syncStudentBasicInfoBatchQuiet, Object.assign({
+    sheetName: SHEET_NAMES.studentBasicInfo,
+    chunkSize: 8,
+    delayMs: 350,
+    progressLabel: 'ข้อมูลพื้นฐานนักเรียน',
+    startMessage: 'กำลังส่งข้อมูลพื้นฐานไปชีต (แยกคอลัมน์)...',
+    doneMessage: 'ซิงค์ข้อมูลพื้นฐานนักเรียนเสร็จแล้ว'
+  }, options || {})).then(function(n) {
+    _studentBasicInfoSyncRunning = false;
+    return n;
+  }).catch(function() {
+    _studentBasicInfoSyncRunning = false;
+    return 0;
+  });
+}
+
+function syncAllTeacherBasicInfoToSheet(options) {
+  return runRegistryProfileBatchSync_(collectTeacherBasicInfoSheetRows, syncTeacherBasicInfoBatchQuiet, Object.assign({
+    sheetName: SHEET_NAMES.teacherBasicInfo,
+    chunkSize: 10,
+    delayMs: 500,
+    progressLabel: 'ข้อมูลพื้นฐานครู',
+    startMessage: 'กำลังซิงค์ข้อมูลพื้นฐานครู (แยกคอลัมน์)...',
+    doneMessage: 'ซิงค์ข้อมูลพื้นฐานครูเสร็จแล้ว'
+  }, options || {}));
+}
+
+function syncAllStudentTreatmentHistoryToSheet(options) {
+  return runRegistryProfileBatchSync_(collectStudentTreatmentHistorySheetRows, syncStudentTreatmentHistoryBatchQuiet, Object.assign({
+    sheetName: SHEET_NAMES.studentTreatmentHistory,
+    chunkSize: 20,
+    delayMs: 450,
+    progressLabel: 'ประวัติการรักษานักเรียน',
+    startMessage: 'กำลังซิงค์ประวัติการรักษานักเรียน (แยกรายการ)...',
+    doneMessage: 'ซิงค์ประวัติการรักษานักเรียนเสร็จแล้ว'
+  }, options || {}));
+}
+
+function syncAllTeacherTreatmentHistoryToSheet(options) {
+  return runRegistryProfileBatchSync_(collectTeacherTreatmentHistorySheetRows, syncTeacherTreatmentHistoryBatchQuiet, Object.assign({
+    sheetName: SHEET_NAMES.teacherTreatmentHistory,
+    chunkSize: 20,
+    delayMs: 450,
+    progressLabel: 'ประวัติการรักษาครู',
+    startMessage: 'กำลังซิงค์ประวัติการรักษาครู (แยกรายการ)...',
+    doneMessage: 'ซิงค์ประวัติการรักษาครูเสร็จแล้ว'
+  }, options || {}));
+}
+
+function syncRegistryProfileExtrasQuiet_(kind, id) {
+  if (!id) return;
+  if (kind === 'student') {
+    syncStudentBasicInfoQuiet(id);
+    syncStudentTreatmentHistoryQuiet(id);
+    return;
+  }
+  if (kind === 'teacher') {
+    syncTeacherBasicInfoQuiet(id);
+    syncTeacherTreatmentHistoryQuiet(id);
+  }
 }
 
 function visitProviderNameForSheet_(record) {
@@ -947,6 +1898,89 @@ function syncMentalToSheetQuiet(record, type) {
   ensureSheetSyncDom_();
   syncPayloadQuiet(payload);
 }
+
+function buildMentalTeacherScreeningSheetRow(record, type) {
+  record = record || {};
+  type = type || record.type || '';
+  var tool = record.tool || '';
+  if (!tool) {
+    if (type === 'sdq') tool = 'SDQ (พฤติกรรม)';
+    else if (type === '9q') tool = 'คัดกรองซึมเศร้า (9Q)';
+    else if (type === 'assist') tool = 'ASSIST (สารเสพติด)';
+  }
+  var detailParts = [];
+  if (record.detail) {
+    if (record.detail.subscales) {
+      var s = record.detail.subscales;
+      detailParts.push('อารมณ์ ' + (s.emotional != null ? s.emotional : '—') +
+        ' · พฤติกรรม ' + (s.conduct != null ? s.conduct : '—') +
+        ' · สมาธิ ' + (s.hyper != null ? s.hyper : '—') +
+        ' · เพื่อน ' + (s.peer != null ? s.peer : '—'));
+    }
+    if (record.detail.q9 != null) detailParts.push('ข้อ 9 = ' + record.detail.q9);
+    if (record.detail.substances && record.detail.substances.length) {
+      detailParts.push('สาร: ' + record.detail.substances.join(', '));
+    }
+  }
+  var teacherId = '';
+  var teacherName = '';
+  var teacherClass = '';
+  if (typeof loggedInTeacherId !== 'undefined' && loggedInTeacherId) {
+    teacherId = String(loggedInTeacherId);
+  }
+  if (typeof lookupTeacher === 'function' && teacherId) {
+    var t = lookupTeacher(teacherId);
+    if (t) {
+      teacherName = t.fullName || '';
+      teacherClass = t.classLevel || '';
+      teacherId = t.id || teacherId;
+    }
+  }
+  if (!teacherName && typeof resolveLoggedInDisplayName === 'function') {
+    try { teacherName = resolveLoggedInDisplayName() || ''; } catch (e) {}
+  }
+  if (!teacherClass && typeof getLoggedInTeacherHomeroom === 'function') {
+    try { teacherClass = getLoggedInTeacherHomeroom() || ''; } catch (e2) {}
+  }
+  return {
+    'รหัสรายการ': '',
+    'วันที่บันทึก': record.recordedAt || new Date().toLocaleString('th-TH'),
+    'รหัสนักเรียน': record.id || '',
+    'ชื่อ-นามสกุล': record.name || '',
+    'ชั้น': record.class || '',
+    'เพศ': record.sex || '',
+    'อายุ': record.age != null && record.age !== '' ? String(record.age) : '',
+    'ประเภทแบบประเมิน': tool,
+    'คะแนน': record.score != null ? String(record.score) : '',
+    'ระดับความเสี่ยง': record.risk || '',
+    'รายละเอียด': detailParts.join(' | '),
+    'รหัสครูผู้บันทึก': teacherId,
+    'ชื่อครูผู้บันทึก': teacherName,
+    'ประจำชั้นครู': teacherClass,
+    id: record.id || '',
+    name: record.name || '',
+    uid: '',
+    tool: tool,
+    score: record.score != null ? String(record.score) : '',
+    risk: record.risk || '',
+    teacherId: teacherId,
+    teacherName: teacherName,
+    teacherClass: teacherClass
+  };
+}
+
+/** เมื่อครูบันทึกแบบประเมินสุขภาพจิต → ชีต ผลตรวจคัดกรอง_ครู */
+function syncMentalTeacherScreeningToSheetQuiet(record, type) {
+  if (!SHEET_NAMES.mentalTeacher || !record) return Promise.resolve({ ok: false });
+  var row = buildMentalTeacherScreeningSheetRow(record, type);
+  var uid = 'mh-t-' + String(record.id || '') + '-' + String(record.type || type || '') + '-' +
+    String(record.savedAt || Date.now());
+  row['รหัสรายการ'] = uid;
+  row.uid = uid;
+  ensureSheetSyncDom_();
+  return syncUpsertRowQuiet(SHEET_NAMES.mentalTeacher, 'รหัสรายการ', row);
+}
+window.syncMentalTeacherScreeningToSheetQuiet = syncMentalTeacherScreeningToSheetQuiet;
 
 function buildAppointmentSheetRow(studentId, apptData) {
   apptData = apptData || {};
@@ -1573,7 +2607,9 @@ function screeningTypeFromLabel_(label) {
     'การได้ยิน': 'hearing',
     'โลหิตจาง': 'blood',
     'ช่องปาก': 'oral',
-    'ร่างกาย': 'physical'
+    'ร่างกาย': 'physical',
+    'สมรรถภาพร่างกาย': 'fitness',
+    'สมรรถภาพ': 'fitness'
   };
   return map[String(label || '').trim()] || '';
 }
@@ -2087,11 +3123,22 @@ window.fetchAllCloudDataFromSheet = fetchAllCloudDataFromSheet;
 window.fetchStudentRegistryFromSheet = fetchStudentRegistryFromSheet;
 window.fetchTeacherRegistryFromSheet = fetchTeacherRegistryFromSheet;
 window.buildStudentRegistrySheetRow = buildStudentRegistrySheetRow;
+window.buildStudentBasicInfoSheetRow = buildStudentBasicInfoSheetRow;
 window.buildTeacherRegistrySheetRow = buildTeacherRegistrySheetRow;
 window.syncStudentRegistryEntryQuiet = syncStudentRegistryEntryQuiet;
 window.syncTeacherRegistryEntryQuiet = syncTeacherRegistryEntryQuiet;
 window.syncStudentRegistryBatchQuiet = syncStudentRegistryBatchQuiet;
+window.syncStudentBasicInfoBatchQuiet = syncStudentBasicInfoBatchQuiet;
 window.syncTeacherRegistryBatchQuiet = syncTeacherRegistryBatchQuiet;
+window.syncStudentBasicInfoQuiet = syncStudentBasicInfoQuiet;
+window.syncTeacherBasicInfoQuiet = syncTeacherBasicInfoQuiet;
+window.syncStudentTreatmentHistoryQuiet = syncStudentTreatmentHistoryQuiet;
+window.syncTeacherTreatmentHistoryQuiet = syncTeacherTreatmentHistoryQuiet;
+window.syncAllStudentBasicInfoToSheet = syncAllStudentBasicInfoToSheet;
+window.syncAllTeacherBasicInfoToSheet = syncAllTeacherBasicInfoToSheet;
+window.syncAllStudentTreatmentHistoryToSheet = syncAllStudentTreatmentHistoryToSheet;
+window.syncAllTeacherTreatmentHistoryToSheet = syncAllTeacherTreatmentHistoryToSheet;
+window.syncRegistryProfileExtrasQuiet_ = syncRegistryProfileExtrasQuiet_;
 
 document.addEventListener('DOMContentLoaded', function() {
   ensureSheetSyncDom_();

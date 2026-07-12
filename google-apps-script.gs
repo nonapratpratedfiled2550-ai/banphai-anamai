@@ -51,6 +51,11 @@ var SHEET_SCHEMAS = {
     'เลขประจำตัวนักเรียน', 'ชื่อนามสกุล', 'ชั้น', 'เพศ', 'อายุ',
     'SDQ', 'ซึมเศร้า', 'ASSIST'
   ],
+  'ผลตรวจคัดกรอง_ครู': [
+    'รหัสรายการ', 'วันที่บันทึก', 'รหัสนักเรียน', 'ชื่อ-นามสกุล', 'ชั้น', 'เพศ', 'อายุ',
+    'ประเภทแบบประเมิน', 'คะแนน', 'ระดับความเสี่ยง', 'รายละเอียด',
+    'รหัสครูผู้บันทึก', 'ชื่อครูผู้บันทึก', 'ประจำชั้นครู'
+  ],
   'ใบนัด': [
     'เลขประจำตัว', 'ชื่อ-นามสกุล', 'วันที่นัด', 'เวลา', 'เรื่อง',
     'สถานที่', 'หมายเหตุ', 'วันที่บันทึก', 'บทบาทผู้บันทึก'
@@ -85,6 +90,26 @@ var SHEET_SCHEMAS = {
     'รหัสครู', 'ชื่อ-นามสกุล', 'กลุ่มสาระ', 'สังกัด', 'ประจำชั้น',
     'เบอร์โทร', 'อีเมล', 'โรคประจำตัว', 'แพ้ยา', 'แพ้อาหาร',
     'ข้อควรระวัง', 'วันที่อัปเดต'
+  ],
+  'ข้อมูลพื้นฐานนักเรียน': [
+    'รหัสนักเรียน', 'ชื่อ-นามสกุล', 'ชั้น', 'เลขประจำตัวประชาชน', 'เพศ', 'วันเกิด', 'อายุ',
+    'ศาสนา', 'เชื้อชาติ', 'สัญชาติ', 'น้ำหนัก(kg)', 'ส่วนสูง(cm)', 'กลุ่มเลือด', 'ความด้อยโอกาส',
+    'ที่อยู่', 'ผู้ปกครอง', 'ความสัมพันธ์ผู้ปกครอง', 'เบอร์ผู้ปกครอง', 'อาชีพผู้ปกครอง',
+    'บิดา', 'อาชีพบิดา', 'มารดา', 'อาชีพมารดา',
+    'โรคประจำตัว', 'แพ้ยา', 'แพ้อาหาร', 'ข้อควรระวัง', 'วันที่อัปเดต'
+  ],
+  'ข้อมูลพื้นฐานครู': [
+    'รหัสครู', 'ชื่อ-นามสกุล', 'กลุ่มสาระ', 'สังกัด', 'ประจำชั้น', 'เบอร์โทร', 'อีเมล',
+    'โรคประจำตัว', 'แพ้ยา', 'แพ้อาหาร', 'ข้อควรระวัง', 'วันที่อัปเดต'
+  ],
+  'ประวัติการรักษานักเรียน': [
+    'รหัสรายการ', 'รหัสนักเรียน', 'ชื่อ-นามสกุล', 'ชั้น', 'วันที่เวลา', 'อาการ',
+    'อุณหภูมิร่างกาย', 'ความดันโลหิต', 'ชีพจร', 'การวินิจฉัยเบื้องต้น',
+    'การรักษาและยาที่ให้', 'ผลการรักษา', 'ผู้ให้บริการ', 'วันที่อัปเดต'
+  ],
+  'ประวัติการรักษาครู': [
+    'รหัสรายการ', 'รหัสครู', 'ชื่อ-นามสกุล', 'กลุ่มสาระ', 'วันที่เวลา', 'อาการ',
+    'การวินิจฉัยเบื้องต้น', 'การรักษาและยาที่ให้', 'ผลการรักษา', 'ผู้ให้บริการ', 'วันที่อัปเดต'
   ]
 };
 
@@ -97,7 +122,7 @@ var FIELD_ALIASES = {
   'วันที่ฉีด': ['date'],
   'วันที่บันทึก': ['recordedAt'],
   'รหัสกิจกรรม': ['id'],
-  'รหัสรายการ': ['recordId', 'uid', 'id'],
+  'รหัสรายการ': ['recordId', 'uid'],
   'วันที่เวลา': ['recordedAt', 'eventAt'],
   'รหัสนักเรียน': ['รหัส', 'id', 'เลขประจำตัว', 'เลขประจำตัวนักเรียน'],
   'รหัสครู': ['รหัส', 'id'],
@@ -165,7 +190,6 @@ var FIELD_ALIASES = {
   'เวลา': ['time'],
   'เรื่อง': ['purpose'],
   'สถานที่': ['place'],
-  'รหัสรายการ': ['uid'],
   'ลำดับ': ['index', 'order'],
   'รายละเอียดงาน': ['text'],
   'วันเริ่ม': ['dateStart'],
@@ -194,13 +218,47 @@ var FIELD_ALIASES = {
   'แพ้อาหาร': ['foodAllergy', 'food'],
   'ข้อควรระวัง': ['precautions'],
   'เบอร์ผู้ปกครอง': ['guardianPhone', 'phone'],
-  'ผู้บันทึก': ['recorderName', 'recorder']
+  'ผู้บันทึก': ['recorderName', 'recorder'],
+  'ประเภทแบบประเมิน': ['tool', 'type'],
+  'คะแนน': ['score'],
+  'ระดับความเสี่ยง': ['risk'],
+  'รหัสครูผู้บันทึก': ['teacherId'],
+  'ชื่อครูผู้บันทึก': ['teacherName'],
+  'ประจำชั้นครู': ['teacherClass', 'homeroom'],
+  'เลขประจำตัวประชาชน': ['citizenId'],
+  'วันเกิด': ['dob'],
+  'ศาสนา': ['religion'],
+  'เชื้อชาติ': ['race'],
+  'สัญชาติ': ['nationality'],
+  'กลุ่มเลือด': ['bloodType'],
+  'ความด้อยโอกาส': ['disadvantaged'],
+  'ที่อยู่': ['address'],
+  'ผู้ปกครอง': ['guardian'],
+  'ความสัมพันธ์ผู้ปกครอง': ['guardianRel'],
+  'อาชีพผู้ปกครอง': ['guardianJob'],
+  'บิดา': ['father'],
+  'อาชีพบิดา': ['fatherJob'],
+  'มารดา': ['mother'],
+  'อาชีพมารดา': ['motherJob'],
+  'วันที่อัปเดต': ['updatedAt', 'recordedAt']
 };
 
 function doGet(e) {
   try {
     if (e && e.parameter && e.parameter.payload) {
-      return handlePayload_(decodeURIComponent(e.parameter.payload));
+      // Apps Script ถอดรหัส query ให้แล้ว — อย่า decodeURIComponent ซ้ำ
+      var rawPayload = e.parameter.payload;
+      try {
+        return handlePayload_(rawPayload);
+      } catch (parseErr) {
+        return handlePayload_(decodeURIComponent(rawPayload));
+      }
+    }
+    if (e && e.parameter && e.parameter.action === 'ensureSchema') {
+      return handlePayload_(JSON.stringify({
+        action: 'ensureSchema',
+        sheet: e.parameter.sheet
+      }));
     }
     return jsonResponse_({ ok: true, message: 'School Health Sheets API is running' });
   } catch (err) {
@@ -210,17 +268,33 @@ function doGet(e) {
 
 function doPost(e) {
   try {
-    var raw = '';
-    if (e && e.postData && e.postData.contents) {
-      raw = e.postData.contents;
-    } else if (e && e.parameter && e.parameter.payload) {
-      raw = e.parameter.payload;
-    }
+    var raw = getRequestPayload_(e);
     if (!raw) throw new Error('Empty request body');
     return handlePayload_(raw);
   } catch (err) {
     return jsonResponse_({ ok: false, error: String(err.message || err) });
   }
+}
+
+function getRequestPayload_(e) {
+  var raw = '';
+  if (e && e.postData && e.postData.contents) {
+    raw = e.postData.contents;
+    var type = String(e.postData.type || '').toLowerCase();
+    if (type.indexOf('application/x-www-form-urlencoded') !== -1) {
+      var params = {};
+      raw.split('&').forEach(function(pair) {
+        var eq = pair.indexOf('=');
+        if (eq < 0) return;
+        var key = decodeURIComponent(pair.slice(0, eq).replace(/\+/g, ' '));
+        var val = decodeURIComponent(pair.slice(eq + 1).replace(/\+/g, ' '));
+        params[key] = val;
+      });
+      if (params.payload) return params.payload;
+    }
+  }
+  if (e && e.parameter && e.parameter.payload) return e.parameter.payload;
+  return raw;
 }
 
 function handlePayload_(raw) {
@@ -288,12 +362,30 @@ function handlePayload_(raw) {
       throw new Error('Unknown sheet: ' + batchSheet);
     }
     if (!batchMatchKey) throw new Error('matchKey required for batchUpsertRows');
-    var batchCount = 0;
-    for (var bi = 0; bi < batchRows.length; bi++) {
-      upsertMentalRow_(batchSheet, batchMatchKey, batchRows[bi]);
-      batchCount++;
+    var batchCount = batchUpsertRows_(batchSheet, batchMatchKey, batchRows);
+    var batchHeaders = getSheetHeaders_(getSpreadsheet_().getSheetByName(batchSheet), batchSheet);
+    return jsonResponse_({
+      ok: true,
+      sheet: batchSheet,
+      count: batchCount,
+      columnCount: batchHeaders.length,
+      upserted: true
+    });
+  }
+  if (body.action === 'ensureSchema') {
+    var schemaSheet = body.sheet;
+    if (!schemaSheet || !SHEET_SCHEMAS[schemaSheet]) {
+      throw new Error('Unknown sheet: ' + schemaSheet);
     }
-    return jsonResponse_({ ok: true, sheet: batchSheet, count: batchCount, upserted: true });
+    var schemaSs = getSpreadsheet_();
+    var schemaSh = ensureSheet_(schemaSs, schemaSheet);
+    var schemaHeaders = getSheetHeaders_(schemaSh, schemaSheet);
+    return jsonResponse_({
+      ok: true,
+      sheet: schemaSheet,
+      columnCount: schemaHeaders.length,
+      headers: schemaHeaders
+    });
   }
   var sheetName = body.sheet;
   var row = body.row || body.values || {};
@@ -373,23 +465,108 @@ function getValueForHeader_(header, rowObject) {
 }
 
 function getSheetHeaders_(sheet, sheetName) {
-  var lastCol = Math.max(sheet.getLastColumn(), 1);
+  var schemaHeaders = SHEET_SCHEMAS[sheetName] || [];
+  var lastCol = Math.max(sheet.getLastColumn(), schemaHeaders.length, 1);
+  var physical = getSheetHeadersPhysical_(sheet, lastCol);
+  if (physical.length) return physical;
+  return schemaHeaders.slice();
+}
+
+function getSheetHeadersPhysical_(sheet, minCols) {
+  minCols = minCols || 1;
+  var lastCol = Math.max(sheet.getLastColumn(), minCols);
   var row1 = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   var headers = [];
-  for (var i = 0; i < row1.length; i++) {
-    if (row1[i] !== '' && row1[i] != null) headers.push(String(row1[i]));
+  for (var i = 0; i < lastCol; i++) {
+    headers.push(row1[i] !== '' && row1[i] != null ? String(row1[i]) : '');
   }
-  if (headers.length) return headers;
-  return SHEET_SCHEMAS[sheetName].slice();
+  var hasAny = false;
+  for (var j = 0; j < headers.length; j++) {
+    if (headers[j]) { hasAny = true; break; }
+  }
+  return hasAny ? headers : [];
+}
+
+function getWriteHeaders_(sheetName) {
+  return (SHEET_SCHEMAS[sheetName] || []).slice();
+}
+
+function forceSchemaHeaderRow_(sheet, schemaHeaders) {
+  if (!schemaHeaders || !schemaHeaders.length) return;
+  var extraCols = Math.max(sheet.getLastColumn(), sheet.getMaxColumns ? sheet.getMaxColumns() : 0);
+  if (extraCols > schemaHeaders.length) {
+    sheet.getRange(1, schemaHeaders.length + 1, 1, extraCols).clearContent();
+  }
+  sheet.getRange(1, 1, 1, schemaHeaders.length).setValues([schemaHeaders]);
+  styleHeaderRow_(sheet, schemaHeaders.length);
+  SpreadsheetApp.flush();
+}
+
+var LEGACY_BLOB_HEADERS_ = {
+  'ข้อมูลพื้นฐาน': true,
+  'ข้อมูลพื้นฐานนักเรียน': true,
+  'ประวัติการรักษา': true
+};
+
+function schemaHeadersNeedUpgrade_(headers, schemaHeaders) {
+  if (!schemaHeaders || !schemaHeaders.length) return false;
+  if (!headers || !headers.length) return true;
+  var first = String(headers[0] || '').trim();
+  if (first === '#') return true;
+  for (var j = 0; j < headers.length; j++) {
+    if (LEGACY_BLOB_HEADERS_[String(headers[j] || '').trim()]) return true;
+  }
+  if (headers.length < schemaHeaders.length) return true;
+  if (headers.length > schemaHeaders.length) return true;
+  for (var i = 0; i < schemaHeaders.length; i++) {
+    if (String(headers[i] || '').trim() !== schemaHeaders[i]) return true;
+  }
+  return false;
+}
+
+function upgradeSheetHeaders_(sheet, sheetName, schemaHeaders) {
+  var lastRow = sheet.getLastRow();
+  var lastCol = Math.max(sheet.getLastColumn(), schemaHeaders.length, 1);
+  var oldHeaders = getSheetHeadersPhysical_(sheet, lastCol);
+  var dataRows = [];
+  if (lastRow >= 1) {
+    var all = sheet.getRange(1, 1, lastRow, lastCol).getValues();
+    for (var r = 1; r < all.length; r++) {
+      dataRows.push(all[r]);
+    }
+  }
+  var newRows = [];
+  for (var dr = 0; dr < dataRows.length; dr++) {
+    var oldRow = dataRows[dr];
+    var rowObj = {};
+    for (var c = 0; c < oldHeaders.length; c++) {
+      var h = String(oldHeaders[c] || '').trim();
+      if (!h || h === '#') continue;
+      var v = oldRow[c];
+      if (v !== '' && v != null) rowObj[h] = v;
+    }
+    newRows.push(rowValuesFromObject_(schemaHeaders, rowObj));
+  }
+  if (lastRow > 1) sheet.deleteRows(2, lastRow - 1);
+  forceSchemaHeaderRow_(sheet, schemaHeaders);
+  if (newRows.length) {
+    sheet.getRange(2, 1, 1 + newRows.length, schemaHeaders.length).setValues(newRows);
+  }
+  SpreadsheetApp.flush();
 }
 
 function ensureSheet_(ss, sheetName) {
   var sheet = ss.getSheetByName(sheetName);
   if (!sheet) sheet = ss.insertSheet(sheetName);
-  var headers = getSheetHeaders_(sheet, sheetName);
-  if (sheet.getLastRow() === 0) {
-    sheet.appendRow(headers);
-    styleHeaderRow_(sheet, headers.length);
+  var schemaHeaders = SHEET_SCHEMAS[sheetName] || [];
+  var lastRow = sheet.getLastRow();
+  if (lastRow === 0) {
+    if (schemaHeaders.length) forceSchemaHeaderRow_(sheet, schemaHeaders);
+    return sheet;
+  }
+  var physical = getSheetHeadersPhysical_(sheet, schemaHeaders.length);
+  if (schemaHeaders.length && schemaHeadersNeedUpgrade_(physical, schemaHeaders)) {
+    upgradeSheetHeaders_(sheet, sheetName, schemaHeaders);
   }
   return sheet;
 }
@@ -405,7 +582,8 @@ function styleHeaderRow_(sheet, colCount) {
 function appendRow_(sheetName, rowObject) {
   var ss = getSpreadsheet_();
   var sheet = ensureSheet_(ss, sheetName);
-  var headers = getSheetHeaders_(sheet, sheetName);
+  var headers = getWriteHeaders_(sheetName);
+  if (!headers.length) headers = getSheetHeaders_(sheet, sheetName);
   if (Array.isArray(rowObject)) {
     sheet.appendRow(rowObject.map(function(v) { return v == null ? '' : String(v); }));
   } else {
@@ -436,6 +614,7 @@ function findHeaderIndex_(headers, headerName) {
   var aliases = FIELD_ALIASES[headerName] || [];
   var nh = normalizeHeaderKey_(headerName);
   for (var i = 0; i < headers.length; i++) {
+    if (!String(headers[i] || '').trim()) continue;
     if (normalizeHeaderKey_(headers[i]) === nh) return i;
     for (var j = 0; j < aliases.length; j++) {
       if (normalizeHeaderKey_(headers[i]) === normalizeHeaderKey_(aliases[j])) return i;
@@ -461,10 +640,60 @@ function resolveMentalMatch_(headers, matchKey, rowObject) {
   return { index: -1, header: matchKey, value: getValueForHeader_(matchKey, rowObject) };
 }
 
+/**
+ * เขียนแถวเดียวให้ปลอดภัย — กัน error จากเซลล์รวม (merged cells)
+ * เช่น "ข้อมูลมี 1 แถว แต่ช่วงดังกล่าวมี N แถว"
+ */
+function setRowValuesSafe_(sheet, rowNum, values) {
+  var n = values.length;
+  if (!n || rowNum < 1) return;
+  var range = sheet.getRange(rowNum, 1, rowNum, n);
+  try {
+    var merges = range.getMergedRanges();
+    for (var i = 0; i < merges.length; i++) {
+      merges[i].breakApart();
+    }
+  } catch (eMerge) { /* ignore */ }
+  try {
+    range = sheet.getRange(rowNum, 1, rowNum, n);
+    range.setValues([values]);
+    return;
+  } catch (eSet) {
+    for (var c = 0; c < n; c++) {
+      try {
+        var cell = sheet.getRange(rowNum, c + 1);
+        try {
+          var cellMerges = cell.getMergedRanges();
+          for (var m = 0; m < cellMerges.length; m++) cellMerges[m].breakApart();
+        } catch (e2) { /* ignore */ }
+        cell.setValue(values[c]);
+      } catch (e3) { /* skip bad cell */ }
+    }
+  }
+}
+
+function readRowValuesSafe_(sheet, rowNum, colCount) {
+  colCount = Math.max(1, colCount || 1);
+  try {
+    var vals = sheet.getRange(rowNum, 1, rowNum, colCount).getValues();
+    if (vals && vals.length) return vals[0];
+  } catch (e) { /* fall through */ }
+  var out = [];
+  for (var c = 0; c < colCount; c++) {
+    try {
+      out.push(sheet.getRange(rowNum, c + 1).getValue());
+    } catch (e2) {
+      out.push('');
+    }
+  }
+  return out;
+}
+
 function upsertMentalRow_(sheetName, matchKey, rowObject) {
   var ss = getSpreadsheet_();
   var sheet = ensureSheet_(ss, sheetName);
-  var headers = getSheetHeaders_(sheet, sheetName);
+  var headers = getWriteHeaders_(sheetName);
+  if (!headers.length) headers = getSheetHeaders_(sheet, sheetName);
   var match = resolveMentalMatch_(headers, matchKey, rowObject);
   var matchIndex = match.index;
   if (matchIndex < 0) throw new Error('Missing match column: ' + matchKey);
@@ -494,15 +723,111 @@ function upsertMentalRow_(sheetName, matchKey, rowObject) {
     return sheet.getLastRow();
   }
 
-  for (var c = 0; c < headers.length; c++) {
-    var h = headers[c];
+  // อัปเดตแถวเดิม: ค่าว่างจาก client ไม่ทับค่าเดิมในชีต (กันข้อมูลหาย)
+  var existing = readRowValuesSafe_(sheet, foundRow, headers.length);
+  var fullValues = headers.map(function(h, idx) {
     var v = getValueForHeader_(h, rowObject);
-    if (v === undefined || v === null || v === '') continue;
     if (Array.isArray(v)) v = v.join(', ');
-    sheet.getRange(foundRow, c + 1).setValue(String(v));
-  }
+    if (v === undefined || v === null || v === '') {
+      var old = existing[idx];
+      return old === undefined || old === null ? '' : String(old);
+    }
+    return String(v);
+  });
+  setRowValuesSafe_(sheet, foundRow, fullValues);
   SpreadsheetApp.flush();
   return foundRow;
+}
+
+function rowValuesFromObject_(headers, rowObject) {
+  return headers.map(function(h) {
+    var v = getValueForHeader_(h, rowObject);
+    if (Array.isArray(v)) return v.join(', ');
+    return v === undefined || v === null ? '' : String(v);
+  });
+}
+
+function batchUpsertRows_(sheetName, matchKey, rowObjects) {
+  if (!rowObjects || !rowObjects.length) return 0;
+  var ss = getSpreadsheet_();
+  var sheet = ensureSheet_(ss, sheetName);
+  var headers = getWriteHeaders_(sheetName);
+  if (!headers.length) headers = getSheetHeaders_(sheet, sheetName);
+  var matchIndex = findHeaderIndex_(headers, matchKey);
+  if (matchIndex < 0) throw new Error('Missing match column: ' + matchKey);
+
+  var lastRow = Math.max(sheet.getLastRow(), 1);
+  var rowById = {};
+  if (lastRow > 1) {
+    var idValues = sheet.getRange(2, matchIndex + 1, lastRow, matchIndex + 1).getValues();
+    for (var i = 0; i < idValues.length; i++) {
+      var raw = idValues[i][0];
+      if (raw === '' || raw == null) continue;
+      var sk = String(raw).trim();
+      rowById[sk] = i + 2;
+      var num = parseInt(sk, 10);
+      if (!isNaN(num)) rowById[String(num)] = i + 2;
+    }
+  }
+
+  var updates = [];
+  var appends = [];
+  var batchSeen = {};
+  var skipped = 0;
+
+  for (var r = 0; r < rowObjects.length; r++) {
+    var rowObject = rowObjects[r];
+    var matchValue = resolveRowMatchId_(headers, matchKey, rowObject);
+    if (!matchValue) {
+      skipped++;
+      continue;
+    }
+    var key = String(matchValue).trim();
+    var numKey = parseInt(key, 10);
+    var foundRow = rowById[key];
+    if (foundRow == null && !isNaN(numKey)) foundRow = rowById[String(numKey)];
+    if (foundRow == null && batchSeen[key]) foundRow = batchSeen[key];
+
+    var values = rowValuesFromObject_(headers, rowObject);
+    if (foundRow && foundRow > 0) {
+      updates.push({ row: foundRow, values: values });
+    } else {
+      appends.push(values);
+      var pendingRow = lastRow + appends.length;
+      rowById[key] = pendingRow;
+      batchSeen[key] = pendingRow;
+      if (!isNaN(numKey)) rowById[String(numKey)] = pendingRow;
+    }
+  }
+
+  for (var u = 0; u < updates.length; u++) {
+    setRowValuesSafe_(sheet, updates[u].row, updates[u].values);
+  }
+  if (appends.length) {
+    for (var a = 0; a < appends.length; a++) {
+      sheet.appendRow(appends[a]);
+    }
+  }
+  SpreadsheetApp.flush();
+  return updates.length + appends.length;
+}
+
+function resolveRowMatchId_(headers, matchKey, rowObject) {
+  var match = resolveMentalMatch_(headers, matchKey, rowObject);
+  var matchValue = match.value;
+  if (matchValue !== undefined && matchValue !== null && String(matchValue).trim() !== '') {
+    return String(matchValue).trim();
+  }
+  var keys = [matchKey].concat(MENTAL_MATCH_KEYS_);
+  var seen = {};
+  for (var i = 0; i < keys.length; i++) {
+    var key = keys[i];
+    if (!key || seen[key]) continue;
+    seen[key] = true;
+    var v = getValueForHeader_(key, rowObject);
+    if (v !== undefined && v !== null && String(v).trim() !== '') return String(v).trim();
+  }
+  return '';
 }
 
 function normalizeSheetDate_(v) {
