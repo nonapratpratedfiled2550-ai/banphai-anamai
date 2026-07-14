@@ -59,9 +59,12 @@
     list.forEach(function(r) {
       const c = getNutritionCategory(parseFloat(r.bmi));
       if (!c) return;
-      if (c.label === 'ปกติ') good++;
-      else if (c.label === 'ผอม' || c.label === 'ผอมมาก') thin++;
-      else if (c.label === 'เริ่มอ้วน' || c.label === 'อ้วน') obese++;
+      if (c.label === 'น้ำหนักตามเกณฑ์' || c.label === 'ปกติ') good++;
+      else if (c.label === 'น้ำหนักต่ำกว่าเกณฑ์' || c.label === 'ผอม' || c.label === 'ผอมมาก') thin++;
+      else if (
+        c.label === 'น้ำหนักมากกว่าเกณฑ์' || c.label === 'เริ่มอ้วน' || c.label === 'อ้วน' ||
+        c.label.indexOf('โรคอ้วน') === 0
+      ) obese++;
     });
     return {
       goodHeight: Math.round(good / total * 100),

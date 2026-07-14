@@ -2158,8 +2158,9 @@ var VISIT_KNOWN_RESULTS_ = [
   'กลับชั้นเรียนได้', 'พักที่ห้องพยาบาล', 'แจ้งผู้ปกครองมารับ', 'ส่งต่อโรงพยาบาล'
 ];
 var VISIT_KNOWN_SYMPTOMS_ = [
-  'ไข้หวัด / หวัดใหญ่', 'ปวดศีรษะ', 'ปวดท้อง', 'อาการเวียนศีรษะ',
-  'บาดแผล / อุบัติเหตุ', 'ปัญหาสุขภาพจิต / ความเครียด', 'อื่นๆ', 'อื่น ๆ'
+  'หวัด/น้ำมูก', 'ไข้หวัด / หวัดใหญ่', 'ปวดศีรษะ', 'ปวดท้อง',
+  'ปวดท้องจุกเสียด/กระเพาะอาหาร', 'เจ็บคอ', 'ทอนซิลอักเสบ', 'ภูมิแพ้', 'โรคผิวหนัง',
+  'อาการเวียนศีรษะ', 'บาดแผล / อุบัติเหตุ', 'ปัญหาสุขภาพจิต / ความเครียด', 'อื่นๆ', 'อื่น ๆ'
 ];
 
 function applySheetVisitTimestamp_(record, rowIndex) {
@@ -2901,9 +2902,15 @@ function localStorageNeedsSheetBootstrap() {
 
 function shouldBootstrapCloudData(force) {
   if (!SHEETS_CONFIG.ENABLED || !SHEETS_CONFIG.SPREADSHEET_ID) return false;
-  if (force) return true;
-  /* โหลดจาก Google Sheet ทุกครั้งที่เปิดหน้า — ให้ localhost กับ Vercel แสดงข้อมูลชุดเดียวกัน */
-  return true;
+  var lastAt = 0;
+  try { lastAt = parseInt(localStorage.getItem('sh-cloud-bootstrap-at') || '0', 10) || 0; } catch (e) {}
+  var age = Date.now() - lastAt;
+  /* ถ้ายังไม่มีข้อมูลในเครื่องเลย — โหลดทันที */
+  if (typeof localStorageNeedsSheetBootstrap === 'function' && localStorageNeedsSheetBootstrap()) return true;
+  /* force (เช่น กดรีเฟรช) อย่างน้อยห่าง 90 วินาที */
+  if (force) return age >= 90000;
+  /* เปิดหน้าปกติ — รีโหลดทั้งชุดไม่บ่อยกว่า 3 นาที เพื่อลดอาการค้าง */
+  return age >= 180000;
 }
 
 function parseGvizVaccineRows_(gvizData) {

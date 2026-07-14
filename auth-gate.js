@@ -7,6 +7,7 @@
   var ROLES = {
     nurse: { name: 'เจ้าหน้าที่อนามัย / พยาบาล' },
     teacher: { name: 'ครู / อาจารย์ที่ปรึกษา' },
+    nursing_student: { name: 'นักเรียนพยาบาล' },
     student: { name: 'นักเรียน / ผู้ปกครอง' },
     admin: { name: 'ผู้บริหารโรงเรียน' }
   };
@@ -103,6 +104,9 @@
     applyEarlyGuestSidebar(guestMode);
     var main = document.querySelector('.main');
     if (main) main.scrollTop = 0;
+    /* รอสคริปต์หลักโหลดจบ แล้วค่อย render เนื้อหา (บทความ/วิดีโอ) */
+    w.__pendingGuestMode = guestMode;
+    w.__pendingShowSection = sid;
   };
 
   function whenMainReady(run, loadingMsg, btnSelector) {
