@@ -4908,11 +4908,44 @@
           </div>
         </div>
         <div>
-      <div class="card">
-        <div class="card-title"><span>⚠️</span>โรคที่ต้องเฝ้าระวัง</div>
-        <div class="alert alert-warning"><span>🦠</span><div>ไข้หวัด / ไข้หวัดใหญ่ · ทอนซิลอักเสบ · ปอดอักเสบ · ไข้เลือดออก · อีสุกอีใส · มือเท้าปาก</div></div>
-        <div class="alert alert-danger"><span>🚨</span><div>หากพบผู้ป่วยโรคติดต่ออันตราย ต้องรายงานหน่วยงานสาธารณสุขภายใน <strong>24 ชั่วโมง</strong></div></div>
-      </div>
+          <div id="visit-rec-lists-wrap" data-nursing-student-only style="display:none;">
+            <div class="card" id="visit-rec-today-card">
+              <div class="card-title" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                <span><span>📋</span> <span id="visit-rec-list-title">รายการวันนี้</span></span>
+                <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                  <select id="visit-rec-list-period" onchange="renderVisitRecordToday()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--white);color:var(--gray-dark);min-width:150px;">
+                    <option value="today">รายการวันนี้</option>
+                    <option value="week">รายการสัปดาห์นี้</option>
+                    <option value="month">รายการเดือนนี้</option>
+                    <option value="year">รายการปีนี้</option>
+                  </select>
+                </div>
+              </div>
+              <p id="visit-rec-list-period-hint" style="font-size:11px;color:var(--gray-mid);margin:-4px 0 10px;">แสดงตามเลขประจำตัวที่กรอกในฟอร์ม</p>
+              <div class="table-wrap">
+                <table>
+                  <thead><tr><th>วันที่/เวลา</th><th class="visit-col-staff">ชื่อ</th><th class="visit-col-staff">ชั้น</th><th>อาการ</th><th>สถานะ</th><th>คำแนะนำ</th></tr></thead>
+                  <tbody id="visit-rec-today"></tbody>
+                </table>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-title"><span>🕐</span>ประวัติย้อนหลัง</div>
+              <p id="visit-rec-history-desc" style="font-size:12px;color:var(--gray-mid);margin:-4px 0 12px;">ประวัติการรับบริการของเลขประจำตัวที่เลือก</p>
+              <div class="table-wrap" style="max-height:280px;overflow-y:auto;">
+                <table>
+                  <thead><tr><th>วันที่/เวลา</th><th class="visit-col-staff">ชื่อ</th><th class="visit-col-staff">ชั้น</th><th>อาการ</th><th>สถานะ</th><th>คำแนะนำ</th></tr></thead>
+                  <tbody id="visit-rec-history"></tbody>
+                </table>
+              </div>
+              <p id="visit-rec-history-note" style="margin-top:8px;font-size:11px;color:var(--gray-mid);"></p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-title"><span>⚠️</span>โรคที่ต้องเฝ้าระวัง</div>
+            <div class="alert alert-warning"><span>🦠</span><div>ไข้หวัด / ไข้หวัดใหญ่ · ทอนซิลอักเสบ · ปอดอักเสบ · ไข้เลือดออก · อีสุกอีใส · มือเท้าปาก</div></div>
+            <div class="alert alert-danger"><span>🚨</span><div>หากพบผู้ป่วยโรคติดต่ออันตราย ต้องรายงานหน่วยงานสาธารณสุขภายใน <strong>24 ชั่วโมง</strong></div></div>
+          </div>
         </div>
       </div>
     </div>
@@ -5298,7 +5331,7 @@
             <div class="form-group"><label>เพศ</label><select id="nut-sex"><option>ชาย</option><option>หญิง</option></select></div>
             <div class="form-group"><label>อายุ (ปี)</label><input type="number" id="nut-age" min="12" max="18"></div>
             <div class="form-group"><label>น้ำหนัก (กก.)</label><input type="number" step="0.1" id="nut-weight" oninput="calcBMI()"></div>
-            <div class="form-group"><label>ส่่วนสูง (ซม.)</label><input type="number" step="0.1" id="nut-height" oninput="calcBMI()"></div>
+            <div class="form-group"><label>ส่วนสูง (ซม.)</label><input type="number" step="0.1" id="nut-height" oninput="calcBMI()"></div>
             <div class="form-group">
               <label>BMI (คำนวณอัตโนมัติ)</label>
               <input type="text" id="nut-bmi" readonly style="background:#f5f5f5;">
@@ -5318,7 +5351,7 @@
                 <tr><td><span class="badge badge-green">น้ำหนักตามเกณฑ์</span></td><td>18.5–22.9</td><td>ส่งเสริมต่อเนื่อง</td></tr>
                 <tr><td><span class="badge badge-gold">น้ำหนักมากกว่าเกณฑ์</span></td><td>23–24.9</td><td>ปรับพฤติกรรม</td></tr>
                 <tr><td><span class="badge badge-red">โรคอ้วนระดับที่ 1</span></td><td>25–29.9</td><td>ส่งต่อแพทย์/โภชนากร</td></tr>
-                <tr><td><span class="badge badge-red">โรคอ้วนระดับที่ 2</span></td><td>&gt; 30</td><td>ส่งต่อแพทย์/โภชนากร</td></tr>
+                <tr><td><span class="badge badge-red">โรคอ้วนระดับที่ 2</span></td><td>30–40</td><td>ส่งต่อแพทย์/โภชนากร</td></tr>
                 <tr><td><span class="badge badge-red">โรคอ้วนระดับที่ 3</span></td><td>&gt; 40</td><td>ส่งต่อแพทย์ด่วน</td></tr>
               </tbody>
             </table>
@@ -6364,7 +6397,7 @@
                     <tr><td><span class="badge badge-green">น้ำหนักตามเกณฑ์</span></td><td>18.5–22.9</td><td>ส่งเสริมต่อเนื่อง</td></tr>
                     <tr><td><span class="badge badge-gold">น้ำหนักมากกว่าเกณฑ์</span></td><td>23–24.9</td><td>ปรับพฤติกรรม</td></tr>
                     <tr><td><span class="badge badge-red">โรคอ้วนระดับที่ 1</span></td><td>25–29.9</td><td>ส่งต่อแพทย์/โภชนากร</td></tr>
-                    <tr><td><span class="badge badge-red">โรคอ้วนระดับที่ 2</span></td><td>&gt; 30</td><td>ส่งต่อแพทย์/โภชนากร</td></tr>
+                    <tr><td><span class="badge badge-red">โรคอ้วนระดับที่ 2</span></td><td>30–40</td><td>ส่งต่อแพทย์/โภชนากร</td></tr>
                     <tr><td><span class="badge badge-red">โรคอ้วนระดับที่ 3</span></td><td>&gt; 40</td><td>ส่งต่อแพทย์ด่วน</td></tr>
                   </tbody>
                 </table>
@@ -16428,8 +16461,8 @@
     return keep;
   }
   function freeSpaceForVisitStorage_() {
+    /* ลบเฉพาะสำเนา — ไม่ลบ sh-visit หลักจนกว่าจะเขียนใหม่สำเร็จ */
     try { localStorage.removeItem('sh-visit-backup'); } catch (e) {}
-    try { localStorage.removeItem('sh-visit'); } catch (e2) {}
   }
   function writeVisitStoragePayload_(payload) {
     localStorage.setItem('sh-visit', payload);
@@ -16438,6 +16471,10 @@
     } catch (eBackup) {
       // backup เป็นทางเลือกเมื่อที่เก็บเกือบเต็ม
     }
+  }
+  function restoreVisitStoragePayload_(prevMain) {
+    if (prevMain == null) return;
+    try { localStorage.setItem('sh-visit', prevMain); } catch (eRestore) {}
   }
   function loadVisitRecords() {
     if (_visitRecordsMemCache) return _visitRecordsMemCache;
@@ -16498,6 +16535,8 @@
     if (typeof invalidateAdminLiveCache === 'function') invalidateAdminLiveCache();
     var limits = [VISIT_LOCAL_MAX_RECORDS, VISIT_LOCAL_HARD_MAX, VISIT_LOCAL_MIN_KEEP];
     var lastErr = null;
+    var prevMain = null;
+    try { prevMain = localStorage.getItem('sh-visit'); } catch (ePrev) {}
     var i;
     for (i = 0; i < limits.length; i++) {
       var list = pruneVisitRecordsForStorage_(records, limits[i]);
@@ -16510,16 +16549,20 @@
         continue;
       }
       try {
+        freeSpaceForVisitStorage_();
         writeVisitStoragePayload_(payload);
         return true;
       } catch (eWrite) {
         lastErr = eWrite;
-        freeSpaceForVisitStorage_();
+        /* ลองเคลียร์หลักชั่วคราวเพื่อเพิ่มพื้นที่ — คืนค่าเดิมถ้ารีไรต์ล้มเหลว */
         try {
+          freeSpaceForVisitStorage_();
+          try { localStorage.removeItem('sh-visit'); } catch (eRm) {}
           writeVisitStoragePayload_(payload);
           return true;
         } catch (eRetry) {
           lastErr = eRetry;
+          restoreVisitStoragePayload_(prevMain);
         }
       }
     }
@@ -16819,7 +16862,18 @@
     if (periodEl) periodEl.value = 'today';
     var highlightId = record && record.recordId ? record.recordId : null;
     renderVisitToday(highlightId);
+    if (typeof getCurrentRole === 'function' && getCurrentRole() === 'nursing_student' &&
+        typeof renderVisitRecordViews === 'function') {
+      try {
+        var recPeriod = document.getElementById('visit-rec-list-period');
+        if (recPeriod) recPeriod.value = 'today';
+        renderVisitRecordViews();
+      } catch (eRec) {}
+    }
     var card = document.getElementById('visit-today-card');
+    if (!card && typeof getCurrentRole === 'function' && getCurrentRole() === 'nursing_student') {
+      card = document.getElementById('visit-rec-today-card');
+    }
     if (card) {
       card.classList.add('visit-card-pulse');
       try { card.scrollIntoView({ behavior: 'smooth', block: 'start' }); } catch (eScroll) {}
@@ -16827,7 +16881,7 @@
     }
     if (highlightId) {
       setTimeout(function() {
-        var row = document.querySelector('#visit-today tr[data-visit-id="' + String(highlightId).replace(/"/g, '') + '"]');
+        var row = document.querySelector('#visit-today tr[data-visit-id="' + String(highlightId).replace(/"/g, '') + '"], #visit-rec-today tr[data-visit-id="' + String(highlightId).replace(/"/g, '') + '"]');
         if (row) {
           try { row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (e2) {}
         }
@@ -17376,6 +17430,7 @@
   }
   window.renderVisitRecordToday = renderVisitRecordToday;
   function renderVisitRecordViews() {
+    if (typeof getCurrentRole === 'function' && getCurrentRole() !== 'nursing_student') return;
     renderVisitRecordToday(getVisitRecordScopeId());
   }
   function fillVisitRecordForm() {
@@ -20069,6 +20124,9 @@
     });
     document.querySelectorAll('[data-teacher-only]').forEach(function(el) {
       el.style.display = (role === 'teacher' && !staffMasterAccess) ? '' : 'none';
+    });
+    document.querySelectorAll('[data-nursing-student-only]').forEach(function(el) {
+      el.style.display = role === 'nursing_student' ? '' : 'none';
     });
     if (role === 'teacher' && typeof renderTeacherHomeroomRoster === 'function') {
       renderTeacherHomeroomRoster();
