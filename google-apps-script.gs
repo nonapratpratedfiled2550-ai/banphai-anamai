@@ -15,7 +15,7 @@ var SHEET_SCHEMAS = {
     'วันที่เวลา', 'รหัส', 'ชื่อ', 'ระดับชั้น/ตำแหน่ง', 'ประเภทผู้รับบริการ',
     'อาการ', 'อุณหภูมิร่างกาย', 'ความดันโลหิต', 'ชีพจร', 'การวินิจฉัยเบื้องต้น',
     'การรักษาและยาที่ให้', 'ผลการรักษา', 'ผู้ให้บริการ', 'ตำแหน่งผู้ให้บริการ',
-    'ระดับชั้นผู้ให้บริการ (นักเรียน)', 'บทบาทผู้บันทึก'
+    'ระดับชั้นผู้ให้บริการ (นักเรียน)', 'บทบาทผู้บันทึก', 'รหัสรายการ'
   ],
   'ภาวะโภชนาการ': [
     'วันที่บันทึก', 'รหัสนักเรียน', 'ชื่อ-นามสกุล', 'ชั้น', 'เพศ', 'อายุ',
@@ -324,6 +324,14 @@ function handlePayload_(raw) {
     }
     deleteRowByMatchKey_(delRowSheet, delMatchKey, delMatchValue);
     return jsonResponse_({ ok: true, deleted: true });
+  }
+  if (body.action === 'deleteVisit') {
+    var visitDelSheet = body.sheet || 'บันทึกการรักษา';
+    if (!SHEET_SCHEMAS[visitDelSheet]) {
+      throw new Error('Unknown sheet: ' + visitDelSheet);
+    }
+    var deleted = deleteVisitRow_(visitDelSheet, body);
+    return jsonResponse_({ ok: true, deleted: !!deleted });
   }
   if (body.action === 'upsertAppointment') {
     var apptSheet = body.sheet || 'ใบนัด';
@@ -916,6 +924,58 @@ function deleteRowByMatchKey_(sheetName, matchKey, matchValue) {
       return;
     }
   }
+}
+
+/** ลบแถวบันทึกการรักษา — ใช้รหัสรายการก่อน แล้วค่อยจับคู่วันที่+รหัส+อาการ */
+function deleteVisitRow_(sheetName, opts) {
+  opts = opts || {};
+  var ss = getSpreadsheet_();
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet || sheet.getLastRow() < 2) return false;
+  var headers = getSheetHeaders_(sheet, sheetName);
+  var idxRecordId = findHeaderIndex_(headers, 'รหัสรายการ');
+  var idxDate = findHeaderIndex_(headers, 'วันที่เวลา');
+  if (idxDate < 0) idxDate = findHeaderIndex_(headers, 'วันที่บันทึก');
+  var idxId = findHeaderIndex_(headers, 'รหัส');
+  if (idxId < 0) idxId = findHeaderIndex_(headers, 'เลขประจำตัว');
+  var idxSymptom = findHeaderIndex_(headers, 'อาการ');
+  if (idxSymptom < 0) idxSymptom = findHeaderIndex_(headers, 'อาการ/ปัญหาสุขภาพ');
+  var recordId = String(opts.recordId || opts.matchValue || '').trim();
+  var recordedAt = String(opts.recordedAt || '').trim();
+  var studentId = String(opts.studentId || opts.id || '').trim();
+  var symptom = String(opts.symptom || '').trim();
+  var lastRow = sheet.getLastRow();
+  function cellStr_(row, colIdx) {
+    if (colIdx < 0) return '';
+    return String(sheet.getRange(row, colIdx + 1).getValue() || '').trim();
+  }
+  function normDate_(s) {
+    return String(s || '').replace(/\s+/g, ' ').trim();
+  }
+  for (var r = lastRow; r >= 2; r--) {
+    if (recordId && idxRecordId >= 0) {
+      if (idsMatch_(sheet.getRange(r, idxRecordId + 1).getValue(), recordId)) {
+        sheet.deleteRow(r);
+        SpreadsheetApp.flush();
+        return true;
+      }
+    }
+  }
+  if (!studentId || !recordedAt) return false;
+  for (var r2 = lastRow; r2 >= 2; r2--) {
+    if (idxId >= 0 && !idsMatch_(sheet.getRange(r2, idxId + 1).getValue(), studentId)) continue;
+    if (idxDate >= 0 && normDate_(cellStr_(r2, idxDate)) !== normDate_(recordedAt)) continue;
+    if (symptom && idxSymptom >= 0) {
+      var sheetSymptom = cellStr_(r2, idxSymptom);
+      if (sheetSymptom && sheetSymptom !== symptom && sheetSymptom.indexOf(symptom) === -1 && symptom.indexOf(sheetSymptom) === -1) {
+        continue;
+      }
+    }
+    sheet.deleteRow(r2);
+    SpreadsheetApp.flush();
+    return true;
+  }
+  return false;
 }
 
 function deleteAppointmentRow_(sheetName, studentId) {

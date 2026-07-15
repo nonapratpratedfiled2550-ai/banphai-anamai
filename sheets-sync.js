@@ -4,7 +4,7 @@
 var SHEETS_CONFIG = {
   ENABLED: true,
   SPREADSHEET_ID: '15IlAOVYRi3MixwzvhwO10ZkDonm_oam_wzSM-3-BpIw',
-  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbz-bVA7GayO0QCBk9hiC8vjC-rCyV-b3bNeFU7iRhcESQL2Cf9zU6qdObN25ywAQBjkww/exec',
+  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbw8MwAKSCpTgYMwdHTnaeW0bY23oARz020-5Wm217fcwJlZAgZUvZtpJ2rhrOODwQW3Sg/exec',
   QUEUE_KEY: 'sh-sheets-queue',
   IS_WORKSPACE: false
 };
@@ -351,7 +351,7 @@ function syncViaFormQueued_(payload) {
     || (payload.action === 'upsertRow' ? 1 : 0);
   var waitMs = payload.action === 'batchUpsertRows'
     ? Math.max(1500, 800 + rowCount * 120)
-    : (payload.action === 'upsertRow' || payload.action === 'deleteRow' ? 1600 : 800);
+    : (payload.action === 'upsertRow' || payload.action === 'deleteRow' || payload.action === 'deleteVisit' ? 1600 : 800);
   return new Promise(function(resolve) {
     _sheetFormSyncChain = _sheetFormSyncChain
       .catch(function() { /* keep queue alive */ })
@@ -396,6 +396,7 @@ function syncPayload_(payload) {
   }
 
   var isWrite = payload && (payload.action === 'upsertRow' || payload.action === 'deleteRow' ||
+    payload.action === 'deleteVisit' ||
     payload.action === 'batchUpsertRows' || payload.action === 'upsertAppointment' ||
     payload.action === 'upsertMental' || payload.action === 'deleteAppointment');
 
@@ -403,7 +404,7 @@ function syncPayload_(payload) {
     var ok = isWrite ? isVerifiedWriteOk_(res) : isVerifiedSheetOk_(res);
     if (!ok) throw new Error((res && (res.error || (isIdlePingResponse_(res) ? 'REDIRECT_LOST_BODY' : 'NOT_OK'))) || 'NOT_OK');
     var isQuiet = payload && (payload.silent || payload.action === 'ensureSchema' ||
-      payload.action === 'upsertRow' || payload.action === 'deleteRow');
+      payload.action === 'upsertRow' || payload.action === 'deleteRow' || payload.action === 'deleteVisit');
     if (ok && !isQuiet) showSheetToast_('ส่ง Google Sheet สำเร็จ');
     if (res) res.method = method;
     return res;
@@ -581,8 +582,14 @@ function flushSheetQueue_() {
   var payload;
   if (item.action) {
     payload = { action: item.action, sheet: item.sheet, matchKey: item.matchKey };
+    if (item.matchValue != null) payload.matchValue = item.matchValue;
+    if (item.recordId != null) payload.recordId = item.recordId;
+    if (item.recordedAt != null) payload.recordedAt = item.recordedAt;
+    if (item.studentId != null) payload.studentId = item.studentId;
+    if (item.id != null) payload.id = item.id;
+    if (item.symptom != null) payload.symptom = item.symptom;
     if (item.rows) payload.rows = item.rows;
-    else payload.row = item.row;
+    else if (item.row) payload.row = item.row;
   } else {
     payload = buildPayload_(item.sheet, item.row);
   }
@@ -812,6 +819,26 @@ function syncDeleteRowQuiet(sheetName, matchKey, matchValue) {
     matchValue: String(matchValue),
     silent: true
   };
+  ensureSheetSyncDom_();
+  return syncPayloadQuiet(payload);
+}
+
+function syncDeleteVisitQuiet(record) {
+  if (!record) return Promise.resolve({ ok: false });
+  var sheetName = (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.visit) ? SHEET_NAMES.visit : 'บันทึกการรักษา';
+  var payload = {
+    action: 'deleteVisit',
+    sheet: sheetName,
+    recordId: String(record.recordId || ''),
+    recordedAt: String(record.recordedAt || ''),
+    studentId: String(record.id || ''),
+    id: String(record.id || ''),
+    symptom: String(record.symptom || ''),
+    silent: true
+  };
+  if (!payload.recordId && !(payload.studentId && payload.recordedAt)) {
+    return Promise.resolve({ ok: false });
+  }
   ensureSheetSyncDom_();
   return syncPayloadQuiet(payload);
 }
@@ -1811,6 +1838,7 @@ function buildVisitSheetRow(record) {
   var providerRole = record.providerRole || '';
   var providerClass = record.providerClass || '';
   var row = {
+    'รหัสรายการ': record.recordId || '',
     'วันที่เวลา': record.recordedAt || '',
     'รหัส': record.id || '',
     'ชื่อ': record.name || '',
@@ -1852,7 +1880,8 @@ function buildVisitSheetRow(record) {
     providerName: providerName,
     providerRole: providerRole,
     providerClass: providerClass,
-    recordedAt: record.recordedAt || ''
+    recordedAt: record.recordedAt || '',
+    recordId: record.recordId || ''
   };
   return row;
 }
@@ -2087,6 +2116,42 @@ function findGvizColIndex_(cols, names) {
   return -1;
 }
 
+/** แปลงปีที่ซ้ำพ.ศ. (เช่น 3112 / 2569 ที่เก็บผิดเป็น ค.ศ.) ให้เป็น ค.ศ. จริง */
+function coerceVisitGregorianYear_(year) {
+  var y = Number(year);
+  if (!isFinite(y)) return 0;
+  if (y > 0 && y < 100) y = 2500 + y - 543;
+  /* 3112 = พ.ศ. ที่ถูก format ด้วย th-TH อีกรอบ → ลดทีละ 543 จนเข้าช่วง ค.ศ. */
+  var guard = 0;
+  while (y >= 2400 && y <= 3300 && guard < 4) {
+    y -= 543;
+    guard++;
+  }
+  return y;
+}
+
+function normalizeVisitEpochMs_(ts) {
+  if (ts == null || typeof ts !== 'number' || !isFinite(ts) || ts <= 0) return 0;
+  var ms = ts;
+  if (ts >= 1e9 && ts < 1e11) ms = ts * 1000;
+  else if (ts < 1e11) return 0;
+  var d = new Date(ms);
+  if (isNaN(d.getTime())) return 0;
+  var y = d.getFullYear();
+  if (y >= 2400 && y <= 3300) {
+    var fixedY = coerceVisitGregorianYear_(y);
+    if (fixedY >= 2000 && fixedY <= 2100) {
+      d.setFullYear(fixedY);
+      ms = d.getTime();
+      y = fixedY;
+    }
+  }
+  if (y < 2000 || y > 2100) return 0;
+  /* ไม่นับเวลาอนาคตเกิน 2 วัน (กันพ.ศ.ผิด / นาฬิกาเพี้ยนทำให้ติด "วันนี้" ตลอด) */
+  if (ms > Date.now() + 2 * 24 * 60 * 60 * 1000) return 0;
+  return ms;
+}
+
 function parseVisitRecordedAt(s) {
   if (!s) return 0;
   var t = String(s).trim();
@@ -2099,7 +2164,7 @@ function parseVisitRecordedAt(s) {
   if (thMatch) {
     var day = parseInt(thMatch[1], 10);
     var monKey = thMatch[2];
-    var year = parseInt(thMatch[3], 10);
+    var year = coerceVisitGregorianYear_(parseInt(thMatch[3], 10));
     var hour = parseInt(thMatch[4] || '12', 10);
     var min = parseInt(thMatch[5] || '0', 10);
     var sec = parseInt(thMatch[6] || '0', 10);
@@ -2109,48 +2174,48 @@ function parseVisitRecordedAt(s) {
         if (!month && monKey.indexOf(k.replace(/\./g, '')) !== -1) month = thMonths[k];
       });
     }
-    if (year >= 2400) year -= 543;
-    else if (year < 100) year = 2500 + year - 543;
-    if (month) return new Date(year, month - 1, day, hour, min, sec).getTime();
+    if (month && year >= 2000 && year <= 2100) {
+      return normalizeVisitEpochMs_(new Date(year, month - 1, day, hour, min, sec).getTime());
+    }
   }
   var slash = t.match(/(\d{1,2})\/(\d{1,2})\/(\d{2,4})/);
   if (slash) {
     var d2 = parseInt(slash[1], 10);
     var m2 = parseInt(slash[2], 10);
-    var y2 = parseInt(slash[3], 10);
-    if (y2 >= 2400) y2 -= 543;
-    else if (y2 < 100) y2 = 2500 + y2 - 543;
+    var y2 = coerceVisitGregorianYear_(parseInt(slash[3], 10));
     var timeMatch = t.match(/(\d{1,2}):(\d{2})/);
     var hh = timeMatch ? parseInt(timeMatch[1], 10) : 12;
     var mm = timeMatch ? parseInt(timeMatch[2], 10) : 0;
-    return new Date(y2, m2 - 1, d2, hh, mm, 0).getTime();
+    if (y2 >= 2000 && y2 <= 2100) {
+      return normalizeVisitEpochMs_(new Date(y2, m2 - 1, d2, hh, mm, 0).getTime());
+    }
   }
   var direct = new Date(t);
-  if (!isNaN(direct.getTime()) && direct.getFullYear() >= 2000) return direct.getTime();
+  if (!isNaN(direct.getTime())) {
+    var dy = coerceVisitGregorianYear_(direct.getFullYear());
+    if (dy >= 2000 && dy <= 2100 && dy !== direct.getFullYear()) {
+      direct.setFullYear(dy);
+    }
+    return normalizeVisitEpochMs_(direct.getTime());
+  }
   return 0;
 }
 
 function isValidVisitSavedAt(ts) {
-  if (ts == null || typeof ts !== 'number' || !isFinite(ts) || ts <= 0) return false;
-  var ms = ts;
-  if (ts >= 1e9 && ts < 1e11) ms = ts * 1000;
-  else if (ts < 1e11) return false;
-  var y = new Date(ms).getFullYear();
-  return y >= 2000 && y <= 2100;
+  return normalizeVisitEpochMs_(ts) > 0;
 }
 
 function resolveVisitSavedAt(record) {
   record = record || {};
-  if (isValidVisitSavedAt(record.savedAt)) {
-    return record.savedAt >= 1e9 && record.savedAt < 1e11 ? record.savedAt * 1000 : record.savedAt;
-  }
+  var fromSaved = normalizeVisitEpochMs_(record.savedAt);
+  if (fromSaved) return fromSaved;
   var m = String(record.recordId || '').match(/^v-(\d{11,})-/);
   if (m) {
-    var fromId = parseInt(m[1], 10);
-    if (isValidVisitSavedAt(fromId)) return fromId;
+    var fromId = normalizeVisitEpochMs_(parseInt(m[1], 10));
+    if (fromId) return fromId;
   }
   var parsed = parseVisitRecordedAt(record.recordedAt);
-  if (isValidVisitSavedAt(parsed)) return parsed;
+  if (parsed) return parsed;
   return 0;
 }
 
@@ -2163,6 +2228,10 @@ var VISIT_KNOWN_SYMPTOMS_ = [
   'อาการเวียนศีรษะ', 'บาดแผล / อุบัติเหตุ', 'ปัญหาสุขภาพจิต / ความเครียด', 'อื่นๆ', 'อื่น ๆ'
 ];
 
+function isClientVisitRecordId_(recordId) {
+  return /^v-\d{10,}-[a-z0-9]+$/i.test(String(recordId || '').trim());
+}
+
 function applySheetVisitTimestamp_(record, rowIndex) {
   if (!record) return record;
   var ts = resolveVisitSavedAt(record);
@@ -2171,7 +2240,11 @@ function applySheetVisitTimestamp_(record, rowIndex) {
     if (!record.recordedAt) record.recordedAt = new Date(ts).toLocaleString('th-TH');
     record.fromSheet = true;
     if (!record.sheetRow) record.sheetRow = (typeof rowIndex === 'number' ? rowIndex : 0) + 2;
-    if (!record.recordId || String(record.recordId).indexOf('v-sheet-') !== 0) {
+    /* คงรหัสรายการจากเครื่อง/ชีท — อย่าทับเป็น v-sheet-rN ซึ่งทำให้รายการซ้ำ */
+    var rid = String(record.recordId || '').trim();
+    if (!rid) {
+      record.recordId = 'v-sheet-r' + record.sheetRow + '-' + record.id;
+    } else if (!isClientVisitRecordId_(rid) && rid.indexOf('v-sheet-') !== 0) {
       record.recordId = 'v-sheet-r' + record.sheetRow + '-' + record.id;
     }
     delete record.timeRepaired;
@@ -2191,7 +2264,10 @@ function assignSheetVisitTodayTime_(record, rowIndex) {
   record.timeRepaired = true;
   record.fromSheet = true;
   if (!record.sheetRow) record.sheetRow = order + 2;
-  if (!record.recordId || String(record.recordId).indexOf('v-sheet-') !== 0) {
+  var rid = String(record.recordId || '').trim();
+  if (!rid) {
+    record.recordId = 'v-sheet-r' + record.sheetRow + '-' + record.id;
+  } else if (!isClientVisitRecordId_(rid) && rid.indexOf('v-sheet-') !== 0) {
     record.recordId = 'v-sheet-r' + record.sheetRow + '-' + record.id;
   }
   return record;
@@ -2203,15 +2279,14 @@ function parseGvizVisitDateTime_(row, idx) {
   if (typeof cell.v === 'string' && cell.v.indexOf('Date(') === 0) {
     var dm = String(cell.v).match(/Date\((\d+),(\d+),(\d+)(?:,(\d+),(\d+),(\d+))?/);
     if (dm) {
-      var y = parseInt(dm[1], 10);
-      if (y >= 2400) y -= 543;
+      var y = coerceVisitGregorianYear_(parseInt(dm[1], 10));
       var mo = parseInt(dm[2], 10);
       var d = parseInt(dm[3], 10);
       var h = parseInt(dm[4] || 0, 10);
       var mi = parseInt(dm[5] || 0, 10);
       var sec = parseInt(dm[6] || 0, 10);
-      var ts = new Date(y, mo, d, h, mi, sec).getTime();
-      if (isValidVisitSavedAt(ts)) return ts;
+      var ts = normalizeVisitEpochMs_(new Date(y, mo, d, h, mi, sec).getTime());
+      if (ts) return ts;
     }
   }
   var f = cell.f != null && cell.f !== '' ? String(cell.f) : String(cell.v);
@@ -2325,6 +2400,7 @@ function parseGvizVisitRows_(gvizData, studentId) {
   var idxProviderRole = findGvizColIndex_(cols, ['ตำแหน่งผู้ให้บริการ', 'providerrole']);
   var idxProviderClass = findGvizColIndex_(cols, ['ระดับชั้นผู้ให้บริการ (นักเรียน)', 'providerclass']);
   var idxMedicine = findGvizColIndex_(cols, ['ยาที่ให้', 'medicine']);
+  var idxRecordId = findGvizColIndex_(cols, ['รหัสรายการ', 'recordid']);
   /* ใช้ legacy เฉพาะชีตเก่าที่ไม่มีหัวคอลัมน์ชื่อ/อาการ — อย่าทับ index ที่หาได้จากหัวตาราง */
   var legacyLayout = !compactLayout && idxDate < 0 && idxId === 0 && cols[0] && cols[0].type === 'number'
     && idxName < 0 && idxSymptom < 0;
@@ -2361,6 +2437,7 @@ function parseGvizVisitRows_(gvizData, studentId) {
     var sheetName = idxName >= 0 ? gvizCell_(row, idxName) : '';
     if (sheetName === 'นักเรียน' || sheetName === 'ครู' || sheetName === 'บุคลากร') sheetName = '';
     visits.push({
+      recordId: idxRecordId >= 0 ? String(gvizCell_(row, idxRecordId) || '').trim() : '',
       id: id,
       name: sheetName,
       class: idxClass >= 0 ? gvizCell_(row, idxClass) : '',
@@ -2392,6 +2469,10 @@ function parseGvizVisitRows_(gvizData, studentId) {
       rec.recordId = rec.recordId || ('v-sheet-r' + rec.sheetRow + '-' + id);
     } else {
       applySheetVisitTimestamp_(rec, rowIndex);
+      if (idxRecordId >= 0) {
+        var ridFromSheet = String(gvizCell_(row, idxRecordId) || '').trim();
+        if (ridFromSheet) rec.recordId = ridFromSheet;
+      }
     }
   });
   visits.sort(function(a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
