@@ -4687,7 +4687,7 @@
               </select>
               </div>
             </div>
-            <p id="visit-list-period-hint" style="font-size:11px;color:var(--gray-mid);margin:-4px 0 10px;">ยึดวันปฏิทินที่บันทึก — วันนี้ → สัปดาห์นี้ (จ.–อา.) → เดือนนี้ → ปีนี้ → ประวัติย้อนหลัง</p>
+            <p id="visit-list-period-hint" style="font-size:11px;color:var(--gray-mid);margin:-4px 0 10px;">ยึดเวลาที่บันทึก — 24 ชม. → สัปดาห์ → เดือน → ปี → ประวัติย้อนหลัง (ไม่ลบข้อมูล)</p>
             <div class="table-wrap">
               <table>
                 <thead><tr><th id="visit-list-time-head">วันที่/เวลา</th><th class="visit-col-staff">ชื่อ</th><th class="visit-col-staff">ชั้น</th><th>อาการ</th><th>สถานะ</th><th>คำแนะนำ</th><th class="visit-col-action">จัดการ</th></tr></thead>
@@ -13946,8 +13946,14 @@
       console.error('[SH visit] render list', eList);
     }
     try {
-      syncUpsertRowQuiet(SHEET_NAMES.visit, 'รหัสรายการ', buildVisitSheetRow(record));
-    } catch (eSync) {}
+      if (typeof syncVisitRecordToSheet === 'function') {
+        syncVisitRecordToSheet(record, { silent: false, toastOnFail: true, toastOnSuccess: true });
+      } else if (typeof syncUpsertRowQuiet === 'function' && typeof buildVisitSheetRow === 'function' && typeof SHEET_NAMES !== 'undefined') {
+        syncUpsertRowQuiet(SHEET_NAMES.visit, 'รหัสรายการ', buildVisitSheetRow(record));
+      }
+    } catch (eSync) {
+      console.warn('[SH visit] sheet sync', eSync);
+    }
     try {
       if (typeof syncRegistryProfileExtrasQuiet_ === 'function') {
         var visitType = String(record.type || '');
@@ -13959,7 +13965,6 @@
       }
     } catch (eReg) {}
     try { notifyReportDataChanged(); } catch (eN) {}
-    /* คืนค่า cache อีกครั้ง — notifyReportDataChanged เคลียร์ cache */
     _visitRecordsMemCache = records;
     return { ok: savedOk, record: record };
   }
@@ -15610,7 +15615,7 @@
   }
   function notifyReportDataChanged() {
     invalidateAdminLiveCache();
-    invalidateVisitRecordsCache();
+    /* ไม่เคลียร์ _visitRecordsMemCache — เคยทำให้รายการรักษาหายหลังบันทึก/รีเฟรชกราฟ */
     refreshAllLiveCharts();
     var diseasePanel = document.getElementById('section-disease');
     if (diseasePanel && diseasePanel.classList.contains('active')) {
@@ -16440,39 +16445,17 @@
     var before = records.length;
     for (var i = records.length - 1; i >= 0; i--) {
       var r = records[i];
-      if (!isVisitToday(r)) continue;
-      var name = r.name ? String(r.name).trim() : '';
+      if (!r) { records.splice(i, 1); continue; }
       var id = r.id ? String(r.id).trim() : '';
-      if (!name || !id) records.splice(i, 1);
+      var rid = r.recordId ? String(r.recordId).trim() : '';
+      var hasContent = !!(id || rid || (r.symptom && String(r.symptom).trim()) || (r.diagnosis && String(r.diagnosis).trim()));
+      if (!hasContent) records.splice(i, 1);
     }
     return records.length !== before;
   }
+  /* ไม่รวมรายการคนละครั้งในวันเดียวกัน — นักเรียนมารับบริการหลายครั้งต่อวันได้ */
   function dedupeVisitRecordsByStudentDay(records) {
-    var best = {};
-    records.forEach(function(r) {
-      if (!r.id) return;
-      var ts = getVisitRecordTime(r);
-      if (!ts) return;
-      var d = new Date(ts);
-      var dayKey = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate() + '|' + String(r.id).trim();
-      if (!best[dayKey] || ts > (getVisitRecordTime(best[dayKey]) || 0)) best[dayKey] = r;
-    });
-    var keepSet = {};
-    Object.keys(best).forEach(function(k) { keepSet[best[k].recordId || visitRecordMergeKey(best[k])] = true; });
-    var before = records.length;
-    for (var i = records.length - 1; i >= 0; i--) {
-      var r = records[i];
-      if (!r.id || !isVisitToday(r)) continue;
-      if (r.fromSheet || (r.recordId && String(r.recordId).indexOf('v-sheet-') === 0)) continue;
-      var key = r.recordId || visitRecordMergeKey(r);
-      if (keepSet[key]) continue;
-      var ts = getVisitRecordTime(r);
-      if (!ts) continue;
-      var d = new Date(ts);
-      var dayKey = d.getFullYear() + '-' + d.getMonth() + '-' + d.getDate() + '|' + String(r.id).trim();
-      if (best[dayKey] && best[dayKey] !== r) records.splice(i, 1);
-    }
-    return records.length !== before;
+    return false;
   }
   /* เก็บรายการรักษาในเครื่องแบบจำกัดขนาด — ชีทเก็บประวัติยาว; backup ไม่บังคับเมื่อที่เก็บใกล้เต็ม */
   var VISIT_LOCAL_MAX_RECORDS = 350;
@@ -16603,7 +16586,6 @@
   }
   function saveVisitRecords(records, opts) {
     opts = opts || {};
-    _visitRecordsMemCache = null;
     if (typeof invalidateAdminLiveCache === 'function') invalidateAdminLiveCache();
     var limits = [VISIT_LOCAL_MAX_RECORDS, VISIT_LOCAL_HARD_MAX, VISIT_LOCAL_MIN_KEEP];
     var lastErr = null;
@@ -16623,14 +16605,15 @@
       try {
         freeSpaceForVisitStorage_();
         writeVisitStoragePayload_(payload);
+        _visitRecordsMemCache = list;
         return true;
       } catch (eWrite) {
         lastErr = eWrite;
-        /* ลองเคลียร์หลักชั่วคราวเพื่อเพิ่มพื้นที่ — คืนค่าเดิมถ้ารีไรต์ล้มเหลว */
         try {
           freeSpaceForVisitStorage_();
           try { localStorage.removeItem('sh-visit'); } catch (eRm) {}
           writeVisitStoragePayload_(payload);
+          _visitRecordsMemCache = list;
           return true;
         } catch (eRetry) {
           lastErr = eRetry;
@@ -16701,7 +16684,9 @@
     if (idx < 0) return;
     records[idx].result = newResult;
     saveVisitRecords(records);
-    if (typeof syncUpsertRowQuiet === 'function' && typeof buildVisitSheetRow === 'function' && typeof SHEET_NAMES !== 'undefined') {
+    if (typeof syncVisitRecordToSheet === 'function') {
+      syncVisitRecordToSheet(records[idx], { silent: true, toastOnFail: false });
+    } else if (typeof syncUpsertRowQuiet === 'function' && typeof buildVisitSheetRow === 'function' && typeof SHEET_NAMES !== 'undefined') {
       syncUpsertRowQuiet(SHEET_NAMES.visit, 'รหัสรายการ', buildVisitSheetRow(records[idx]));
     } else if (typeof syncToSheetQuiet === 'function' && typeof buildVisitSheetRow === 'function' && typeof SHEET_NAMES !== 'undefined') {
       syncToSheetQuiet(SHEET_NAMES.visit, buildVisitSheetRow(records[idx]));
@@ -16804,8 +16789,9 @@
     return formatVisitDateTime(record);
   }
   var VISIT_DAY_MS = 24 * 60 * 60 * 1000;
-  var VISIT_MONTH_MS = 30 * 24 * 60 * 60 * 1000;
-  var VISIT_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
+  var VISIT_WEEK_MS = 7 * VISIT_DAY_MS;
+  var VISIT_MONTH_MS = 30 * VISIT_DAY_MS;
+  var VISIT_YEAR_MS = 365 * VISIT_DAY_MS;
   function resolveVisitRecordTimestamp(record) {
     if (!record) return 0;
     var ts = getVisitRecordTime(record);
@@ -16841,24 +16827,18 @@
     return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }
   /**
-   * ช่วงรายการแบบปฏิทิน (ไม่ใช่หน้าต่างลอย 24 ชม./30 วัน)
-   * today = วันนี้ | week = จันทร์–อาทิตย์สัปดาห์นี้ยกเว้นวันนี้
-   * month = เดือนนี้ที่อยู่นอกสัปดาห์นี้ | year = ปีนี้ที่อยู่นอกเดือนนี้
+   * ช่วงรายการแบบนับจากเวลาที่บันทึก (ไม่ตัดทิ้ง — ย้ายไปรายการถัดไป)
+   * today < 24ชม. | week 1–7วัน | month 7–30วัน | year 30วัน–1ปี | history > 1ปี
    */
   function getVisitPeriodBucket_(record) {
     var ts = resolveVisitRecordTimestamp(record);
-    if (!ts) return '';
-    var now = new Date();
-    var nowStart = startOfLocalDayMs_(now);
-    var recStart = startOfLocalDayMs_(new Date(ts));
-    if (recStart > nowStart) return '';
-    if (recStart === nowStart) return 'today';
-    var weekStart = startOfWeekMondayMs_(now);
-    if (recStart >= weekStart && recStart < nowStart) return 'week';
-    var monthStart = startOfLocalDayMs_(new Date(now.getFullYear(), now.getMonth(), 1));
-    if (recStart >= monthStart && recStart < weekStart) return 'month';
-    var yearStart = startOfLocalDayMs_(new Date(now.getFullYear(), 0, 1));
-    if (recStart >= yearStart && recStart < monthStart) return 'year';
+    if (!ts) return 'today';
+    var age = Date.now() - ts;
+    if (age < 0) age = 0;
+    if (age < VISIT_DAY_MS) return 'today';
+    if (age < VISIT_WEEK_MS) return 'week';
+    if (age < VISIT_MONTH_MS) return 'month';
+    if (age < VISIT_YEAR_MS) return 'year';
     return 'history';
   }
   function isVisitPeriodToday(record) {
@@ -16880,10 +16860,10 @@
     return getVisitPeriodBucket_(record) || 'year';
   }
   var VISIT_PERIOD_HINTS = {
-    today: 'แสดงรายการที่บันทึกวันนี้ตามวันปฏิทิน — พ้นวันนี้จะย้ายไปรายการสัปดาห์นี้',
-    week: 'แสดงรายการวันจันทร์–อาทิตย์ของสัปดาห์นี้ ยกเว้นวันนี้ — พ้นสัปดาห์จะย้ายไปรายการเดือนนี้',
-    month: 'แสดงรายการอื่นในเดือนนี้ที่อยู่นอกสัปดาห์ปัจจุบัน — พ้นเดือนจะย้ายไปรายการปีนี้',
-    year: 'แสดงรายการอื่นในปีนี้ที่อยู่นอกเดือนปัจจุบัน — เกินปีปฏิทินแสดงในประวัติย้อนหลัง'
+    today: 'แสดงรายการภายใน 24 ชั่วโมงนับจากเวลาที่บันทึก — ครบ 24 ชม. ย้ายไปรายการสัปดาห์นี้',
+    week: 'แสดงรายการที่บันทึกมาแล้ว 1–7 วัน — ครบ 7 วัน ย้ายไปรายการเดือนนี้',
+    month: 'แสดงรายการที่บันทึกมาแล้ว 7–30 วัน — ครบ 30 วัน ย้ายไปรายการปีนี้',
+    year: 'แสดงรายการที่บันทึกมาแล้ว 30 วัน – 1 ปี — เกิน 1 ปีแสดงในประวัติย้อนหลัง'
   };
   function isVisitWithin24Hours(record) {
     return isVisitPeriodToday(record);
@@ -17011,7 +16991,7 @@
     var limit = 100;
     var records = all.length > limit ? all.slice(0, limit) : all;
     if (!records.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-mid);padding:18px;">ยังไม่มีประวัติการรับบริการ (แสดงรายการที่บันทึกก่อนปีปฏิทินปัจจุบัน)</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-mid);padding:18px;">ยังไม่มีประวัติการรับบริการ (แสดงรายการที่บันทึกมาแล้วเกิน 1 ปี)</td></tr>';
       if (note) note.textContent = '';
       return;
     }
@@ -17034,10 +17014,10 @@
       year: 'รายการปีนี้'
     };
     const emptyLabels = {
-      today: 'ยังไม่มีรายการวันนี้',
-      week: 'ยังไม่มีรายการในสัปดาห์นี้ (ยกเว้นวันนี้)',
-      month: 'ยังไม่มีรายการอื่นในเดือนนี้',
-      year: 'ยังไม่มีรายการอื่นในปีนี้'
+      today: 'ยังไม่มีรายการภายใน 24 ชั่วโมง',
+      week: 'ยังไม่มีรายการที่ผ่านมา 1–7 วัน',
+      month: 'ยังไม่มีรายการที่ผ่านมา 7–30 วัน',
+      year: 'ยังไม่มีรายการที่ผ่านมา 30 วัน – 1 ปี'
     };
     var titleEl = document.getElementById('visit-list-title');
     if (titleEl) titleEl.textContent = periodLabels[period] || periodLabels.today;
@@ -17171,6 +17151,11 @@
     if (!keys || !r) return false;
     var key = visitRecordMergeKey(r);
     if (key && keys[key]) return true;
+    /* รายการ client (v-...) ไม่ถูกตัดด้วย soft key จากชีท — กันข้อมูลหายหลังดึงชีท */
+    var rid = String(r.recordId || '').trim();
+    if (rid && isClientVisitRecordId_(rid)) {
+      return !!keys['id:' + rid];
+    }
     var soft = visitRecordSoftKey_(r);
     if (soft && keys['soft:' + soft]) return true;
     return false;
@@ -17184,26 +17169,20 @@
     if (soft) return 'soft:' + soft;
     return String(r.id || '') + '|' + String(r.recordedAt || '') + '|' + String(r.symptom || '') + '|' + String(r.diagnosis || '');
   }
-  /** รวมรายการที่ซ้ำจาก local+ชีท (รหัสเดียวกัน หรือเนื้อหาใกล้กันในช่วงสั้นๆ) */
+  /** ตัดเฉพาะรหัสรายการซ้ำ — ไม่รวมรายการคนละครั้งที่อาการ/เวลาใกล้กัน */
   function dedupeVisitLocalSheetPairs_(records) {
     if (!Array.isArray(records) || records.length < 2) return records || [];
-    var list = records.slice().sort(function(a, b) {
-      return (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0);
-    });
     var seenId = {};
-    var seenSoft = {};
     var out = [];
-    list.forEach(function(r) {
+    records.slice().sort(function(a, b) {
+      return (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0);
+    }).forEach(function(r) {
       if (!r) return;
       var rid = String(r.recordId || '').trim();
-      if (rid && seenId[rid]) return;
-      var soft = visitRecordSoftKey_(r);
-      if (soft && seenSoft[soft]) {
-        /* มีคู่ soft แล้ว — ถ้าตัวนี้เป็นแค่สำเนาจากชีท ให้ทิ้ง */
-        return;
+      if (rid) {
+        if (seenId[rid]) return;
+        seenId[rid] = true;
       }
-      if (rid) seenId[rid] = true;
-      if (soft) seenSoft[soft] = true;
       out.push(r);
     });
     return out;
@@ -17251,9 +17230,13 @@
     saveVisitRecords(all, { quiet: true });
   }
   function replaceVisitRecordsFromSheetAll(sheetVisits) {
-    if (!Array.isArray(sheetVisits)) return;
+    /* ห้ามทับด้วยอาร์เรย์ว่าง — การดึงชีทล้มเหลวเคยทำให้รายการรักษาในเครื่องหายหมด */
+    if (!Array.isArray(sheetVisits) || !sheetVisits.length) return;
     var local = [];
     try { local = JSON.parse(localStorage.getItem('sh-visit') || '[]'); } catch (e) {}
+    if (_visitRecordsMemCache && _visitRecordsMemCache.length) {
+      local = _visitRecordsMemCache.slice();
+    }
     var keys = {};
     var merged = [];
     sheetVisits.forEach(function(r) {
@@ -17271,25 +17254,28 @@
       if (!r) return;
       enrichVisitFromStudentRegistry(r);
       if (visitHasMergeKey_(keys, r)) return;
-      /* รายการที่เคยมาจากชีทแต่ถูกลบจากชีทแล้ว — ไม่ดึงกลับจาก local */
-      if (typeof isSheetVisitRecord_ === 'function' ? isSheetVisitRecord_(r) : (r.fromSheet || (r.recordId && String(r.recordId).indexOf('v-sheet-') === 0))) {
-        /* ยกเว้นรหัสแบบ client ที่ยังมีอยู่บนเครื่อง */
-        if (!isClientVisitRecordId_(r.recordId)) return;
-      }
-      /* คงรายการ local ที่ยังไม่มีคู่บนชีท — สั้นๆ ระหว่างรอซิงค์ / ยาวขึ้นเล็กน้อยหากซิงค์ล้มเหลว */
-      var age = Date.now() - (Number(r.savedAt) || 0);
-      if (age > 90000 && !isClientVisitRecordId_(r.recordId)) return;
-      if (age > 86400000) return;
+      var isClient = isClientVisitRecordId_(r.recordId);
+      var isSheet = typeof isSheetVisitRecord_ === 'function'
+        ? isSheetVisitRecord_(r)
+        : !!(r.fromSheet || (r.recordId && String(r.recordId).indexOf('v-sheet-') === 0));
+      /* รายการจากชีทที่ไม่มีบนชีทรอบนี้ = ถูกลบจากชีทแล้ว (ยกเว้นรหัส client) */
+      if (isSheet && !isClient) return;
+      /* คงรายการในเครื่องทั้งหมด — ไม่ตัดทิ้งตามอายุ แค่ย้ายช่วงใน dropdown */
       markVisitMergeKeys_(keys, r);
       merged.push(r);
     });
     merged = dedupeVisitLocalSheetPairs_(merged);
-    merged.sort(function(a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
+    merged.sort(function(a, b) {
+      var tb = (typeof resolveVisitRecordTimestamp === 'function' ? resolveVisitRecordTimestamp(b) : 0) || Number(b.savedAt) || 0;
+      var ta = (typeof resolveVisitRecordTimestamp === 'function' ? resolveVisitRecordTimestamp(a) : 0) || Number(a.savedAt) || 0;
+      return tb - ta;
+    });
     /* จำกัดก้อนจากชีท — ไม่ให้ localStorage เต็มจนบันทึกใหม่ไม่ได้ */
     if (merged.length > VISIT_SHEET_MERGE_MAX) {
       merged = pruneVisitRecordsForStorage_(merged, VISIT_SHEET_MERGE_MAX);
     }
     saveVisitRecords(merged, { quiet: true });
+    _visitRecordsMemCache = merged;
     _visitRecordsRepairedThisSession = true;
   }
   function mergeRecordsIntoLocalStorage_(storageKey, incoming, getMergeKey) {
@@ -17374,8 +17360,7 @@
       if (typeof syncReferralDashboardCount === 'function') syncReferralDashboardCount();
     } catch (e) {}
     invalidateAdminLiveCache();
-    invalidateVisitRecordsCache();
-    _visitRecordsRepairedThisSession = false;
+    /* ไม่เคลียร์ visit cache — ข้อมูลถูก merge/บันทึกแล้วใน replaceVisitRecordsFromSheetAll */
     if (typeof updateStudentCounts === 'function') updateStudentCounts();
     if (typeof syncAllSchoolCalendarViews === 'function' && typeof loadDashboard === 'function') {
       syncAllSchoolCalendarViews(loadDashboard());
@@ -17591,7 +17576,7 @@
         if (callback) callback();
         return;
       }
-      if (Array.isArray(sheetVisits)) {
+      if (Array.isArray(sheetVisits) && sheetVisits.length) {
         replaceVisitRecordsFromSheetAll(sheetVisits);
       }
       if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
@@ -17699,10 +17684,10 @@
       year: 'รายการปีนี้'
     };
     var emptyLabels = {
-      today: 'ยังไม่มีรายการวันนี้',
-      week: 'ยังไม่มีรายการในสัปดาห์นี้ (ยกเว้นวันนี้)',
-      month: 'ยังไม่มีรายการอื่นในเดือนนี้',
-      year: 'ยังไม่มีรายการอื่นในปีนี้'
+      today: 'ยังไม่มีรายการภายใน 24 ชั่วโมง',
+      week: 'ยังไม่มีรายการที่ผ่านมา 1–7 วัน',
+      month: 'ยังไม่มีรายการที่ผ่านมา 7–30 วัน',
+      year: 'ยังไม่มีรายการที่ผ่านมา 30 วัน – 1 ปี'
     };
     var titleEl = document.getElementById('visit-rec-list-title');
     if (titleEl) titleEl.textContent = periodLabels[period] || periodLabels.today;
@@ -20250,7 +20235,6 @@
         if (getCurrentRole() !== role) return;
         refreshAllVisitRecordsFromSheetForStaff(function() {
           invalidateAdminLiveCache();
-          invalidateVisitRecordsCache();
           if (isExecDashboardRole()) {
             var dash = document.getElementById('section-dashboard');
             if (dash && dash.classList.contains('active')) renderDashboardNow();

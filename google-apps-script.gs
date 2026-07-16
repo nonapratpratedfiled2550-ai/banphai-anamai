@@ -362,6 +362,15 @@ function handlePayload_(raw) {
     var rowNum = upsertMentalRow_(rowSheet, rowMatchKey, rowData);
     return jsonResponse_({ ok: true, sheet: rowSheet, row: rowNum, upserted: true });
   }
+  if (body.action === 'appendRow') {
+    var appendSheet = body.sheet;
+    var appendData = body.row || body.values || {};
+    if (!appendSheet || !SHEET_SCHEMAS[appendSheet]) {
+      throw new Error('Unknown sheet: ' + appendSheet);
+    }
+    var appendNum = appendRow_(appendSheet, appendData);
+    return jsonResponse_({ ok: true, sheet: appendSheet, row: appendNum, appended: true });
+  }
   if (body.action === 'batchUpsertRows') {
     var batchSheet = body.sheet;
     var batchMatchKey = body.matchKey;
@@ -704,9 +713,14 @@ function upsertMentalRow_(sheetName, matchKey, rowObject) {
   if (!headers.length) headers = getSheetHeaders_(sheet, sheetName);
   var match = resolveMentalMatch_(headers, matchKey, rowObject);
   var matchIndex = match.index;
-  if (matchIndex < 0) throw new Error('Missing match column: ' + matchKey);
+  if (matchIndex < 0) {
+    /* ชีตเก่าที่ยังไม่มีคอลัมน์จับคู่ — append แทน error */
+    return appendRow_(sheetName, rowObject);
+  }
   var matchValue = match.value;
-  if (!matchValue) throw new Error('Missing match id for upsert');
+  if (!matchValue) {
+    return appendRow_(sheetName, rowObject);
+  }
 
   var lastRow = sheet.getLastRow();
   var foundRow = -1;
