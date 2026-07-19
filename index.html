@@ -3172,6 +3172,10 @@
   .role-particles span:nth-child(4) { left: 22%; top: 72%; animation-delay: 0.6s; animation-duration: 10s; background: rgba(139,92,246,0.35); box-shadow: 0 0 12px rgba(139,92,246,0.45); }
   .role-particles span:nth-child(5) { left: 55%; top: 85%; animation-delay: 1.8s; animation-duration: 7.5s; }
   .role-particles span:nth-child(6) { left: 65%; top: 35%; animation-delay: 3s; animation-duration: 11s; background: rgba(245,158,11,0.4); box-shadow: 0 0 12px rgba(245,158,11,0.45); }
+  .role-particles span:nth-child(7) { left: 40%; top: 8%; animation-delay: 0.9s; animation-duration: 8.5s; background: rgba(16,185,129,0.35); }
+  .role-particles span:nth-child(8) { left: 8%; top: 48%; animation-delay: 2.4s; animation-duration: 9.5s; background: rgba(45,212,191,0.35); box-shadow: 0 0 10px rgba(45,212,191,0.4); }
+  .role-particles span:nth-child(9) { left: 92%; top: 78%; animation-delay: 1.5s; animation-duration: 10.5s; background: rgba(56,189,248,0.3); }
+  .role-particles span:nth-child(10) { left: 48%; top: 58%; animation-delay: 3.6s; animation-duration: 12s; background: rgba(167,139,250,0.3); box-shadow: 0 0 10px rgba(167,139,250,0.35); }
   @keyframes roleMeshShift {
     0%, 100% { background-position: 0% 0%, 100% 100%; }
     50% { background-position: 100% 100%, 0% 0%; }
@@ -3228,6 +3232,17 @@
     margin: auto;
     flex-shrink: 0;
   }
+  .role-welcome-heading {
+    font-size: clamp(1.5rem, 3.5vw, 2rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.25;
+    color: #0a3d28;
+    -webkit-text-fill-color: #0a3d28;
+    background: none;
+    animation: roleHeadingGlow 3.8s ease-in-out infinite;
+    filter: none;
+  }
   .role-welcome-block {
     margin-bottom: 1.25rem;
     padding: 1rem 1.25rem;
@@ -3237,6 +3252,7 @@
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
     box-shadow: 0 8px 24px rgba(15, 23, 42, 0.06);
+    animation: roleWelcomeFloat 5s ease-in-out infinite;
   }
   .role-welcome-badge {
     display: inline-flex;
@@ -3257,17 +3273,6 @@
     box-shadow: 0 0 10px #10b981;
     animation: roleDotBlink 1.4s ease-in-out infinite;
   }
-  .role-welcome-heading {
-    font-size: clamp(1.5rem, 3.5vw, 2rem);
-    font-weight: 800;
-    letter-spacing: -0.03em;
-    line-height: 1.25;
-    color: #0a3d28;
-    -webkit-text-fill-color: #0a3d28;
-    background: none;
-    animation: none;
-    filter: none;
-  }
   @keyframes roleTextShine {
     0% { background-position: 0% center; }
     100% { background-position: 220% center; }
@@ -3279,6 +3284,32 @@
   @keyframes roleDotBlink {
     0%, 100% { opacity: 1; transform: scale(1); }
     50% { opacity: 0.5; transform: scale(0.85); }
+  }
+  @keyframes roleHeadingGlow {
+    0%, 100% { text-shadow: 0 0 0 transparent; }
+    50% { text-shadow: 0 6px 28px rgba(16, 185, 129, 0.28); }
+  }
+  @keyframes roleWelcomeFloat {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-3px); }
+  }
+  @keyframes roleCardEnter {
+    from { opacity: 0; transform: translateY(18px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  @keyframes rolePanelEnter {
+    from { opacity: 0; transform: translateX(-18px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+  @keyframes roleMainEnter {
+    from { opacity: 0; transform: translateY(14px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  #role-screen > .role-screen-panel {
+    animation: rolePanelEnter 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+  #role-screen > .role-main-shell {
+    animation: roleMainEnter 0.75s 0.08s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
   .role-grid {
     perspective: 1600px;
@@ -3312,9 +3343,11 @@
     .role-welcome-block {
       margin-bottom: 0.75rem;
       padding: 0.7rem 1rem;
+      animation: none;
     }
     .role-welcome-heading {
       font-size: 1.25rem;
+      animation: none;
     }
     .role-welcome-block .mt-2 {
       display: none;
@@ -3329,6 +3362,10 @@
       min-height: 4.5rem;
     }
     .role-motion-card {
+      animation: none;
+    }
+    .role-motion-card .role-card-shine,
+    .role-motion-card .role-card-topbar {
       animation: none;
     }
   }
@@ -3394,16 +3431,19 @@
       0 10px 28px rgba(15, 23, 42, 0.08),
       0 0 0 1px rgba(15, 23, 42, 0.03),
       0 0 18px -8px var(--role-glow);
-    animation: roleCardBob 5.5s ease-in-out infinite;
+    animation:
+      roleCardEnter 0.75s cubic-bezier(0.22, 1, 0.36, 1) both,
+      roleCardBob 5.5s ease-in-out infinite,
+      roleCardGlowPulse 4.5s ease-in-out infinite;
     overflow: hidden;
     text-align: left;
     cursor: pointer;
   }
-  .role-motion-card:nth-child(1) { animation-delay: 0s, 0s; }
-  .role-motion-card:nth-child(2) { animation-delay: 0.7s, 0.6s; }
-  .role-motion-card:nth-child(3) { animation-delay: 1.4s, 1.2s; }
-  .role-motion-card:nth-child(4) { animation-delay: 2.1s, 1.8s; }
-  .role-motion-card:nth-child(5) { animation-delay: 2.8s, 2.4s; }
+  .role-motion-card:nth-child(1) { animation-delay: 0.18s, 0.95s, 1.1s; }
+  .role-motion-card:nth-child(2) { animation-delay: 0.28s, 1.15s, 1.35s; }
+  .role-motion-card:nth-child(3) { animation-delay: 0.38s, 1.35s, 1.55s; }
+  .role-motion-card:nth-child(4) { animation-delay: 0.48s, 1.55s, 1.75s; }
+  .role-motion-card:nth-child(5) { animation-delay: 0.58s, 1.75s, 1.95s; }
   .role-card--nurse { --role-glow: rgba(16,185,129,0.32); --role-accent: #047857; --role-accent-2: #34d399; --role-tint: rgba(16,185,129,0.06); --role-tint-strong: rgba(16,185,129,0.14); }
   .role-card--teacher { --role-glow: rgba(245,158,11,0.32); --role-accent: #b45309; --role-accent-2: #fbbf24; --role-tint: rgba(245,158,11,0.06); --role-tint-strong: rgba(245,158,11,0.14); }
   .role-card--nursing { --role-glow: rgba(244,63,94,0.32); --role-accent: #be123c; --role-accent-2: #fb7185; --role-tint: rgba(244,63,94,0.06); --role-tint-strong: rgba(244,63,94,0.14); }
@@ -3421,7 +3461,9 @@
     position: absolute;
     inset: 0 0 auto 0;
     height: 4px;
-    background: linear-gradient(90deg, var(--role-accent), var(--role-accent-2));
+    background: linear-gradient(90deg, var(--role-accent), var(--role-accent-2), var(--role-accent));
+    background-size: 200% 100%;
+    animation: roleTopbarFlow 3.2s linear infinite;
     z-index: 2;
   }
   .role-motion-card .role-card-glow-ring {
@@ -3527,8 +3569,24 @@
     transition: transform 0.3s ease;
   }
   .role-motion-card .role-card-shine {
-    display: none;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 42%;
+    height: 100%;
+    background: linear-gradient(105deg, transparent 0%, rgba(255,255,255,0.55) 48%, transparent 88%);
+    transform: translateX(-140%) skewX(-14deg);
+    pointer-events: none;
+    z-index: 3;
+    opacity: 0;
+    animation: roleCardShineLoop 6.5s ease-in-out infinite;
   }
+  .role-motion-card:nth-child(1) .role-card-shine { animation-delay: 0.4s; }
+  .role-motion-card:nth-child(2) .role-card-shine { animation-delay: 1.1s; }
+  .role-motion-card:nth-child(3) .role-card-shine { animation-delay: 1.8s; }
+  .role-motion-card:nth-child(4) .role-card-shine { animation-delay: 2.5s; }
+  .role-motion-card:nth-child(5) .role-card-shine { animation-delay: 3.2s; }
   @keyframes roleCardShineLoop {
     0%, 70%, 100% { transform: translateX(-120%) skewX(-12deg); opacity: 0; }
     80% { opacity: 1; }
@@ -3606,9 +3664,14 @@
     opacity: 1;
     transform: translateY(0);
   }
-  .role-motion-card:hover .role-card-action::after,
-  .role-motion-card:focus-visible .role-card-action::after {
-    transform: translateX(4px);
+  .role-motion-card:hover .role-card-shine,
+  .role-motion-card:focus-visible .role-card-shine {
+    animation: roleCardShineQuick 0.7s ease-out 1;
+  }
+  @keyframes roleCardShineQuick {
+    0% { transform: translateX(-130%) skewX(-14deg); opacity: 0; }
+    35% { opacity: 0.9; }
+    100% { transform: translateX(160%) skewX(-14deg); opacity: 0; }
   }
   .role-motion-card.role-card-ripple {
     animation: roleCardRipple 0.55s ease-out;
@@ -3727,7 +3790,9 @@
     .role-security-chip::after,
     .role-logo-glow,
     .role-welcome-badge,
+    .role-welcome-badge-dot,
     .role-welcome-heading,
+    .role-welcome-block,
     .role-motion-card,
     .role-motion-card::after,
     .role-motion-card .role-card-topbar,
@@ -3740,12 +3805,15 @@
     .role-motion-card .role-icon-ring-2,
     .role-grid::before,
     .role-side-link::before,
-    .role-mobile-link::before {
+    .role-mobile-link::before,
+    #role-screen > .role-screen-panel,
+    #role-screen > .role-main-shell {
       animation: none !important;
     }
     .role-motion-card,
     .role-side-link,
-    .role-mobile-link {
+    .role-mobile-link,
+    .role-welcome-block {
       transition: none !important;
       transform: none !important;
     }
@@ -3968,6 +4036,7 @@
     <div class="role-bg-mesh" aria-hidden="true"></div>
     <div class="role-particles" aria-hidden="true">
       <span></span><span></span><span></span><span></span><span></span><span></span>
+      <span></span><span></span><span></span><span></span>
     </div>
     <div class="role-spotlight" id="role-spotlight" aria-hidden="true"></div>
     <div class="role-main-content">
@@ -4239,12 +4308,12 @@
         </div>
         <div class="stat-card red">
           <div class="stat-num" id="todayVisit">0</div>
-          <div class="stat-label" id="todayVisitLabel" data-admin-text="ให้บริการห้องพยาบาล" data-staff-text="มารับบริการวันนี้">มารับบริการวันนี้</div>
+          <div class="stat-label" id="todayVisitLabel" data-admin-text="ให้บริการห้องพยาบาล (ปีการศึกษานี้)" data-staff-text="มารับบริการวันนี้">มารับบริการวันนี้</div>
           <div class="stat-icon">🩺</div>
         </div>
         <div class="stat-card gold">
           <div class="stat-num" id="referralCount">0</div>
-          <div class="stat-label">รอส่งต่อ</div>
+          <div class="stat-label">รอติดตาม</div>
           <div class="stat-icon">🚑</div>
         </div>
         <div class="stat-card">
@@ -4302,25 +4371,25 @@
         <div class="dash-exec-row dash-exec-row-hero">
           <div class="dash-exec-card">
             <div class="dash-exec-card-title"><span>📊</span>สรุปสถานะสุขภาพนักเรียน</div>
-            <p class="dash-exec-note" id="admin-chart-summary-note">นักเรียนที่คัดกรองแล้ว แยกตามระดับสุขภาพ (ถึง มิ.ย. 2569)</p>
+            <p class="dash-exec-note" id="admin-chart-summary-note">สรุปจากบันทึกการรักษา ปีการศึกษานี้</p>
             <div id="admin-chart-health-summary"></div>
           </div>
           <div class="dash-exec-card">
-            <div class="dash-exec-card-title"><span>📈</span>แนวโน้มสุขภาพ เดือน พ.ค.–มิ.ย.</div>
-            <p class="dash-exec-note" id="admin-chart-trend-note">สัดส่วนกลุ่มสุขภาพรวมรายเดือน (พฤษภาคม–มิถุนายน 2569)</p>
+            <div class="dash-exec-card-title" id="admin-chart-trend-title"><span>📈</span>แนวโน้มสุขภาพ 6 เดือนล่าสุด</div>
+            <p class="dash-exec-note" id="admin-chart-trend-note">สัดส่วนกลุ่มสุขภาพรวมรายเดือน</p>
             <div id="admin-chart-trend"></div>
           </div>
           <div class="dash-exec-card">
             <div class="dash-exec-card-title"><span>🏥</span>ปัญหาสุขภาพ 5 อันดับแรก</div>
-            <p class="dash-exec-note" id="admin-chart-health-note">สรุปจากอาการที่มาห้องพยาบาล เดือน พ.ค.–มิ.ย. 2569</p>
+            <p class="dash-exec-note" id="admin-chart-health-note">สรุปจากอาการที่มาห้องพยาบาล ปีการศึกษานี้</p>
             <div id="admin-chart-health"></div>
           </div>
         </div>
 
         <div class="dash-exec-row dash-exec-row-gauges">
           <div class="dash-exec-card">
-            <div class="dash-exec-card-title"><span>🎯</span>ความครอบคลุมมาตรฐานงานอนามัย ปีการศึกษา 2569</div>
-            <p class="dash-exec-note" id="admin-chart-gauges-note">เปอร์เซ็นต์ความสำเร็จตามมาตรฐาน GSHPS ปีการศึกษา 2569</p>
+            <div class="dash-exec-card-title" id="admin-chart-gauges-title"><span>🎯</span>ความครอบคลุมมาตรฐานงานอนามัย</div>
+            <p class="dash-exec-note" id="admin-chart-gauges-note">เปอร์เซ็นต์ความสำเร็จตามมาตรฐาน GSHPS</p>
             <div id="admin-chart-gauges"></div>
           </div>
         </div>
@@ -4328,17 +4397,17 @@
         <div class="dash-exec-row dash-exec-row-bottom">
           <div class="dash-exec-card">
             <div class="dash-exec-card-title"><span>🚑</span>การส่งต่อและติดตาม</div>
-            <p class="dash-exec-note" id="admin-chart-referral-note">สถานะการดูแลและส่งต่อ เดือน พ.ค.–มิ.ย. 2569</p>
+            <p class="dash-exec-note" id="admin-chart-referral-note">สถานะการดูแลและส่งต่อ ปีการศึกษานี้</p>
             <div id="admin-chart-referral"></div>
           </div>
           <div class="dash-exec-card">
             <div class="dash-exec-card-title"><span>🩺</span>การใช้บริการห้องพยาบาล</div>
-            <p class="dash-exec-note" id="admin-chart-clinic-note">จำนวนครั้ง vs จำนวนนักเรียน เดือน พ.ค.–มิ.ย. 2569</p>
+            <p class="dash-exec-note" id="admin-chart-clinic-note">จำนวนครั้ง vs จำนวนนักเรียน 6 เดือนล่าสุด</p>
             <div id="admin-chart-clinic"></div>
           </div>
           <div class="dash-exec-card">
             <div class="dash-exec-card-title"><span>💉</span>การรับวัคซีน / เสริมธาตุ</div>
-            <p class="dash-exec-note" id="admin-chart-vaccine-note">เปอร์เซ็นต์ความครอบคลุมตามเป้าหมาย ปีการศึกษา 2569</p>
+            <p class="dash-exec-note" id="admin-chart-vaccine-note">เปอร์เซ็นต์ความครอบคลุมตามเป้าหมาย ปีการศึกษานี้</p>
             <div id="admin-chart-vaccine"></div>
           </div>
           <div class="dash-exec-card" id="dash-admin-kpi-card" style="display:none;">
@@ -4353,7 +4422,7 @@
         <div class="dash-exec-row dash-exec-row-modules">
           <div class="dash-exec-card">
             <div class="dash-exec-card-title"><span>🔍</span>ตรวจคัดกรองสุขภาพ</div>
-            <p class="dash-exec-note" id="admin-chart-screening-note">จำนวนที่ตรวจแล้ว แยกตามประเภท (สะสมถึง มิ.ย. 2569)</p>
+            <p class="dash-exec-note" id="admin-chart-screening-note">จำนวนที่ตรวจแล้ว ปีการศึกษานี้</p>
             <div id="admin-chart-screening"></div>
           </div>
           <div class="dash-exec-card">
@@ -4378,12 +4447,12 @@
           </div>
           <div class="dash-exec-card">
             <div class="dash-exec-card-title"><span>🦠</span>เฝ้าระวังโรคติดต่อ</div>
-            <p class="dash-exec-note" id="admin-chart-disease-note">กรณีที่รายงานและเฝ้าระวัง เดือน พ.ค.–มิ.ย. 2569</p>
+            <p class="dash-exec-note" id="admin-chart-disease-note">ผู้ป่วยจากสถานการณ์ล่าสุดต่อโรค/ห้อง + รายงานนักเรียนรอตรวจสอบ</p>
             <div id="admin-chart-disease"></div>
           </div>
           <div class="dash-exec-card">
             <div class="dash-exec-card-title"><span>🚨</span>เหตุฉุกเฉิน &amp; ปฐมพยาบาล</div>
-            <p class="dash-exec-note" id="admin-chart-emergency-note">จำนวนเหตุการณ์ เดือน พ.ค.–มิ.ย. 2569</p>
+            <p class="dash-exec-note" id="admin-chart-emergency-note">จำนวนเหตุการณ์ 6 เดือนล่าสุด</p>
             <div id="admin-chart-emergency"></div>
           </div>
           <div class="dash-exec-card">
@@ -4581,8 +4650,8 @@
             </div>
           </div>
           <div class="form-group" style="margin-top:10px;">
-            <label>อาการ / ปัญหาสุขภาพ</label>
-            <textarea id="vis-symptom" placeholder="บรรยายอาการที่มาพบ..."></textarea>
+            <label>การรักษาและยาที่ให้</label>
+            <textarea id="vis-treatment" placeholder="เลือกยาด้านล่างหลังวินิจฉัย หรือกรอกรายการยา ขนาด วิธีใช้..."></textarea>
           </div>
           <div class="form-grid" style="margin-top:10px;">
             <div class="form-group">
@@ -4600,7 +4669,7 @@
             <div class="form-group">
               <label>การวินิจฉัยเบื้องต้น</label>
               <select id="vis-diagnosis" onchange="onVisitDiagnosisChange('vis')">
-                <option>-- เลือก --</option>
+                <option value="">-- เลือก --</option>
                 <option>หวัด/น้ำมูก</option>
                 <option>ปวดศีรษะ</option>
                 <option>ปวดท้อง</option>
@@ -4631,8 +4700,8 @@
             </div>
           </div>
           <div class="form-group" style="margin-top:10px;">
-            <label>การรักษาและยาที่ให้</label>
-            <textarea id="vis-treatment" placeholder="เลือกยาด้านบน หรือกรอกรายการยา ขนาด วิธีใช้..."></textarea>
+            <label>อาการ / ปัญหาสุขภาพ</label>
+            <textarea id="vis-symptom" placeholder="บรรยายอาการที่มาพบ..."></textarea>
           </div>
           <div class="form-grid" style="margin-top:10px;">
             <div class="form-group">
@@ -4679,6 +4748,7 @@
               <span><span>📋</span> <span id="visit-list-title">รายการวันนี้</span></span>
               <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                 <button type="button" class="btn btn-secondary" style="font-size:12px;padding:6px 10px;" onclick="manualRefreshVisitFromSheet()" title="ดึงข้อมูลล่าสุดจาก Google Sheet">🔄 อัปเดตจากชีต</button>
+                <button type="button" class="btn btn-primary" style="font-size:12px;padding:6px 10px;" onclick="manualPushVisitsToSheet()" title="ส่งรายการรักษาในเว็บขึ้นแท็บบันทึกการรักษา">⬆️ ส่งขึ้นชีต</button>
                 <select id="visit-list-period" onchange="renderVisitToday()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--white);color:var(--gray-dark);min-width:150px;">
                 <option value="today">รายการวันนี้</option>
                 <option value="week">รายการสัปดาห์นี้</option>
@@ -4687,7 +4757,7 @@
               </select>
               </div>
             </div>
-            <p id="visit-list-period-hint" style="font-size:11px;color:var(--gray-mid);margin:-4px 0 10px;">ยึดเวลาที่บันทึก — 24 ชม. → สัปดาห์ → เดือน → ปี → ประวัติย้อนหลัง (ไม่ลบข้อมูล)</p>
+            <p id="visit-list-period-hint" style="font-size:11px;color:var(--gray-mid);margin:-4px 0 10px;">ยึดเวลาที่บันทึก — วันนี้ / 7 วัน / 30 วัน / 1 ปี (รวมช่วงที่สั้นกว่า) — เกิน 1 ปีดูประวัติย้อนหลัง</p>
             <div class="table-wrap">
               <table>
                 <thead><tr><th id="visit-list-time-head">วันที่/เวลา</th><th class="visit-col-staff">ชื่อ</th><th class="visit-col-staff">ชั้น</th><th>อาการ</th><th>สถานะ</th><th>คำแนะนำ</th><th class="visit-col-action">จัดการ</th></tr></thead>
@@ -4854,8 +4924,8 @@
             </div>
           </div>
           <div class="form-group" style="margin-top:10px;">
-            <label>อาการ / ปัญหาสุขภาพ</label>
-            <textarea id="vis-rec-symptom" placeholder="บรรยายอาการที่มาพบ..."></textarea>
+            <label>การรักษาและยาที่ให้</label>
+            <textarea id="vis-rec-treatment" placeholder="เลือกยาด้านล่างหลังวินิจฉัย หรือกรอกรายการยา ขนาด วิธีใช้..."></textarea>
           </div>
           <div class="form-grid" style="margin-top:10px;">
             <div class="form-group">
@@ -4873,7 +4943,7 @@
             <div class="form-group">
               <label>การวินิจฉัยเบื้องต้น</label>
               <select id="vis-rec-diagnosis" onchange="onVisitDiagnosisChange('vis-rec')">
-                <option>-- เลือก --</option>
+                <option value="">-- เลือก --</option>
                 <option>หวัด/น้ำมูก</option>
                 <option>ปวดศีรษะ</option>
                 <option>ปวดท้อง</option>
@@ -4904,8 +4974,8 @@
             </div>
           </div>
           <div class="form-group" style="margin-top:10px;">
-            <label>การรักษาและยาที่ให้</label>
-            <textarea id="vis-rec-treatment" placeholder="เลือกยาด้านบน หรือกรอกรายการยา ขนาด วิธีใช้..."></textarea>
+            <label>อาการ / ปัญหาสุขภาพ</label>
+            <textarea id="vis-rec-symptom" placeholder="บรรยายอาการที่มาพบ..."></textarea>
           </div>
           <div class="form-grid" style="margin-top:10px;">
             <div class="form-group">
@@ -4959,7 +5029,7 @@
                   </select>
                 </div>
               </div>
-              <p id="visit-rec-list-period-hint" style="font-size:11px;color:var(--gray-mid);margin:-4px 0 10px;">แสดงตามเลขประจำตัวที่กรอกในฟอร์ม</p>
+              <p id="visit-rec-list-period-hint" style="font-size:11px;color:var(--gray-mid);margin:-4px 0 10px;">แสดงรายการที่บันทึกแล้วตามช่วงเวลา — กดบันทึกแล้วขึ้นทันที</p>
               <div class="table-wrap">
                 <table>
                   <thead><tr><th>วันที่/เวลา</th><th class="visit-col-staff">ชื่อ</th><th class="visit-col-staff">ชั้น</th><th>อาการ</th><th>สถานะ</th><th>คำแนะนำ</th><th class="visit-col-action">จัดการ</th></tr></thead>
@@ -8163,7 +8233,7 @@
           if (dash.staffCount != null) staffN = dash.staffCount;
         } catch (e) {}
       }
-      if (!staffN) staffN = 200;
+      if (!staffN) staffN = 0;
       badge.textContent = '🏫 โรงเรียนบ้านไผ่ | นักเรียน ' + fmt + ' คน | ครู ' + staffN + ' คน';
     }
     const desc = document.getElementById('studentPageDesc');
@@ -8626,6 +8696,7 @@
         renderSchoolCalendarBoard(loadDashboard(), canEditSchoolCalendar());
         refreshAllVisitRecordsFromSheetForStaff(function() {
           renderVisitToday();
+          maybeAutoPushLocalVisitsToSheet_();
         });
       }
     }
@@ -12167,6 +12238,19 @@
     });
   }
   function countAdminUpcomingAppointments() {
+    if (typeof collectAllAppointments === 'function') {
+      return collectAllAppointments().filter(function(item) {
+        var appt = item && item.appt;
+        if (!appt || !appt.date) return false;
+        if (appt.done || appt.completed) return false;
+        if (typeof isAppointmentUpcoming === 'function') return isAppointmentUpcoming(appt);
+        var todayKey = localDateKey(new Date());
+        var datePart = typeof normalizeAppointmentDateKey_ === 'function'
+          ? normalizeAppointmentDateKey_(appt.date)
+          : String(appt.date).trim().slice(0, 10);
+        return datePart >= todayKey;
+      }).length;
+    }
     var count = 0;
     try {
       var extras = JSON.parse(localStorage.getItem('sh-student-health') || '{}');
@@ -12174,7 +12258,10 @@
       Object.keys(extras).forEach(function(k) {
         var appt = extras[k] && extras[k].appointment;
         if (!appt || !appt.date) return;
-        var datePart = String(appt.date).trim().slice(0, 10);
+        if (appt.done || appt.completed) return;
+        var datePart = typeof normalizeAppointmentDateKey_ === 'function'
+          ? normalizeAppointmentDateKey_(appt.date)
+          : String(appt.date).trim().slice(0, 10);
         if (datePart >= todayKey) count++;
       });
     } catch (e) {}
@@ -12270,7 +12357,7 @@
     var period = formatAdminChartPeriodNote();
     var ay = getCurrentAcademicYearBE();
     var map = {
-      'admin-chart-summary-note': 'สรุปจากบันทึกการรักษา ปีการศึกษา ' + ay,
+      'admin-chart-summary-note': 'สรุปจากบันทึกการรักษา ปีการศึกษา ' + ay + ' (แยกตามผลลัพธ์ล่าสุดของแต่ละคน)',
       'admin-chart-trend-note': 'แนวโน้มรายเดือน ' + period + ' (จากผลการรักษา)',
       'admin-chart-health-note': 'สรุปจากอาการ/วินิจฉัย ปีการศึกษา ' + ay,
       'admin-chart-gauges-note': 'เปอร์เซ็นต์ความครอบคลุมจากข้อมูลบันทึกจริง ปีการศึกษา ' + ay,
@@ -12282,7 +12369,7 @@
       'admin-chart-chronic-note': 'จำนวนนักเรียนที่มีข้อมูลในระบบ',
       'admin-chart-appointment-note': 'สถานะใบนัดห้องพยาบาล (จากข้อมูลบันทึก)',
       'admin-chart-mental-note': 'ผลคัดกรอง SDQ / ระดับความเสี่ยง ปีการศึกษา ' + ay,
-      'admin-chart-disease-note': 'กรณีที่รายงานและเฝ้าระวัง ' + period,
+      'admin-chart-disease-note': 'ผู้ป่วยจากสถานการณ์ล่าสุดต่อโรค/ห้อง + รายงานนักเรียนรอตรวจสอบ',
       'admin-chart-emergency-note': 'จำนวนเหตุการณ์ ' + period,
       'admin-chart-student-note': 'จำนวนนักเรียนแยกตามระดับชั้น (จากทะเบียน)',
       'admin-chart-medicine-note': 'คงเหลือในคลัง (% จากจุดสั่งซื้อ)'
@@ -12291,10 +12378,17 @@
       var el = document.getElementById(id);
       if (el) el.textContent = map[id];
     });
+    var trendTitle = document.getElementById('admin-chart-trend-title');
+    if (trendTitle) trendTitle.innerHTML = '<span>📈</span>แนวโน้มสุขภาพ ' + period;
+    var gaugesTitle = document.getElementById('admin-chart-gauges-title');
+    if (gaugesTitle) gaugesTitle.innerHTML = '<span>🎯</span>ความครอบคลุมมาตรฐานงานอนามัย ปีการศึกษา ' + ay;
   }
   function computeAdminExtraStats() {
     var chronicIds = {};
-    loadChronicFromStorage().forEach(function(r) {
+    (typeof dedupeChronicRecords === 'function'
+      ? dedupeChronicRecords(loadChronicFromStorage())
+      : loadChronicFromStorage()
+    ).forEach(function(r) {
       if (r.id) chronicIds[String(r.id).trim()] = true;
     });
     var nutritionById = {};
@@ -12388,15 +12482,15 @@
     }
     var pendingRef = loadReferralRecords().filter(function(r) { return r.status === 'รอติดตาม'; }).length;
     kpis.push({ label: 'ส่งต่อ รพ.', value: String(pendingRef), sub: 'รอติดตาม' });
-    kpis.push({ label: 'เฝ้าระวังโรคติดต่อ', value: String(loadDiseaseSituation().length), sub: 'สถานการณ์ปัจจุบัน' });
+    kpis.push({ label: 'เฝ้าระวังโรคติดต่อ', value: String(loadDiseaseSituation().filter(isActiveDiseaseSituation_).length), sub: 'สถานการณ์ปัจจุบัน' });
     kpis.push({ label: 'เหตุฉุกเฉิน', value: String(loadEmergencyRecords().filter(isRecordThisYear).length), sub: 'ปีการศึกษา ' + getCurrentAcademicYearBE() });
     return kpis;
   }
   function computeAdminRecentActivity() {
     return loadVisitRecords().slice().sort(function(a, b) {
-      return (getVisitRecordTime(b) || 0) - (getVisitRecordTime(a) || 0);
+      return (resolveVisitRecordTimestamp(b) || 0) - (resolveVisitRecordTimestamp(a) || 0);
     }).slice(0, 6).map(function(r) {
-      var ts = getVisitRecordTime(r);
+      var ts = resolveVisitRecordTimestamp(r);
       var timeStr = ts ? new Date(ts).toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' }) : '—';
       var info = typeof getVisitBadgeInfo === 'function' ? getVisitBadgeInfo(r.result) : { text: r.result || '—' };
       return {
@@ -12414,7 +12508,7 @@
     loadVisitRecords().filter(isRecordThisYear).forEach(function(r) {
       if (!r.id) return;
       var id = String(r.id).trim();
-      var ts = getVisitRecordTime(r) || 0;
+      var ts = resolveVisitRecordTimestamp(r) || 0;
       if (!byId[id] || ts > byId[id].ts) {
         byId[id] = { ts: ts, bucket: classifyVisitHealthBucket(r.result) };
       }
@@ -12439,8 +12533,9 @@
         buckets: { 'ปกติ': 0, 'เฝ้าระวัง': 0, 'เสี่ยง': 0, 'ป่วย/ส่งต่อ': 0 }
       };
     });
-    loadVisitRecords().filter(isRecordThisYear).forEach(function(r) {
-      var ts = getVisitRecordTime(r);
+    /* ใช้ช่วง 6 เดือนตามแท่งกราฟ — ไม่ตัดด้วยปีการศึกษา (กันเดือนต้นๆ เป็น 0 ทั้งที่มีข้อมูล) */
+    loadVisitRecords().forEach(function(r) {
+      var ts = resolveVisitRecordTimestamp(r) || getRecordTimestamp(r);
       if (!ts) return;
       var rd = new Date(ts);
       var bucket = classifyVisitHealthBucket(r.result);
@@ -12613,15 +12708,66 @@
     ].filter(function(it) { return it.count > 0; });
     return { items: items, isDemo: !Object.keys(byId).length };
   }
+  function parseDiseasePatientCount_(patients) {
+    if (patients == null || patients === '') return 1;
+    var s = String(patients).trim();
+    if (!s || s === '—' || s === '-') return 1;
+    var m = s.match(/(\d{1,4})/);
+    if (!m) return 1;
+    var n = parseInt(m[1], 10);
+    if (!(n > 0)) return 1;
+    /* กันค่าพังจากชีต (วันที่/รหัส) — โรงเรียนหนึ่งไม่น่ามีผู้ป่วยโรคเดียวเกินนี้ต่อรายงาน */
+    var schoolMax = (typeof getStudentRegistryCount === 'function' ? getStudentRegistryCount() : 0) || 3000;
+    if (n > schoolMax) return 1;
+    return n;
+  }
+  function isActiveDiseaseSituation_(item) {
+    var status = String((item && item.status) || '').trim();
+    if (!status) return true;
+    if (status.indexOf('ปิด') !== -1 || status.indexOf('สิ้นสุด') !== -1) return false;
+    if (status === 'ปกติ' || status === 'หายแล้ว') return false;
+    return true;
+  }
   function computeAdminDiseaseWatch() {
-    var counts = {};
+    var latestByOutbreak = {};
+    /* ไม่รวมทุกประวัติ — คงเฉพาะรายงานล่าสุดต่อโรค+ห้อง (สถานการณ์ปัจจุบัน) */
     loadDiseaseSituation().forEach(function(d) {
-      var key = (d.disease || 'อื่นๆ').trim();
-      counts[key] = (counts[key] || 0) + 1;
+      if (!isActiveDiseaseSituation_(d)) return;
+      var disease = String(d.disease || 'อื่นๆ').trim() || 'อื่นๆ';
+      var room = String(d.room || '').trim() || '—';
+      var key = disease + '|' + room;
+      var ts = Number(d.staffSavedAt) || 0;
+      /* สถานการณ์เก่าเกิน 45 วันไม่นับในกราฟปัจจุบัน */
+      if (ts && (Date.now() - ts) > (45 * 24 * 60 * 60 * 1000)) return;
+      if (latestByOutbreak[key] && ts < latestByOutbreak[key].savedAt) return;
+      if (latestByOutbreak[key] && ts === latestByOutbreak[key].savedAt) return;
+      latestByOutbreak[key] = {
+        disease: disease,
+        patients: parseDiseasePatientCount_(d.patients),
+        savedAt: ts
+      };
     });
-    loadDiseaseReports().filter(function(r) { return r.source === 'student'; }).forEach(function(r) {
-      var key = (r.disease || r.symptom || 'รายงานนักเรียน').trim();
-      counts[key] = (counts[key] || 0) + 1;
+    var counts = {};
+    Object.keys(latestByOutbreak).forEach(function(k) {
+      var it = latestByOutbreak[k];
+      counts[it.disease] = (counts[it.disease] || 0) + it.patients;
+    });
+    /* รายงานนักเรียนรอตรวจสอบ — คนละรหัสนับครั้งเดียวต่อโรค */
+    var seenStudent = {};
+    loadDiseaseReports().forEach(function(r) {
+      if (!r || r.source !== 'student') return;
+      var st = String(r.status || 'รอตรวจสอบ').trim();
+      if (st && st !== 'รอตรวจสอบ') return;
+      var disease = String(r.disease || r.symptom || 'รายงานนักเรียน').trim() || 'รายงานนักเรียน';
+      var sid = String(r.id || '').trim() || ('anon-' + (r.savedAt || '') + '-' + disease);
+      var sk = sid + '|' + disease;
+      if (seenStudent[sk]) return;
+      seenStudent[sk] = true;
+      counts[disease] = (counts[disease] || 0) + 1;
+    });
+    var schoolMax = (typeof getStudentRegistryCount === 'function' ? getStudentRegistryCount() : 0) || 3000;
+    Object.keys(counts).forEach(function(k) {
+      if (counts[k] > schoolMax) counts[k] = schoolMax;
     });
     var items = Object.keys(counts).map(function(k, i) {
       return { label: k, count: counts[k], color: ADMIN_CHART_COLORS[i % ADMIN_CHART_COLORS.length] };
@@ -12666,7 +12812,9 @@
       Object.keys(extras).forEach(function(k) {
         var appt = extras[k] && extras[k].appointment;
         if (!appt || !appt.date) return;
-        var datePart = String(appt.date).trim().slice(0, 10);
+        var datePart = typeof normalizeAppointmentDateKey_ === 'function'
+          ? normalizeAppointmentDateKey_(appt.date)
+          : String(appt.date).trim().slice(0, 10);
         if (appt.done || appt.completed) stats.done++;
         else if (datePart < todayKey) stats.overdue++;
         else stats.upcoming++;
@@ -12691,8 +12839,9 @@
     if (_adminLiveCache) return _adminLiveCache;
     var dash = loadDashboard();
     var visits = loadVisitRecords();
-    var todayCount = visits.filter(function(r) {
-      return r.id && String(r.id).trim() && isVisitPeriodToday(r);
+    /* การ์ดผู้บริหาร/พยาบาลป้ายว่า "ให้บริการห้องพยาบาล (ปีการศึกษานี้)" — ไม่ใช่แค่วันนี้ */
+    var yearVisitCount = visits.filter(function(r) {
+      return r && isRecordThisYear(r);
     }).length;
     var screened = {};
     loadScreeningRecords().filter(isRecordThisYear).forEach(function(r) {
@@ -12708,7 +12857,7 @@
     var result = {
       display: {
         staffCount: (typeof getTeacherRegistryCount === 'function' ? getTeacherRegistryCount() : 0) || dash.staffCount || 0,
-        todayVisit: todayCount,
+        todayVisit: yearVisitCount,
         referralCount: pendingRef,
         screenedCount: screenedN,
         alertCount: getActiveNurseAlerts().length,
@@ -12882,7 +13031,7 @@
     var visitLabel = document.getElementById('todayVisitLabel');
     if (visitLabel) {
       visitLabel.textContent = isExecDash
-        ? (visitLabel.getAttribute('data-admin-text') || 'ให้บริการห้องพยาบาล')
+        ? (visitLabel.getAttribute('data-admin-text') || 'ให้บริการห้องพยาบาล (ปีการศึกษานี้)')
         : (visitLabel.getAttribute('data-staff-text') || 'มารับบริการวันนี้');
     }
     var dashTitle = document.querySelector('#section-dashboard .page-header-title');
@@ -13123,6 +13272,7 @@
     updateDashboardLayoutForRole();
     updateVisitCalendarLayout();
     if (isExecDash) {
+      updateAdminChartPeriodNotes();
       renderAdminDashboardExtras(live);
       scheduleAdminDashboardCharts(live);
     } else {
@@ -13697,7 +13847,7 @@
     var visits = loadVisitRecords();
     var d = loadDashboard();
     d.todayVisit = visits.filter(function(r) {
-      return r.id && String(r.id).trim() && isVisitPeriodToday(r);
+      return r.id && String(r.id).trim() && isVisitToday(r);
     }).length;
     var screened = {};
     loadScreeningRecords().filter(isRecordThisYear).forEach(function(r) {
@@ -13826,6 +13976,7 @@
     records[idx].status = 'ติดตามแล้ว';
     records[idx].followupNote = (note || '').trim();
     records[idx].followedUpAt = Date.now();
+    records[idx].savedAt = Date.now(); /* ให้ชนะ merge จากชีตที่ยังเป็นรอติดตาม */
     saveReferralRecords(records);
     if (typeof syncUpsertRowQuiet === 'function' && typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.referral && typeof buildReferralSheetRow === 'function') {
       syncUpsertRowQuiet(SHEET_NAMES.referral, 'รหัสรายการ', buildReferralSheetRow(records[idx]));
@@ -13909,10 +14060,30 @@
     if (!record.savedAt) record.savedAt = now;
     if (!record.recordId) record.recordId = 'v-' + record.savedAt + '-' + Math.random().toString(36).slice(2, 8);
     if (!record.recordedAt) record.recordedAt = new Date(record.savedAt).toLocaleString('th-TH');
-    record.timeRepaired = true;
+    delete record.timeRepaired;
     var records = loadVisitRecords().slice();
     records = records.filter(function(r) { return r.recordId !== record.recordId; });
+    /* กันกดบันทึกซ้ำ — soft key ใกล้กันให้ใช้รหัสเดิม (กันแถวซ้ำในชีต) */
+    var discardedSoft = [];
+    var reuseRid = '';
+    var newSoft = typeof visitRecordSoftKey_ === 'function' ? visitRecordSoftKey_(record) : '';
+    if (newSoft) {
+      records = records.filter(function(r) {
+        if (!r) return false;
+        var match = typeof visitsSoftMatch_ === 'function'
+          ? visitsSoftMatch_(record, r)
+          : (typeof visitRecordSoftKey_ === 'function' && visitRecordSoftKey_(r) === newSoft);
+        if (!match) return true;
+        if (!reuseRid && r.recordId) reuseRid = String(r.recordId);
+        discardedSoft.push(r);
+        return false;
+      });
+    }
+    if (reuseRid) record.recordId = reuseRid;
     records.unshift(record);
+    if (typeof dedupeVisitLocalSheetPairs_ === 'function') {
+      records = dedupeVisitLocalSheetPairs_(records);
+    }
     var savedOk = false;
     try {
       savedOk = saveVisitRecords(records, { quiet: true }) !== false;
@@ -13923,7 +14094,12 @@
     /* คงรายการในหน่วยความจำเสมอ — ให้ตารางฝั่งขวาอัปเดตแม้ localStorage เต็ม */
     _visitRecordsMemCache = records;
     /* กันดึงชีทมาทับจอทันทีหลังบันทึกใหม่ */
-    _suppressVisitSheetRefreshUntil = Date.now() + 25000;
+    _suppressVisitSheetRefreshUntil = Date.now() + 45000;
+    try {
+      discardedSoft.forEach(function(old) {
+        if (typeof removeVisitFromStudentHealthExtra_ === 'function') removeVisitFromStudentHealthExtra_(old);
+      });
+    } catch (ePrune) {}
     try {
       if (typeof appendStudentHealthVisit === 'function') appendStudentHealthVisit(record);
     } catch (eAppend) {}
@@ -13931,10 +14107,12 @@
       maybeCreateReferralFromCare(record, 'visit');
     } catch (eRef) {}
     try {
-      const d = loadDashboard();
-      d.todayVisit = (parseInt(d.todayVisit, 10) || 0) + 1;
-      visitCount = d.todayVisit;
-      saveDashboard(d);
+      if (!discardedSoft.length) {
+        const d = loadDashboard();
+        d.todayVisit = (parseInt(d.todayVisit, 10) || 0) + 1;
+        visitCount = d.todayVisit;
+        saveDashboard(d);
+      }
     } catch (eDash) {}
     try { renderDashboard(); } catch (eRd) { console.warn('[SH visit] renderDashboard', eRd); }
     try {
@@ -14197,76 +14375,91 @@
   window.updateGuardianContactLinks = updateGuardianContactLinks;
   window.saveGuardianPhoneBeforeAction = saveGuardianPhoneBeforeAction;
 
+  /** ยาห้องพยาบาลจากฉลากจริง — ใช้เฉพาะตัวเลือกยาตามการวินิจฉัย (ไม่ผูกคลังยา) */
   var VISIT_DIAGNOSIS_MEDICINES = {
     'หวัด/น้ำมูก': [
-      { id: 'med-paracetamol', dose: '500mg 1–2 เม็ด ทุก 4–6 ชม. เมื่อมีไข้' },
-      { id: 'med-chlorpheniramine', dose: '1 เม็ด วันละ 2–3 ครั้ง แก้น้ำมูก/จาม' }
+      { name: 'คลอเฟนิรามีน', dose: 'ครั้งละ ๑ เม็ด (แก้แพ้ ลดน้ำมูก)' },
+      { name: 'พาราเซตามอล', dose: 'ครั้งละ ๑ เม็ด (ลดไข้ บรรเทาปวด)' },
+      { name: 'ยาแก้ไอ', dose: 'ครั้งละ ๑ เม็ด (บรรเทาอาการไอ)' }
     ],
     'ไข้หวัด / หวัดใหญ่': [
-      { id: 'med-paracetamol', dose: '500mg 1–2 เม็ด ทุก 4–6 ชม. เมื่อมีไข้' },
-      { id: 'med-chlorpheniramine', dose: '1 เม็ด วันละ 2–3 ครั้ง แก้น้ำมูก/จาม' }
+      { name: 'คลอเฟนิรามีน', dose: 'ครั้งละ ๑ เม็ด (แก้แพ้ ลดน้ำมูก)' },
+      { name: 'พาราเซตามอล', dose: 'ครั้งละ ๑ เม็ด (ลดไข้ บรรเทาปวด)' },
+      { name: 'ยาแก้ไอ', dose: 'ครั้งละ ๑ เม็ด (บรรเทาอาการไอ)' }
     ],
     'ปวดศีรษะ': [
-      { id: 'med-paracetamol', dose: '500mg 1 เม็ด ทุก 4–6 ชม.' }
+      { name: 'พาราเซตามอล', dose: 'ครั้งละ ๑ เม็ด (ลดไข้ บรรเทาปวด)' }
     ],
     'ปวดท้อง': [
-      { id: 'med-antacid', dose: '1–2 เม็ด หลังอาหาร เมื่อแสบท้อง' },
-      { id: 'med-ors', dose: '1 ซอง ละลายน้ำ ดื่มทีละน้อย (หากท้องเสีย)' }
+      { name: 'ยาลดกรดในกระเพาะอาหาร', dose: 'ครั้งละ ๑-๒ เม็ด (เคี้ยวก่อนกลืน) เคลือบกระเพาะอาหาร' },
+      { name: 'โบวา เยล (Bowa Gel)', dose: 'ลดกรด ท้องอืด จุกเสียด แน่นท้อง' },
+      { name: 'ORA-S TROLYTE (ORS)', dose: '1 ซอง ละลายน้ำ ดื่มทีละน้อย' }
     ],
     'ปวดท้องจุกเสียด/กระเพาะอาหาร': [
-      { id: 'med-antacid', dose: '1–2 เม็ด หลังอาหาร เมื่อจุกเสียด/แสบท้อง' }
+      { name: 'ยาลดกรดในกระเพาะอาหาร', dose: 'ครั้งละ ๑-๒ เม็ด (เคี้ยวก่อนกลืน) เคลือบกระเพาะอาหาร' },
+      { name: 'โบวา เยล (Bowa Gel)', dose: 'ลดกรด ท้องอืด จุกเสียด แน่นท้อง แสบร้อนกลางอก' }
     ],
     'เจ็บคอ': [
-      { id: 'med-paracetamol', dose: '500mg 1 เม็ด ทุก 4–6 ชม. เมื่อเจ็บคอ/มีไข้' },
-      { id: 'med-chlorpheniramine', dose: '1 เม็ด วันละ 2–3 ครั้ง หากคัดจมูก' }
+      { name: 'พาราเซตามอล', dose: 'ครั้งละ ๑ เม็ด (ลดไข้ บรรเทาปวด)' },
+      { name: 'ยาแก้ไอ', dose: 'ครั้งละ ๑ เม็ด (บรรเทาอาการไอ)' }
     ],
     'ทอนซิลอักเสบ': [
-      { id: 'med-paracetamol', dose: '500mg 1 เม็ด ทุก 4–6 ชม. เมื่อเจ็บคอ/มีไข้' },
-      { id: 'med-chlorpheniramine', dose: '1 เม็ด วันละ 2–3 ครั้ง หากคัดจมูก' }
+      { name: 'พาราเซตามอล', dose: 'ครั้งละ ๑ เม็ด (ลดไข้ บรรเทาปวด)' }
     ],
     'ตาแดง': [
-      { id: 'med-chlorpheniramine', dose: '1 เม็ด วันละ 2–3 ครั้ง (หากคันตา/แพ้)' }
+      { name: 'คลอเฟนิรามีน', dose: 'ครั้งละ ๑ เม็ด (แก้แพ้ ลดน้ำมูก)' }
     ],
     'บาดแผล / อุบัติเหตุ': [
-      { id: 'med-povidone', dose: 'ทาบริเวณแผล วันละ 1–2 ครั้ง' },
-      { id: 'med-paracetamol', dose: '500mg 1 เม็ด ทุก 4–6 ชม. หากเจ็บปวด' }
+      { name: 'พาราเซตามอล', dose: 'ครั้งละ ๑ เม็ด (ลดไข้ บรรเทาปวด)' }
     ],
     'อาการเวียนศีรษะ': [
-      { id: 'med-ors', dose: 'ดื่มน้ำเกลือแร่ หากอ่อนเพลีย' }
+      { name: 'Dimenhydrinate 50 mg', dose: 'บรรเทาอาการคลื่นไส้ อาเจียน / แก้เมารถเมาเรือ' },
+      { name: 'ORA-S TROLYTE (ORS)', dose: '1 ซอง ละลายน้ำ ดื่มทีละน้อย' }
     ],
     'ปวดฟัน': [
-      { id: 'med-paracetamol', dose: '500mg 1 เม็ด ทุก 4–6 ชม. หากเจ็บฟัน' }
+      { name: 'พาราเซตามอล', dose: 'ครั้งละ ๑ เม็ด (ลดไข้ บรรเทาปวด)' }
     ],
     'ภูมิแพ้': [
-      { id: 'med-chlorpheniramine', dose: '1 เม็ด วันละ 2–3 ครั้ง หากคัน/แพ้' }
+      { name: 'คลอเฟนิรามีน', dose: 'ครั้งละ ๑ เม็ด (แก้แพ้ ลดน้ำมูก)' }
     ],
     'โรคผิวหนัง': [
-      { id: 'med-povidone', dose: 'ทาบริเวณที่มีแผล/ผื่น' },
-      { id: 'med-chlorpheniramine', dose: '1 เม็ด วันละ 2–3 ครั้ง หากคัน' }
+      { name: 'คลอเฟนิรามีน', dose: 'ครั้งละ ๑ เม็ด (แก้แพ้ ลดน้ำมูก)' }
     ],
     'ท้องเสีย': [
-      { id: 'med-ors', dose: '1 ซอง ละลายน้ำ ดื่มทีละน้อย' },
-      { id: 'med-antacid', dose: '1–2 เม็ด หลังอาหาร หากแสบท้อง' }
+      { name: 'GREATER CA-R-BON (ยาผงถ่าน)', dose: 'รักษาอาการท้องเสีย' },
+      { name: 'ORA-S TROLYTE (ORS)', dose: '1 ซอง ละลายน้ำ ดื่มทีละน้อย' }
     ],
     'ปวดท้องประจำเดือน': [
-      { id: 'med-paracetamol', dose: '500mg 1 เม็ด ทุก 4–6 ชม. หากปวดท้อง' }
+      { name: 'ยาแก้ปวดประจำเดือน', dose: 'ครั้งละ ๑-๒ แคปซูล (ทานหลังอาหารทันที)' },
+      { name: 'พาราเซตามอล', dose: 'ครั้งละ ๑ เม็ด (ลดไข้ บรรเทาปวด)' }
     ],
     'ตาอักเสบ': [
-      { id: 'med-chlorpheniramine', dose: '1 เม็ด วันละ 2–3 ครั้ง (หากคันตา/แพ้)' }
+      { name: 'คลอเฟนิรามีน', dose: 'ครั้งละ ๑ เม็ด (แก้แพ้ ลดน้ำมูก)' }
     ],
     'ลมพิษ': [
-      { id: 'med-paracetamol', dose: '500mg 1 เม็ด ทุก 4–6 ชม. หากเจ็บปวด' }
+      { name: 'คลอเฟนิรามีน', dose: 'ครั้งละ ๑ เม็ด (แก้แพ้ ลดน้ำมูก)' },
+      { name: 'พาราเซตามอล', dose: 'ครั้งละ ๑ เม็ด (ลดไข้ บรรเทาปวด)' }
     ],
     'เป็นลม': [
-      { id: 'med-ors', dose: 'ดื่มน้ำเกลือแร่ หลังพักผ่อน' }
+      { name: 'ORA-S TROLYTE (ORS)', dose: '1 ซอง ละลายน้ำ ดื่มทีละน้อย' },
+      { name: 'Dimenhydrinate 50 mg', dose: 'บรรเทาอาการคลื่นไส้ อาเจียน / แก้เมารถเมาเรือ' }
     ],
     'แมลงสัตว์กัดต่อย': [
-      { id: 'med-chlorpheniramine', dose: '1 เม็ด วันละ 2–3 ครั้ง หากคัน/แพ้' },
-      { id: 'med-povidone', dose: 'ทาบริเวณที่ถูกกัด/ต่อย' }
+      { name: 'คลอเฟนิรามีน', dose: 'ครั้งละ ๑ เม็ด (แก้แพ้ ลดน้ำมูก)' }
     ],
     'ทำแผล': [
-      { id: 'med-povidone', dose: 'ทาบริเวณแผล วันละ 1–2 ครั้ง' },
-      { id: 'med-paracetamol', dose: '500mg 1 เม็ด ทุก 4–6 ชม. หากเจ็บปวด' }
+      { name: 'พาราเซตามอล', dose: 'ครั้งละ ๑ เม็ด (ลดไข้ บรรเทาปวด)' }
+    ],
+    'อื่นๆ': [
+      { name: 'พาราเซตามอล', dose: 'ครั้งละ ๑ เม็ด (ลดไข้ บรรเทาปวด)' },
+      { name: 'คลอเฟนิรามีน', dose: 'ครั้งละ ๑ เม็ด (แก้แพ้ ลดน้ำมูก)' },
+      { name: 'ยาแก้ไอ', dose: 'ครั้งละ ๑ เม็ด (บรรเทาอาการไอ)' },
+      { name: 'ยาแก้ปวดประจำเดือน', dose: 'ครั้งละ ๑-๒ แคปซูล (ทานหลังอาหารทันที)' },
+      { name: 'ยาลดกรดในกระเพาะอาหาร', dose: 'ครั้งละ ๑-๒ เม็ด (เคี้ยวก่อนกลืน) เคลือบกระเพาะอาหาร' },
+      { name: 'โบวา เยล (Bowa Gel)', dose: 'ลดกรด ท้องอืด จุกเสียด แน่นท้อง' },
+      { name: 'GREATER CA-R-BON (ยาผงถ่าน)', dose: 'รักษาอาการท้องเสีย' },
+      { name: 'ORA-S TROLYTE (ORS)', dose: '1 ซอง ละลายน้ำ ดื่มทีละน้อย' },
+      { name: 'Dimenhydrinate 50 mg', dose: 'บรรเทาอาการคลื่นไส้ อาเจียน / แก้เมารถเมาเรือ' }
     ]
   };
   function getVisitMedicineStockItem(medId) {
@@ -14280,19 +14473,20 @@
     var mapped = VISIT_DIAGNOSIS_MEDICINES[key] || [];
     var result = [];
     var seen = {};
-    mapped.forEach(function(entry) {
-      var item = getVisitMedicineStockItem(entry.id);
-      if (!item || seen[item.id]) return;
-      seen[item.id] = true;
-      result.push({ item: item, dose: entry.dose || '' });
-    });
-    if (!result.length && key === 'อื่นๆ') {
-      var stock = typeof loadMedicineStock === 'function' ? loadMedicineStock() : [];
-      if (!stock.length && typeof ensureMedicineStockSeed === 'function') stock = ensureMedicineStockSeed();
-      stock.slice(0, 4).forEach(function(item) {
-        if (!seen[item.id]) result.push({ item: item, dose: '' });
+    mapped.forEach(function(entry, i) {
+      var name = String((entry && entry.name) || '').trim();
+      if (!name || seen[name]) return;
+      seen[name] = true;
+      result.push({
+        item: {
+          id: 'clinic-' + name,
+          name: name,
+          qty: null,
+          unit: ''
+        },
+        dose: (entry && entry.dose) || ''
       });
-    }
+    });
     return result;
   }
   function onVisitDiagnosisChange(prefix) {
@@ -14306,12 +14500,14 @@
     if (!meds.length) {
       wrap.style.display = 'none';
       picker.innerHTML = '';
+      var treatmentEmpty = document.getElementById(prefix + '-treatment');
+      if (treatmentEmpty) treatmentEmpty.value = '';
       if (hint) {
-        if (diagnosis && diagnosis !== '-- เลือก --') {
+        if (diagnosis && diagnosis !== '-- เลือก --' && diagnosis !== '') {
           hint.style.display = '';
           hint.textContent = (diagnosis.indexOf('สุขภาพจิต') !== -1 || diagnosis.indexOf('ความเครียด') !== -1)
-            ? 'กรณีนี้เน้นการดูแล/ให้คำปรึกษา — กรอกการรักษาในช่องด้านล่าง'
-            : 'ไม่มียาแนะนำในคลังสำหรับการวินิจฉัยนี้ — กรอกการรักษาในช่องด้านล่าง';
+            ? 'กรณีนี้เน้นการดูแล/ให้คำปรึกษา — กรอกการรักษาในช่องยาที่ให้'
+            : 'ไม่มียาแนะนำสำหรับการวินิจฉัยนี้ — กรอกการรักษาในช่องยาที่ให้';
           wrap.style.display = '';
         } else {
           hint.style.display = 'none';
@@ -14323,16 +14519,20 @@
     wrap.style.display = '';
     picker.innerHTML = meds.map(function(m, i) {
       var item = m.item;
-      var qty = parseInt(item.qty, 10) || 0;
-      var st = typeof getMedicineStockStatus === 'function' ? getMedicineStockStatus(item) : { label: '' };
+      var hasQty = item.qty != null && item.qty !== '';
+      var qty = hasQty ? (parseInt(item.qty, 10) || 0) : null;
+      var st = hasQty && typeof getMedicineStockStatus === 'function' ? getMedicineStockStatus(item) : { label: '' };
       var stockCls = (st.label === 'สั่งด่วน' || qty === 0) ? ' visit-med-stock-low' : '';
       var cbId = prefix + '-med-cb-' + i;
       var doseId = prefix + '-med-dose-' + i;
+      var metaHtml = hasQty
+        ? '<div class="visit-med-option-meta' + stockCls + '">คงเหลือ ' + qty.toLocaleString('th-TH') + ' ' + escVisitHtml(item.unit || '') +
+          (st.label ? ' · ' + escVisitHtml(st.label) : '') + '</div>'
+        : '<div class="visit-med-option-meta">ยาห้องพยาบาล — เลือกเพื่อใส่ในช่องยาที่ให้</div>';
       return '<label class="visit-med-option" for="' + cbId + '">' +
         '<input type="checkbox" id="' + cbId + '" data-med-id="' + escVisitHtml(item.id) + '" onchange="syncVisitTreatmentFromMeds(\'' + prefix + '\')">' +
         '<div><div class="visit-med-option-head">' + escVisitHtml(item.name) + '</div>' +
-        '<div class="visit-med-option-meta' + stockCls + '">คงเหลือ ' + qty.toLocaleString('th-TH') + ' ' + escVisitHtml(item.unit || '') +
-        (st.label ? ' · ' + escVisitHtml(st.label) : '') + '</div></div>' +
+        metaHtml + '</div>' +
         '<input type="text" class="visit-med-dose" id="' + doseId + '" value="' + escVisitAttr(m.dose) +
         '" placeholder="ขนาด / วิธีใช้" onclick="event.stopPropagation()" oninput="syncVisitTreatmentFromMeds(\'' + prefix + '\')">' +
         '</label>';
@@ -14395,91 +14595,117 @@
   }
   window.clearVisitTreatmentForm = clearVisitTreatmentForm;
 
+  var _saveVisitInFlight = false;
   function saveVisit() {
+    if (_saveVisitInFlight) return;
     const id = (document.getElementById('vis-id').value || '').trim();
     const name = (document.getElementById('vis-name').value || '').trim();
     const symptom = (document.getElementById('vis-symptom').value || '').trim();
+    const diagnosis = (document.getElementById('vis-diagnosis').value || '').trim();
     if (!id || !name) {
       alert('กรุณากรอกเลขประจำตัวและชื่อ-นามสกุล');
+      return;
+    }
+    if (!diagnosis || diagnosis === '-- เลือก --') {
+      alert('กรุณาเลือกการวินิจฉัยเบื้องต้น');
       return;
     }
     if (!validateVisitProvider('vis')) return;
-    const now = new Date();
-    const providerParts = getVisitProviderParts('vis');
-    const record = {
-      recordId: 'v-' + now.getTime() + '-' + Math.random().toString(36).slice(2, 8),
-      id: id,
-      name: name,
-      class: document.getElementById('vis-class').value,
-      type: document.getElementById('vis-type').value,
-      symptom: symptom,
-      temp: document.getElementById('vis-temp').value,
-      bp: document.getElementById('vis-bp').value,
-      pulse: document.getElementById('vis-pulse').value,
-      diagnosis: document.getElementById('vis-diagnosis').value,
-      treatment: (document.getElementById('vis-treatment').value || '').trim(),
-      result: document.getElementById('vis-result').value,
-      provider: getVisitProviderValue('vis'),
-      providerName: providerParts.name,
-      providerRole: providerParts.role,
-      providerClass: providerParts.class,
-      recordedAt: now.toLocaleString('th-TH'),
-      savedAt: now.getTime()
-    };
-    var result = persistNewVisitRecord(record);
-    var savedRec = (result && result.record) ? result.record : record;
-    focusVisitTodayList(savedRec);
-    if (result && result.ok === false) {
-      alert('⚠️ บันทึกในเครื่องไม่สำเร็จ (ที่เก็บอาจเต็ม) — รายการถูกแสดงชั่วคราวฝั่งขวาแล้ว กรุณาลองอีกครั้ง');
-      return;
+    _saveVisitInFlight = true;
+    try {
+      const now = new Date();
+      const providerParts = getVisitProviderParts('vis');
+      const record = {
+        recordId: 'v-' + now.getTime() + '-' + Math.random().toString(36).slice(2, 8),
+        id: id,
+        name: name,
+        class: document.getElementById('vis-class').value,
+        type: document.getElementById('vis-type').value,
+        symptom: symptom,
+        temp: document.getElementById('vis-temp').value,
+        bp: document.getElementById('vis-bp').value,
+        pulse: document.getElementById('vis-pulse').value,
+        diagnosis: diagnosis,
+        treatment: (document.getElementById('vis-treatment').value || '').trim(),
+        result: document.getElementById('vis-result').value,
+        provider: getVisitProviderValue('vis'),
+        providerName: providerParts.name,
+        providerRole: providerParts.role,
+        providerClass: providerParts.class,
+        recordedAt: now.toLocaleString('th-TH'),
+        savedAt: now.getTime()
+      };
+      var result = persistNewVisitRecord(record);
+      var savedRec = (result && result.record) ? result.record : record;
+      focusVisitTodayList(savedRec);
+      if (result && result.ok === false) {
+        alert('⚠️ บันทึกในเครื่องไม่สำเร็จ (ที่เก็บอาจเต็ม) — รายการถูกแสดงชั่วคราวฝั่งขวาแล้ว กรุณาลองอีกครั้ง');
+        return;
+      }
+      clearVisitTreatmentForm('vis');
+      alert('✅ บันทึกข้อมูลสำเร็จ!');
+    } finally {
+      setTimeout(function() { _saveVisitInFlight = false; }, 800);
     }
-    clearVisitTreatmentForm('vis');
-    alert('✅ บันทึกข้อมูลสำเร็จ!');
   }
   function saveVisitRecord() {
+    if (_saveVisitInFlight) return;
     const id = (document.getElementById('vis-rec-id').value || '').trim();
     const name = (document.getElementById('vis-rec-name').value || '').trim();
     const symptom = (document.getElementById('vis-rec-symptom').value || '').trim();
+    const diagnosis = (document.getElementById('vis-rec-diagnosis').value || '').trim();
     if (!id || !name) {
       alert('กรุณากรอกเลขประจำตัวและชื่อ-นามสกุล');
       return;
     }
-    if (!validateVisitProvider('vis-rec')) return;
-    const now = new Date();
-    const providerParts = getVisitProviderParts('vis-rec');
-    const record = {
-      recordId: 'v-' + now.getTime() + '-' + Math.random().toString(36).slice(2, 8),
-      id: id,
-      name: name,
-      class: document.getElementById('vis-rec-class').value,
-      type: document.getElementById('vis-rec-type').value,
-      symptom: symptom,
-      temp: document.getElementById('vis-rec-temp').value,
-      bp: document.getElementById('vis-rec-bp').value,
-      pulse: document.getElementById('vis-rec-pulse').value,
-      diagnosis: document.getElementById('vis-rec-diagnosis').value,
-      treatment: (document.getElementById('vis-rec-treatment').value || '').trim(),
-      result: document.getElementById('vis-rec-result').value,
-      provider: getVisitProviderValue('vis-rec'),
-      providerName: providerParts.name,
-      providerRole: providerParts.role,
-      providerClass: providerParts.class,
-      recordedAt: now.toLocaleString('th-TH'),
-      savedAt: now.getTime()
-    };
-    var result = persistNewVisitRecord(record);
-    var savedRec = (result && result.record) ? result.record : record;
-    if (typeof renderVisitRecordViews === 'function') renderVisitRecordViews();
-    focusVisitTodayList(savedRec);
-    if (result && result.ok === false) {
-      alert('⚠️ บันทึกในเครื่องไม่สำเร็จ (ที่เก็บอาจเต็ม) — รายการถูกแสดงชั่วคราวแล้ว กรุณาลองอีกครั้ง');
+    if (!diagnosis || diagnosis === '-- เลือก --') {
+      alert('กรุณาเลือกการวินิจฉัยเบื้องต้น');
       return;
     }
-    clearVisitTreatmentForm('vis-rec');
-    if (typeof isLimitedUser === 'function' && isLimitedUser() && typeof fillVisitRecordForm === 'function') {
-      try { fillVisitRecordForm(); } catch (eFill) {}
+    if (!validateVisitProvider('vis-rec')) return;
+    _saveVisitInFlight = true;
+    try {
+      const now = new Date();
+      const providerParts = getVisitProviderParts('vis-rec');
+      const record = {
+        recordId: 'v-' + now.getTime() + '-' + Math.random().toString(36).slice(2, 8),
+        id: id,
+        name: name,
+        class: document.getElementById('vis-rec-class').value,
+        type: document.getElementById('vis-rec-type').value,
+        symptom: symptom,
+        temp: document.getElementById('vis-rec-temp').value,
+        bp: document.getElementById('vis-rec-bp').value,
+        pulse: document.getElementById('vis-rec-pulse').value,
+        diagnosis: diagnosis,
+        treatment: (document.getElementById('vis-rec-treatment').value || '').trim(),
+        result: document.getElementById('vis-rec-result').value,
+        provider: getVisitProviderValue('vis-rec'),
+        providerName: providerParts.name,
+        providerRole: providerParts.role,
+        providerClass: providerParts.class,
+        recordedAt: now.toLocaleString('th-TH'),
+        savedAt: now.getTime()
+      };
+      var result = persistNewVisitRecord(record);
+      var savedRec = (result && result.record) ? result.record : record;
+      focusVisitTodayList(savedRec);
+      if (result && result.ok === false) {
+        alert('⚠️ บันทึกในเครื่องไม่สำเร็จ (ที่เก็บอาจเต็ม) — รายการถูกแสดงชั่วคราวแล้ว กรุณาลองอีกครั้ง');
+        return;
+      }
+      clearVisitTreatmentForm('vis-rec');
+      if (typeof isLimitedUser === 'function' && isLimitedUser() && typeof fillVisitRecordForm === 'function') {
+        try { fillVisitRecordForm(); } catch (eFill) {}
+      }
+      /* หลังล้างฟอร์ม — รีเฟรชรายการวันนี้ให้ยังเห็นรายการที่เพิ่งบันทึก */
+      if (typeof renderVisitRecordViews === 'function') {
+        try { renderVisitRecordViews(savedRec && savedRec.recordId); } catch (eRec2) {}
+      }
+      alert('✅ บันทึกข้อมูลสำเร็จ!');
+    } finally {
+      setTimeout(function() { _saveVisitInFlight = false; }, 800);
     }
-    alert('✅ บันทึกข้อมูลสำเร็จ!');
   }
   window.saveVisitRecord = saveVisitRecord;
 
@@ -15122,7 +15348,7 @@
     return new Date(p.year, p.month, 1).toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
   }
   function formatAcademicYearLabel(beYear) {
-    return 'ปีการศึกษา ' + beYear + ' (พ.ค. ' + (beYear - 1) + ' – เม.ย. ' + beYear + ')';
+    return 'ปีการศึกษา ' + beYear + ' (พ.ค. ' + beYear + ' – เม.ย. ' + (beYear + 1) + ')';
   }
   function reportCell(value) {
     if (value == null || value === '') return '';
@@ -15508,10 +15734,15 @@
     };
   }
   function getRecordTimestamp(record) {
+    if (!record) return 0;
+    if (typeof resolveVisitRecordTimestamp === 'function') {
+      var resolved = resolveVisitRecordTimestamp(record);
+      if (resolved) return resolved;
+    }
     var ts = getVisitRecordTime(record);
     if (ts) return ts;
-    if (record && record.savedAt && record.savedAt >= 1e11) return record.savedAt;
-    if (record && record.recordedAt && typeof parseVisitRecordedAt === 'function') {
+    if (record.savedAt && record.savedAt >= 1e11) return record.savedAt;
+    if (record.recordedAt && typeof parseVisitRecordedAt === 'function') {
       return parseVisitRecordedAt(record.recordedAt) || 0;
     }
     return 0;
@@ -16390,12 +16621,7 @@
     if (!ts && record.timeRepaired && record.savedAt && typeof normalizeVisitEpochMs_ === 'function') {
       ts = normalizeVisitEpochMs_(record.savedAt);
     }
-    if (!ts && (record.id || record.name) && !record.timeRepaired && !record.fromSheet) {
-      var base = new Date();
-      base.setHours(8, 0, 0, 0);
-      ts = base.getTime() + (orphanIndex || 0) * 180000;
-      record.timeRepaired = true;
-    }
+    /* ห้ามสร้างเวลาเป็น "วันนี้" ให้รายการที่ไม่มีวันที่ — ทำให้รายการเก่าโผล่ในวันนี้/ซ้ำหลังดึงชีต */
     if (ts) {
       var prevSaved = record.savedAt;
       record.savedAt = ts;
@@ -16458,10 +16684,10 @@
     return false;
   }
   /* เก็บรายการรักษาในเครื่องแบบจำกัดขนาด — ชีทเก็บประวัติยาว; backup ไม่บังคับเมื่อที่เก็บใกล้เต็ม */
-  var VISIT_LOCAL_MAX_RECORDS = 350;
-  var VISIT_LOCAL_HARD_MAX = 100;
-  var VISIT_LOCAL_MIN_KEEP = 30;
-  var VISIT_SHEET_MERGE_MAX = 300;
+  var VISIT_LOCAL_MAX_RECORDS = 500;
+  var VISIT_LOCAL_HARD_MAX = 200;
+  var VISIT_LOCAL_MIN_KEEP = 80;
+  var VISIT_SHEET_MERGE_MAX = 500;
   function isSheetVisitRecord_(r) {
     if (!r) return false;
     if (r.fromSheet) return true;
@@ -16511,8 +16737,7 @@
     return keep;
   }
   function freeSpaceForVisitStorage_() {
-    /* ลบเฉพาะสำเนา — ไม่ลบ sh-visit หลักจนกว่าจะเขียนใหม่สำเร็จ */
-    try { localStorage.removeItem('sh-visit-backup'); } catch (e) {}
+    /* ไม่ลบ sh-visit-backup ที่นี่ — กันข้อมูลเก่าหายถ้าเขียนหลักล้มเหลว */
   }
   function writeVisitStoragePayload_(payload) {
     localStorage.setItem('sh-visit', payload);
@@ -16529,12 +16754,14 @@
   function loadVisitRecords() {
     if (_visitRecordsMemCache) return _visitRecordsMemCache;
     let records = [];
+    let backup = [];
     try { records = JSON.parse(localStorage.getItem('sh-visit') || '[]'); } catch (e) {}
-    if (!records.length) {
-      try {
-        var backup = JSON.parse(localStorage.getItem('sh-visit-backup') || '[]');
-        if (Array.isArray(backup) && backup.length) records = backup;
-      } catch (e2) {}
+    try { backup = JSON.parse(localStorage.getItem('sh-visit-backup') || '[]'); } catch (e2) {}
+    if (!Array.isArray(records)) records = [];
+    if (!Array.isArray(backup)) backup = [];
+    /* กู้จาก backup เฉพาะเมื่อรายการหลักว่าง/เสีย — ห้าม merge เมื่อหลักสั้นกว่า (เคยชุบรายการที่ลบแล้ว) */
+    if (!records.length && backup.length) {
+      records = backup.slice();
     }
     /* ซ่อม/enrich ทั้งก้อนแค่ครั้งแรกของเซสชัน — ลดค้างตอนเปิดรายการซ้ำ */
     if (!_visitRecordsRepairedThisSession) {
@@ -16706,6 +16933,11 @@
       var advice = getVisitAdvice(records[idx]);
       row.cells[5].textContent = advice;
     }
+    try {
+      if (String(newResult || '').indexOf('ส่งต่อ') !== -1 && typeof maybeCreateReferralFromCare === 'function') {
+        maybeCreateReferralFromCare(records[idx], 'visit');
+      }
+    } catch (eRefUpd) {}
     renderVisitHistory();
   }
   window.updateVisitRecordResult = updateVisitRecordResult;
@@ -16827,31 +17059,41 @@
     return d.getDate() === now.getDate() && d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
   }
   /**
-   * ช่วงรายการแบบนับจากเวลาที่บันทึก (ไม่ตัดทิ้ง — ย้ายไปรายการถัดไป)
-   * today < 24ชม. | week 1–7วัน | month 7–30วัน | year 30วัน–1ปี | history > 1ปี
+   * ถังหลักสำหรับประวัติย้อนหลัง / การจัดกลุ่มอายุ
+   * today=วันปฏิทินนี้ | week=1–7วัน (ไม่รวมวันนี้) | … | history > 1ปี หรือไม่มีเวลา
+   * ตัวกรองรายการใช้แบบรวมช่วง (ดู isVisitPeriod*) ให้ตรงป้ายชื่อ
    */
   function getVisitPeriodBucket_(record) {
     var ts = resolveVisitRecordTimestamp(record);
-    if (!ts) return 'today';
+    if (!ts) return 'history';
+    if (isVisitToday(record)) return 'today';
     var age = Date.now() - ts;
     if (age < 0) age = 0;
-    if (age < VISIT_DAY_MS) return 'today';
     if (age < VISIT_WEEK_MS) return 'week';
     if (age < VISIT_MONTH_MS) return 'month';
     if (age < VISIT_YEAR_MS) return 'year';
     return 'history';
   }
   function isVisitPeriodToday(record) {
-    return getVisitPeriodBucket_(record) === 'today';
+    return isVisitToday(record);
   }
   function isVisitPeriodWeek(record) {
-    return getVisitPeriodBucket_(record) === 'week';
+    var ts = resolveVisitRecordTimestamp(record);
+    if (!ts) return false;
+    var age = Date.now() - ts;
+    return age >= 0 && age < VISIT_WEEK_MS;
   }
   function isVisitPeriodMonth(record) {
-    return getVisitPeriodBucket_(record) === 'month';
+    var ts = resolveVisitRecordTimestamp(record);
+    if (!ts) return false;
+    var age = Date.now() - ts;
+    return age >= 0 && age < VISIT_MONTH_MS;
   }
   function isVisitPeriodYear(record) {
-    return getVisitPeriodBucket_(record) === 'year';
+    var ts = resolveVisitRecordTimestamp(record);
+    if (!ts) return false;
+    var age = Date.now() - ts;
+    return age >= 0 && age < VISIT_YEAR_MS;
   }
   function isVisitPeriodHistory(record) {
     return getVisitPeriodBucket_(record) === 'history';
@@ -16860,10 +17102,10 @@
     return getVisitPeriodBucket_(record) || 'year';
   }
   var VISIT_PERIOD_HINTS = {
-    today: 'แสดงรายการภายใน 24 ชั่วโมงนับจากเวลาที่บันทึก — ครบ 24 ชม. ย้ายไปรายการสัปดาห์นี้',
-    week: 'แสดงรายการที่บันทึกมาแล้ว 1–7 วัน — ครบ 7 วัน ย้ายไปรายการเดือนนี้',
-    month: 'แสดงรายการที่บันทึกมาแล้ว 7–30 วัน — ครบ 30 วัน ย้ายไปรายการปีนี้',
-    year: 'แสดงรายการที่บันทึกมาแล้ว 30 วัน – 1 ปี — เกิน 1 ปีแสดงในประวัติย้อนหลัง'
+    today: 'แสดงรายการที่บันทึกในวันนี้ (ตามวันปฏิทิน) — ไม่ลบข้อมูลเมื่อเปลี่ยนวัน',
+    week: 'แสดงรายการย้อนหลัง 7 วัน (รวมวันนี้)',
+    month: 'แสดงรายการย้อนหลัง 30 วัน (รวมวันนี้)',
+    year: 'แสดงรายการย้อนหลัง 1 ปี (รวมวันนี้) — เกิน 1 ปีดูที่ประวัติย้อนหลัง'
   };
   function isVisitWithin24Hours(record) {
     return isVisitPeriodToday(record);
@@ -17014,16 +17256,25 @@
       year: 'รายการปีนี้'
     };
     const emptyLabels = {
-      today: 'ยังไม่มีรายการภายใน 24 ชั่วโมง',
-      week: 'ยังไม่มีรายการที่ผ่านมา 1–7 วัน',
-      month: 'ยังไม่มีรายการที่ผ่านมา 7–30 วัน',
-      year: 'ยังไม่มีรายการที่ผ่านมา 30 วัน – 1 ปี'
+      today: 'ยังไม่มีรายการวันนี้',
+      week: 'ยังไม่มีรายการใน 7 วันล่าสุด',
+      month: 'ยังไม่มีรายการใน 30 วันล่าสุด',
+      year: 'ยังไม่มีรายการใน 1 ปีล่าสุด'
     };
     var titleEl = document.getElementById('visit-list-title');
     if (titleEl) titleEl.textContent = periodLabels[period] || periodLabels.today;
     var hintEl = document.getElementById('visit-list-period-hint');
     if (hintEl) hintEl.textContent = VISIT_PERIOD_HINTS[period] || VISIT_PERIOD_HINTS.today;
-    const all = loadVisitRecords();
+    var all = loadVisitRecords();
+    /* ยุบรายการซ้ำตอนแสดง — ถ้าสั้นลงให้บันทึกเงียบๆ เพื่อล้างคู่ซ้ำในเครื่อง */
+    if (typeof dedupeVisitLocalSheetPairs_ === 'function' && all.length > 1) {
+      var deduped = dedupeVisitLocalSheetPairs_(all);
+      if (deduped.length < all.length) {
+        all = deduped;
+        _visitRecordsMemCache = deduped;
+        try { saveVisitRecords(deduped, { quiet: true }); } catch (eDedupeSave) {}
+      }
+    }
     var records = filterVisitRecordsByPeriod(all, period)
       .sort(function(a, b) { return resolveVisitRecordTimestamp(b) - resolveVisitRecordTimestamp(a); });
     /* บังคับแสดงรายการที่เพิ่งบันทึก แม้ตัวกรองช่วงเวลาจะไม่เข้า */
@@ -17056,12 +17307,14 @@
       try {
         var recPeriod = document.getElementById('visit-rec-list-period');
         if (recPeriod) recPeriod.value = 'today';
-        renderVisitRecordViews();
+        renderVisitRecordViews(highlightId);
       } catch (eRec) {}
     }
-    var card = document.getElementById('visit-today-card');
-    if (!card && typeof getCurrentRole === 'function' && getCurrentRole() === 'nursing_student') {
+    var card = null;
+    if (typeof getCurrentRole === 'function' && getCurrentRole() === 'nursing_student') {
       card = document.getElementById('visit-rec-today-card');
+    } else {
+      card = document.getElementById('visit-today-card');
     }
     if (card) {
       card.classList.add('visit-card-pulse');
@@ -17111,6 +17364,18 @@
   function isClientVisitRecordId_(recordId) {
     return /^v-\d{10,}-[a-z0-9]+$/i.test(String(recordId || '').trim());
   }
+  /** รวมอาการ+วินิจฉัยให้เทียบกันได้แม้ช่องหนึ่งว่างหรือสลับค่า */
+  function visitClinicalSig_(r) {
+    if (!r) return '';
+    var symptom = String(r.symptom || '').trim();
+    var diagnosis = String(r.diagnosis || '').trim();
+    if (diagnosis === '-- เลือก --') diagnosis = '';
+    var parts = [];
+    if (symptom) parts.push(symptom);
+    if (diagnosis && diagnosis !== symptom) parts.push(diagnosis);
+    if (parts.length > 1) parts.sort();
+    return parts.join('|');
+  }
   function visitRecordSoftKey_(r) {
     if (!r) return '';
     var id = String(r.id || '').trim();
@@ -17121,15 +17386,43 @@
     if (!ts && r.recordedAt && typeof parseVisitRecordedAt === 'function') {
       ts = parseVisitRecordedAt(r.recordedAt) || 0;
     }
-    var bucket = ts ? Math.floor(ts / 120000) : 0;
-    var symptom = String(r.symptom || '').trim();
-    var diagnosis = String(r.diagnosis || '').trim();
-    return id + '|' + bucket + '|' + symptom + '|' + diagnosis;
+    /* ไม่มีเวลาที่เชื่อถือได้ — ห้ามใช้ soft key ร่วม (เคยทำให้รายการเก่าถูกยุบเหลือแถวเดียว) */
+    if (!ts) return '';
+    var sig = visitClinicalSig_(r);
+    if (!sig) return '';
+    var bucket = Math.floor(ts / 120000);
+    return id + '|' + bucket + '|' + sig;
+  }
+  /** soft key ของ bucket ปัจจุบัน ±1 — ให้ dedupe/merge ตรงกับ markVisitMergeKeys_ */
+  function visitSoftKeysAround_(r) {
+    var soft = visitRecordSoftKey_(r);
+    if (!soft) return [];
+    var parts = soft.split('|');
+    if (parts.length < 3) return [soft];
+    var id = parts[0];
+    var bucket = parseInt(parts[1], 10);
+    var sig = parts.slice(2).join('|');
+    if (!isFinite(bucket)) return [soft];
+    var keys = [];
+    var b;
+    for (b = bucket - 1; b <= bucket + 1; b++) {
+      if (b < 0) continue;
+      keys.push(id + '|' + b + '|' + sig);
+    }
+    return keys;
+  }
+  function visitsSoftMatch_(a, b) {
+    if (!a || !b) return false;
+    var set = {};
+    visitSoftKeysAround_(a).forEach(function(k) { set[k] = true; });
+    return visitSoftKeysAround_(b).some(function(k) { return !!set[k]; });
   }
   function markVisitMergeKeys_(keys, r) {
     if (!keys || !r) return;
     var key = visitRecordMergeKey(r);
     if (key) keys[key] = true;
+    var soft = visitRecordSoftKey_(r);
+    if (!soft) return;
     var id = String(r.id || '').trim();
     if (!id) return;
     var ts = 0;
@@ -17138,24 +17431,20 @@
     if (!ts && r.recordedAt && typeof parseVisitRecordedAt === 'function') {
       ts = parseVisitRecordedAt(r.recordedAt) || 0;
     }
-    var bucket = ts ? Math.floor(ts / 120000) : 0;
-    var symptom = String(r.symptom || '').trim();
-    var diagnosis = String(r.diagnosis || '').trim();
+    if (!ts) return;
+    var sig = visitClinicalSig_(r);
+    if (!sig) return;
+    var bucket = Math.floor(ts / 120000);
     var b;
     for (b = bucket - 1; b <= bucket + 1; b++) {
       if (b < 0) continue;
-      keys['soft:' + id + '|' + b + '|' + symptom + '|' + diagnosis] = true;
+      keys['soft:' + id + '|' + b + '|' + sig] = true;
     }
   }
   function visitHasMergeKey_(keys, r) {
     if (!keys || !r) return false;
     var key = visitRecordMergeKey(r);
     if (key && keys[key]) return true;
-    /* รายการ client (v-...) ไม่ถูกตัดด้วย soft key จากชีท — กันข้อมูลหายหลังดึงชีท */
-    var rid = String(r.recordId || '').trim();
-    if (rid && isClientVisitRecordId_(rid)) {
-      return !!keys['id:' + rid];
-    }
     var soft = visitRecordSoftKey_(r);
     if (soft && keys['soft:' + soft]) return true;
     return false;
@@ -17167,23 +17456,58 @@
     if (r.sheetRow) return 'sheet-r' + r.sheetRow + '|' + String(r.id || '');
     var soft = visitRecordSoftKey_(r);
     if (soft) return 'soft:' + soft;
-    return String(r.id || '') + '|' + String(r.recordedAt || '') + '|' + String(r.symptom || '') + '|' + String(r.diagnosis || '');
+    return String(r.id || '') + '|' + String(r.recordedAt || '') + '|' + visitClinicalSig_(r);
   }
-  /** ตัดเฉพาะรหัสรายการซ้ำ — ไม่รวมรายการคนละครั้งที่อาการ/เวลาใกล้กัน */
+  /**
+   * ตัด (1) รหัสรายการซ้ำ (2) soft key เดียวกันในช่วง 2 นาที
+   * เก็บตัว local ก่อนชีต — กันรายการวันนี้ขึ้นซ้ำหลังบันทึก/ส่งชีต
+   */
   function dedupeVisitLocalSheetPairs_(records) {
     if (!Array.isArray(records) || records.length < 2) return records || [];
-    var seenId = {};
-    var out = [];
-    records.slice().sort(function(a, b) {
+    function isSheetLike_(r) {
+      if (!r) return false;
+      if (typeof isSheetVisitRecord_ === 'function') return isSheetVisitRecord_(r);
+      return !!(r.fromSheet || (r.recordId && String(r.recordId).indexOf('v-sheet-') === 0));
+    }
+    function preferKeep_(a, b) {
+      var aSheet = isSheetLike_(a) ? 1 : 0;
+      var bSheet = isSheetLike_(b) ? 1 : 0;
+      if (aSheet !== bSheet) return aSheet < bSheet ? a : b;
+      var aLen = String((a && a.treatment) || '').length + String((a && a.symptom) || '').length;
+      var bLen = String((b && b.treatment) || '').length + String((b && b.symptom) || '').length;
+      if (aLen !== bLen) return aLen >= bLen ? a : b;
+      return (Number((a && a.savedAt) || 0) >= Number((b && b.savedAt) || 0)) ? a : b;
+    }
+    var list = records.slice().sort(function(a, b) {
+      var as = isSheetLike_(a) ? 1 : 0;
+      var bs = isSheetLike_(b) ? 1 : 0;
+      if (as !== bs) return as - bs;
       return (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0);
-    }).forEach(function(r) {
+    });
+    var seenId = {};
+    var softIdx = {};
+    var out = [];
+    list.forEach(function(r) {
       if (!r) return;
       var rid = String(r.recordId || '').trim();
-      if (rid) {
-        if (seenId[rid]) return;
-        seenId[rid] = true;
+      if (rid && seenId[rid]) return;
+      var hitIdx;
+      visitSoftKeysAround_(r).forEach(function(k) {
+        if (hitIdx === undefined && softIdx[k] !== undefined) hitIdx = softIdx[k];
+      });
+      if (hitIdx !== undefined) {
+        var kept = preferKeep_(out[hitIdx], r);
+        out[hitIdx] = kept;
+        var keptRid = String(kept.recordId || '').trim();
+        if (keptRid) seenId[keptRid] = true;
+        if (rid) seenId[rid] = true;
+        visitSoftKeysAround_(kept).forEach(function(k) { softIdx[k] = hitIdx; });
+        return;
       }
+      if (rid) seenId[rid] = true;
+      var idx = out.length;
       out.push(r);
+      visitSoftKeysAround_(r).forEach(function(k) { softIdx[k] = idx; });
     });
     return out;
   }
@@ -17239,28 +17563,26 @@
     }
     var keys = {};
     var merged = [];
+    var sheetPrepared = [];
     sheetVisits.forEach(function(r) {
       if (typeof applySheetVisitTimestamp_ === 'function') {
-        applySheetVisitTimestamp_(r, r.sheetRow ? r.sheetRow - 2 : merged.length);
+        applySheetVisitTimestamp_(r, r.sheetRow ? r.sheetRow - 2 : sheetPrepared.length);
       } else if (typeof assignSheetVisitTodayTime_ === 'function') {
-        assignSheetVisitTodayTime_(r, r.sheetRow ? r.sheetRow - 2 : merged.length);
+        assignSheetVisitTodayTime_(r, r.sheetRow ? r.sheetRow - 2 : sheetPrepared.length);
       }
+      enrichVisitFromStudentRegistry(r);
+      sheetPrepared.push(r);
+    });
+    /* ใส่รายการในเครื่องทั้งหมดก่อน — ไม่ทิ้งรายการเก่าจากชีตที่รอบดึงนี้ยังไม่ครบ */
+    local.forEach(function(r) {
+      if (!r) return;
       enrichVisitFromStudentRegistry(r);
       if (visitHasMergeKey_(keys, r)) return;
       markVisitMergeKeys_(keys, r);
       merged.push(r);
     });
-    local.forEach(function(r) {
-      if (!r) return;
-      enrichVisitFromStudentRegistry(r);
+    sheetPrepared.forEach(function(r) {
       if (visitHasMergeKey_(keys, r)) return;
-      var isClient = isClientVisitRecordId_(r.recordId);
-      var isSheet = typeof isSheetVisitRecord_ === 'function'
-        ? isSheetVisitRecord_(r)
-        : !!(r.fromSheet || (r.recordId && String(r.recordId).indexOf('v-sheet-') === 0));
-      /* รายการจากชีทที่ไม่มีบนชีทรอบนี้ = ถูกลบจากชีทแล้ว (ยกเว้นรหัส client) */
-      if (isSheet && !isClient) return;
-      /* คงรายการในเครื่องทั้งหมด — ไม่ตัดทิ้งตามอายุ แค่ย้ายช่วงใน dropdown */
       markVisitMergeKeys_(keys, r);
       merged.push(r);
     });
@@ -17270,7 +17592,6 @@
       var ta = (typeof resolveVisitRecordTimestamp === 'function' ? resolveVisitRecordTimestamp(a) : 0) || Number(a.savedAt) || 0;
       return tb - ta;
     });
-    /* จำกัดก้อนจากชีท — ไม่ให้ localStorage เต็มจนบันทึกใหม่ไม่ได้ */
     if (merged.length > VISIT_SHEET_MERGE_MAX) {
       merged = pruneVisitRecordsForStorage_(merged, VISIT_SHEET_MERGE_MAX);
     }
@@ -17292,6 +17613,12 @@
       if (!k) return;
       if (index[k] !== undefined) {
         var existing = local[index[k]];
+        /* ส่งต่อ: สถานะติดตามแล้วฝั่งเครื่องชนะชีตที่ยังรอติดตาม */
+        var localDone = storageKey === 'sh-referral' && existing &&
+          (String(existing.status || '').indexOf('ติดตามแล้ว') !== -1 || existing.followedUpAt);
+        var incomingPending = storageKey === 'sh-referral' && r &&
+          String(r.status || '') === 'รอติดตาม';
+        if (localDone && incomingPending) return;
         if ((r.savedAt || 0) >= (existing.savedAt || 0)) {
           local[index[k]] = Object.assign({}, existing, r);
         }
@@ -17611,6 +17938,33 @@
     }
   }
   window.manualRefreshVisitFromSheet = manualRefreshVisitFromSheet;
+  function manualPushVisitsToSheet() {
+    if (typeof isFullStaffRole === 'function' && !isFullStaffRole()) {
+      alert('เฉพาะเจ้าหน้าที่อนามัย/ผู้บริหารเท่านั้นที่ส่งรายการขึ้นชีตได้');
+      return;
+    }
+    if (typeof syncAllLocalVisitRecordsToSheet !== 'function') {
+      alert('ยังโหลดโมดูลซิงค์ชีตไม่พร้อม — รีเฟรชหน้าแล้วลองใหม่');
+      return;
+    }
+    if (!confirm('ส่งรายการบันทึกการรักษาที่มีในเว็บขึ้นแท็บ Google Sheet "บันทึกการรักษา"?\n(รายการเดิมในชีตที่มีรหัสรายการเดียวกันจะถูกอัปเดต)')) {
+      return;
+    }
+    syncAllLocalVisitRecordsToSheet({ clientOnly: false, silent: false });
+  }
+  window.manualPushVisitsToSheet = manualPushVisitsToSheet;
+  var _visitLocalPushOnceAt = 0;
+  function maybeAutoPushLocalVisitsToSheet_() {
+    if (typeof isFullStaffRole === 'function' && !isFullStaffRole()) return;
+    if (typeof syncAllLocalVisitRecordsToSheet !== 'function') return;
+    if (typeof _suppressVisitSheetRefreshUntil === 'number' && Date.now() < _suppressVisitSheetRefreshUntil) return;
+    if (Date.now() - _visitLocalPushOnceAt < 120000) return;
+    _visitLocalPushOnceAt = Date.now();
+    setTimeout(function() {
+      if (typeof _suppressVisitSheetRefreshUntil === 'number' && Date.now() < _suppressVisitSheetRefreshUntil) return;
+      syncAllLocalVisitRecordsToSheet({ clientOnly: true, silent: false, delayMs: 650 });
+    }, 1500);
+  }
   function refreshVisitRecordsFromSheet(studentId, callback) {
     if (!studentId) {
       if (callback) callback();
@@ -17655,6 +18009,7 @@
       return;
     }
     var all = collectVisitRecordsForScope(scopeId).slice()
+      .filter(function(r) { return isVisitPeriodHistory(r); })
       .sort(function(a, b) { return resolveVisitRecordTimestamp(b) - resolveVisitRecordTimestamp(a); });
     var limit = 100;
     var records = all.length > limit ? all.slice(0, limit) : all;
@@ -17672,8 +18027,9 @@
     }
     applyVisitColStaffVisibility();
   }
-  function renderVisitRecordToday(scopeId) {
-    scopeId = scopeId !== undefined ? scopeId : getVisitRecordScopeId();
+  function renderVisitRecordToday(scopeId, highlightId) {
+    /* scopeId ยังใช้กับประวัติย้อนหลัง — รายการวันนี้ของนักเรียนพยาบาลไม่บังคับกรอกรหัส */
+    if (scopeId === undefined) scopeId = getVisitRecordScopeId();
     var tbody = document.getElementById('visit-rec-today');
     if (!tbody) return;
     var period = getVisitRecordListPeriod();
@@ -17684,36 +18040,63 @@
       year: 'รายการปีนี้'
     };
     var emptyLabels = {
-      today: 'ยังไม่มีรายการภายใน 24 ชั่วโมง',
-      week: 'ยังไม่มีรายการที่ผ่านมา 1–7 วัน',
-      month: 'ยังไม่มีรายการที่ผ่านมา 7–30 วัน',
-      year: 'ยังไม่มีรายการที่ผ่านมา 30 วัน – 1 ปี'
+      today: 'ยังไม่มีรายการวันนี้',
+      week: 'ยังไม่มีรายการใน 7 วันล่าสุด',
+      month: 'ยังไม่มีรายการใน 30 วันล่าสุด',
+      year: 'ยังไม่มีรายการใน 1 ปีล่าสุด'
     };
     var titleEl = document.getElementById('visit-rec-list-title');
     if (titleEl) titleEl.textContent = periodLabels[period] || periodLabels.today;
     var recHintEl = document.getElementById('visit-rec-list-period-hint');
     if (recHintEl) recHintEl.textContent = VISIT_PERIOD_HINTS[period] || VISIT_PERIOD_HINTS.today;
-    if (!scopeId) {
+    var role = typeof getCurrentRole === 'function' ? getCurrentRole() : '';
+    var sourceRecords;
+    if (role === 'nursing_student') {
+      sourceRecords = typeof loadVisitRecords === 'function' ? loadVisitRecords() : [];
+      if (typeof dedupeVisitLocalSheetPairs_ === 'function' && sourceRecords.length > 1) {
+        var dedupedAll = dedupeVisitLocalSheetPairs_(sourceRecords);
+        if (dedupedAll.length < sourceRecords.length) {
+          sourceRecords = dedupedAll;
+          _visitRecordsMemCache = dedupedAll;
+          try { saveVisitRecords(dedupedAll, { quiet: true }); } catch (eDedupeRec) {}
+        }
+      }
+    } else if (!scopeId) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-mid);padding:18px;">กรุณากรอกเลขประจำตัวเพื่อดูประวัติการรักษา</td></tr>';
       applyVisitColStaffVisibility();
       renderVisitRecordHistoryPanel(scopeId);
       return;
+    } else {
+      sourceRecords = collectVisitRecordsForScope(scopeId);
     }
-    var records = filterVisitRecordsByPeriod(collectVisitRecordsForScope(scopeId), period)
-      .sort(function(a, b) { return resolveVisitRecordTimestamp(b) - resolveVisitRecordTimestamp(a); });
+    var records = filterVisitRecordsByPeriod(sourceRecords, period);
+    if (typeof dedupeVisitLocalSheetPairs_ === 'function') records = dedupeVisitLocalSheetPairs_(records);
+    records = records.sort(function(a, b) { return resolveVisitRecordTimestamp(b) - resolveVisitRecordTimestamp(a); });
+    if (highlightId) {
+      var highlighted = null;
+      for (var hi = 0; hi < sourceRecords.length; hi++) {
+        if (sourceRecords[hi] && sourceRecords[hi].recordId === highlightId) {
+          highlighted = sourceRecords[hi];
+          break;
+        }
+      }
+      if (highlighted && !records.some(function(r) { return r.recordId === highlightId; })) {
+        records = [highlighted].concat(records);
+      }
+    }
     if (!records.length) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-mid);padding:18px;">' +
         (emptyLabels[period] || emptyLabels.today) + '</td></tr>';
     } else {
-      tbody.innerHTML = records.map(function(r) { return buildVisitListRowHtml(r, period); }).join('');
+      tbody.innerHTML = records.map(function(r) { return buildVisitListRowHtml(r, period, highlightId); }).join('');
     }
     applyVisitColStaffVisibility();
     renderVisitRecordHistoryPanel(scopeId);
   }
   window.renderVisitRecordToday = renderVisitRecordToday;
-  function renderVisitRecordViews() {
+  function renderVisitRecordViews(highlightId) {
     if (typeof getCurrentRole === 'function' && getCurrentRole() !== 'nursing_student') return;
-    renderVisitRecordToday(getVisitRecordScopeId());
+    renderVisitRecordToday(getVisitRecordScopeId(), highlightId);
   }
   function fillVisitRecordForm() {
     if (!isLimitedUser()) return;
@@ -19000,7 +19383,12 @@
     }
     var appt = getStudentAppointment(id);
     if (appt) {
-      document.getElementById('appt-page-date').value = appt.date || '';
+      var dateEl = document.getElementById('appt-page-date');
+      if (dateEl) {
+        dateEl.value = (typeof normalizeAppointmentDateKey_ === 'function'
+          ? normalizeAppointmentDateKey_(appt.date)
+          : String(appt.date || '').slice(0, 10)) || '';
+      }
       document.getElementById('appt-page-time').value = appt.time || '';
       document.getElementById('appt-page-purpose').value = appt.purpose || 'ตรวจสุขภาพ';
       document.getElementById('appt-page-place').value = appt.place || 'ห้องพยาบาลโรงเรียน';
@@ -19089,9 +19477,28 @@
     var day = String(d.getDate()).padStart(2, '0');
     return y + '-' + m + '-' + day;
   }
+  function normalizeAppointmentDateKey_(dateStr) {
+    var s = String(dateStr || '').trim();
+    if (!s) return '';
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+      var y = parseInt(s.slice(0, 4), 10);
+      if (y > 2400) y -= 543;
+      return y + s.slice(4, 10);
+    }
+    var m = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+    if (m) {
+      var y2 = parseInt(m[3], 10);
+      if (y2 > 2400) y2 -= 543;
+      var mm = ('0' + parseInt(m[2], 10)).slice(-2);
+      var dd = ('0' + parseInt(m[1], 10)).slice(-2);
+      return y2 + '-' + mm + '-' + dd;
+    }
+    return s.slice(0, 10);
+  }
   function parseAppointmentTs(appt) {
     if (!appt || !appt.date) return NaN;
-    var datePart = String(appt.date).trim().slice(0, 10);
+    var datePart = normalizeAppointmentDateKey_(appt.date);
+    if (!datePart || !/^\d{4}-\d{2}-\d{2}$/.test(datePart)) return NaN;
     var t = String(appt.time || '').trim();
     if (t) {
       var parts = t.split(':');
@@ -19104,7 +19511,7 @@
     return day.getTime();
   }
   function isAppointmentUpcoming(appt) {
-    var datePart = appt && appt.date ? String(appt.date).trim().slice(0, 10) : '';
+    var datePart = normalizeAppointmentDateKey_(appt && appt.date);
     if (!datePart) return false;
     return datePart >= localDateKey(new Date());
   }

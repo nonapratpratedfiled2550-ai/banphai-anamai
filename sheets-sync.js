@@ -4,7 +4,7 @@
 var SHEETS_CONFIG = {
   ENABLED: true,
   SPREADSHEET_ID: '15IlAOVYRi3MixwzvhwO10ZkDonm_oam_wzSM-3-BpIw',
-  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbx02Q_157D7bfD6Xavh1GCyDkDJ-KoJtxIvkWPXsZDWb3sRp-ANui4Im1sVhLa9MEKzlg/exec',
+  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbz5VTou4-dFWVf-oHIgemDnsJopq9br_dKZnSLpSuzvllfHYBp_hSbi1LO6kn2qNUQciw/exec',
   QUEUE_KEY: 'sh-sheets-queue',
   IS_WORKSPACE: false
 };
@@ -164,6 +164,8 @@ function compactPayloadForGet_(payload) {
     // ต้องมีคีย์จับคู่เสมอ
     if (payload.matchKey && payload.row[payload.matchKey] != null && payload.row[payload.matchKey] !== '') {
       next.row[payload.matchKey] = payload.row[payload.matchKey];
+    } else if (payload.matchKey === 'รหัสรายการ') {
+      /* ห้ามใส่รหัสนักเรียนแทนรหัสรายการ — ทำให้ upsert ผิดแถว */
     } else if (payload.row.id != null && payload.row.id !== '') {
       next.row.id = payload.row.id;
       if (payload.matchKey) next.row[payload.matchKey] = payload.row.id;
@@ -326,6 +328,9 @@ function describeSheetSyncFailure_(errors, apiReachable) {
   }
   if (serverErr) {
     var short = String(serverErr);
+    if (/10000000|เซลล์ที่จำกัด|exceed.*cell/i.test(short)) {
+      return 'Google Sheet เต็มลิมิตเซลล์ (10 ล้าน) — ลบชีต/แถวว่างที่ไม่ได้ใช้ แล้ว Deploy สคริปต์เวอร์ชันใหม่';
+    }
     if (short.length > 120) short = short.slice(0, 117) + '...';
     return 'บันทึกลงชีตไม่สำเร็จ — ' + short +
       ( /แถว|merged|ช่วง/i.test(serverErr)
@@ -814,6 +819,113 @@ function buildVisitSheetRowSlim_(record) {
   };
 }
 
+function collectLocalVisitRecordsForSheetPush_(clientOnly) {
+  var records = [];
+  if (typeof loadVisitRecords === 'function') {
+    try { records = loadVisitRecords() || []; } catch (eLoad) { records = []; }
+  }
+  if (!Array.isArray(records) || !records.length) {
+    try { records = JSON.parse(localStorage.getItem('sh-visit') || '[]'); } catch (eLs) { records = []; }
+  }
+  if (!Array.isArray(records)) records = [];
+  var seen = {};
+  var out = [];
+  records.forEach(function(r) {
+    if (!r) return;
+    var rid = String(r.recordId || '').trim();
+    var id = String(r.id || '').trim();
+    if (!rid || !id) return;
+    if (clientOnly && !/^v-\d{10,}-[a-z0-9]+$/i.test(rid)) return;
+    if (seen[rid]) return;
+    seen[rid] = true;
+    out.push(r);
+  });
+  out.sort(function(a, b) {
+    var ac = /^v-\d{10,}-/i.test(String(a.recordId || '')) ? 0 : 1;
+    var bc = /^v-\d{10,}-/i.test(String(b.recordId || '')) ? 0 : 1;
+    if (ac !== bc) return ac - bc;
+    return (Number(b.savedAt) || 0) - (Number(a.savedAt) || 0);
+  });
+  return out;
+}
+
+var _visitLocalPushInFlight = false;
+
+/**
+ * ส่งรายการบันทึกการรักษาที่มีในเว็บ → แท็บ Google Sheet "บันทึกการรักษา"
+ * ใช้ upsert ตามรหัสรายการ — ไม่แตะชีตอื่น
+ */
+function syncAllLocalVisitRecordsToSheet(options) {
+  options = options || {};
+  if (_visitLocalPushInFlight) {
+    if (!options.silent && typeof showSheetToast_ === 'function') {
+      showSheetToast_('กำลังส่งรายการรักษาขึ้นชีตอยู่แล้ว — รอสักครู่');
+    }
+    return Promise.resolve({ ok: false, busy: true });
+  }
+  if (!SHEETS_CONFIG.ENABLED || !SHEETS_CONFIG.WEB_APP_URL) {
+    return Promise.resolve({ ok: false, error: 'DISABLED' });
+  }
+  var records = collectLocalVisitRecordsForSheetPush_(!!options.clientOnly);
+  if (!records.length) {
+    if (!options.silent && typeof showSheetToast_ === 'function') {
+      showSheetToast_('ไม่พบรายการรักษาในเว็บสำหรับส่งขึ้นชีต', true);
+    }
+    return Promise.resolve({ ok: true, sent: 0, failed: 0, total: 0 });
+  }
+
+  _visitLocalPushInFlight = true;
+  var total = records.length;
+  var sent = 0;
+  var failed = 0;
+  var i = 0;
+  var delayMs = options.delayMs > 0 ? options.delayMs : 600;
+  if (!options.silent && typeof showSheetToast_ === 'function') {
+    showSheetToast_('กำลังส่งรายการรักษาขึ้นชีต 0 / ' + total.toLocaleString('th-TH'));
+  }
+
+  return new Promise(function(resolve) {
+    function finish() {
+      _visitLocalPushInFlight = false;
+      if (!options.silent && typeof showSheetToast_ === 'function') {
+        if (!sent && failed) {
+          showSheetToast_('ส่งขึ้นชีตไม่สำเร็จ — ตรวจ Web App URL / Deploy แล้วลองใหม่', true);
+        } else if (failed) {
+          showSheetToast_('ส่งขึ้นชีตแล้ว ' + sent.toLocaleString('th-TH') + '/' + total.toLocaleString('th-TH') +
+            ' รายการ (ไม่สำเร็จ ' + failed + ')', true);
+        } else {
+          showSheetToast_('ส่งรายการรักษาขึ้นแท็บบันทึกการรักษาครบ ' + sent.toLocaleString('th-TH') + ' รายการแล้ว');
+        }
+      }
+      resolve({ ok: failed === 0, sent: sent, failed: failed, total: total });
+    }
+    function next() {
+      if (i >= total) {
+        finish();
+        return;
+      }
+      var rec = records[i++];
+      if (!options.silent && typeof showSheetToast_ === 'function' &&
+          (i === 1 || i % 5 === 0 || i >= total)) {
+        showSheetToast_('กำลังส่งรายการรักษาขึ้นชีต ' + i.toLocaleString('th-TH') + ' / ' + total.toLocaleString('th-TH'));
+      }
+      syncVisitRecordToSheet(rec, {
+        silent: true,
+        toastOnFail: false,
+        toastOnSuccess: false
+      }).then(function(res) {
+        if (res && (isVerifiedWriteOk_(res) || res.queued || res.upserted || res.appended)) sent++;
+        else failed++;
+        setTimeout(next, delayMs);
+      }).catch(function() {
+        failed++;
+        setTimeout(next, delayMs + 350);
+      });
+    }
+    next();
+  });
+}
+
 function syncVisitRecordToSheet(record, opts) {
   opts = opts || {};
   if (!SHEETS_CONFIG.ENABLED || !SHEETS_CONFIG.WEB_APP_URL) {
@@ -829,13 +941,7 @@ function syncVisitRecordToSheet(record, opts) {
     sheet: sheetName,
     matchKey: 'รหัสรายการ',
     row: row,
-    silent: opts.silent !== false
-  };
-  var appendPayload = {
-    action: 'appendRow',
-    sheet: sheetName,
-    row: row,
-    silent: opts.silent !== false
+    silent: true
   };
   ensureSheetSyncDom_();
 
@@ -851,37 +957,48 @@ function syncVisitRecordToSheet(record, opts) {
     return res || { ok: false, error: errMsg || 'SYNC_FAIL' };
   }
 
-  function tryPayload(payload) {
+  /** GET ก่อน — เสถียรกับ Apps Script CORS; ไม่เรียก ensureSchema (เคยชนลิมิตเซลล์) */
+  function tryGetWrite(payload) {
+    var compact = compactPayloadForGet_(payload) || payload;
+    return syncViaFetchGet_(compact).then(function(res) {
+      if (isVerifiedWriteOk_(res)) return res;
+      throw new Error((res && res.error) || 'NOT_OK');
+    });
+  }
+
+  function tryPostWrite(payload) {
     return syncPayload_(Object.assign({}, payload, { silent: true })).then(function(res) {
       if (isVerifiedWriteOk_(res)) return res;
       throw new Error((res && res.error) || 'NOT_OK');
     });
   }
 
-  var schemaP = typeof ensureSheetSchemaQuiet_ === 'function'
-    ? ensureSheetSchemaQuiet_(sheetName).catch(function() { return { ok: true }; })
-    : Promise.resolve({ ok: true });
-
-  return schemaP.then(function() {
-    return tryPayload(upsertPayload);
-  }).catch(function() {
-    /* ถ้า upsert ล้มเหลว (เช่นไม่มีคอลัมน์รหัสรายการ) ให้ append แถวใหม่ */
-    return tryPayload(appendPayload);
+  return tryGetWrite(upsertPayload).catch(function(err1) {
+    var msg1 = String(err1 && err1.message || err1 || '');
+    /* ห้าม append หลัง upsert ล้ม — ทำให้แถวซ้ำรหัสรายการในชีต */
+    return tryPostWrite(upsertPayload).catch(function() {
+      return notifyFail(null, msg1);
+    });
   }).then(function(res) {
     if (opts.toastOnSuccess && typeof showSheetToast_ === 'function') {
       showSheetToast_('บันทึกลง Google Sheet แล้ว');
     }
     return res;
   }).catch(function(err) {
+    var errMsg = String(err && err.message || err || 'SYNC_FAIL');
     enqueueSheetSync_(upsertPayload);
     return syncViaFormQueued_(upsertPayload).then(function() {
       setTimeout(function() { flushSheetQueue_(); }, 2500);
       if (opts.toastOnFail !== false && typeof showSheetToast_ === 'function') {
-        showSheetToast_('บันทึกในเว็บแล้ว — กำลังส่งชีต (รอ 2–3 วินาทีแล้วตรวจแท็บบันทึกการรักษา)', false);
+        if (/10000000|เซลล์|cell/i.test(errMsg)) {
+          showSheetToast_('ชีตเต็มลิมิตเซลล์ — ลบแถว/ชีตว่างใน Google Sheet แล้ว Deploy สคริปต์ใหม่ แล้วลองบันทึกอีกครั้ง', true);
+        } else {
+          showSheetToast_('บันทึกในเว็บแล้ว — กำลังส่งชีต (รอ 2–3 วินาทีแล้วตรวจแท็บบันทึกการรักษา)', false);
+        }
       }
-      return { ok: false, queued: true, method: 'form', unverified: true };
+      return { ok: false, queued: true, method: 'form', unverified: true, error: errMsg };
     }).catch(function() {
-      return notifyFail(null, String(err && err.message || err || 'SYNC_FAIL'));
+      return notifyFail(null, errMsg);
     });
   });
 }
@@ -2319,27 +2436,28 @@ function applySheetVisitTimestamp_(record, rowIndex) {
     delete record.timeRepaired;
     return record;
   }
-  return assignSheetVisitTodayTime_(record, rowIndex);
+  return assignSheetVisitUndated_(record, rowIndex);
+}
+
+/** รายการชีตไม่มีวันที่ — อย่าสร้างเวลาเป็นวันนี้ (เคยทำให้รายการเก่ารั่วเข้าวันนี้/ซ้ำ) */
+function assignSheetVisitUndated_(record, rowIndex) {
+  if (!record) return record;
+  record.fromSheet = true;
+  if (!record.sheetRow) record.sheetRow = (typeof rowIndex === 'number' ? rowIndex : 0) + 2;
+  var rid = String(record.recordId || '').trim();
+  if (!rid) {
+    record.recordId = 'v-sheet-r' + record.sheetRow + '-' + (record.id || 'x');
+  } else if (!isClientVisitRecordId_(rid) && rid.indexOf('v-sheet-') !== 0) {
+    record.recordId = 'v-sheet-r' + record.sheetRow + '-' + (record.id || 'x');
+  }
+  if (record.savedAt && !isValidVisitSavedAt(record.savedAt)) delete record.savedAt;
+  delete record.timeRepaired;
+  return record;
 }
 
 function assignSheetVisitTodayTime_(record, rowIndex) {
-  if (!record) return record;
-  var today = new Date();
-  today.setHours(8, 0, 0, 0);
-  var order = typeof rowIndex === 'number' ? rowIndex : 0;
-  var ts = today.getTime() + order * 180000;
-  record.savedAt = ts;
-  record.recordedAt = new Date(ts).toLocaleString('th-TH');
-  record.timeRepaired = true;
-  record.fromSheet = true;
-  if (!record.sheetRow) record.sheetRow = order + 2;
-  var rid = String(record.recordId || '').trim();
-  if (!rid) {
-    record.recordId = 'v-sheet-r' + record.sheetRow + '-' + record.id;
-  } else if (!isClientVisitRecordId_(rid) && rid.indexOf('v-sheet-') !== 0) {
-    record.recordId = 'v-sheet-r' + record.sheetRow + '-' + record.id;
-  }
-  return record;
+  /* เก็บชื่อเดิมไว้ให้โค้ดเก่าเรียกได้ — พฤติกรรมใหม่คือไม่สร้างวันนี้อัตโนมัติ */
+  return assignSheetVisitUndated_(record, rowIndex);
 }
 
 function parseGvizVisitDateTime_(row, idx) {
@@ -2444,6 +2562,8 @@ function parseCompactVisitRowFromCells_(cells, rowIndex) {
   if (!record.provider && providerCandidates.length) {
     record.provider = providerCandidates[providerCandidates.length - 1];
   }
+  /* แถว compact ไม่มีวันที่ — ไม่สร้างรายการผีด้วยเวลาวันนี้ */
+  if (!record.recordedAt && !record.savedAt) return null;
   applySheetVisitTimestamp_(record, rowIndex);
   return record;
 }
@@ -2535,6 +2655,10 @@ function parseGvizVisitRows_(gvizData, studentId) {
     if (!rec.type) rec.type = 'นักเรียน';
     if (savedAt && isValidVisitSavedAt(savedAt)) {
       rec.savedAt = savedAt;
+      /* ใช้เวลาจากค่าดิบ Date(…) เมื่อข้อความ f ไม่มีเวลา */
+      if (!recordedAt || !/\d{1,2}:\d{2}/.test(String(recordedAt))) {
+        rec.recordedAt = new Date(savedAt).toLocaleString('th-TH');
+      }
       rec.recordId = rec.recordId || ('v-sheet-r' + rec.sheetRow + '-' + id);
     } else {
       applySheetVisitTimestamp_(rec, rowIndex);
@@ -2964,6 +3088,7 @@ function parseGvizMentalRows_(gvizData) {
   var idxClass = findGvizColIndex_(cols, ['ชั้น', 'class']);
   var idxSex = findGvizColIndex_(cols, ['เพศ', 'sex']);
   var idxAge = findGvizColIndex_(cols, ['อายุ', 'age']);
+  var idxDate = findGvizColIndex_(cols, ['วันที่บันทึก', 'วันที่', 'recordedat']);
   var idxSdq = findGvizColIndex_(cols, ['sdq']);
   var idx9q = findGvizColIndex_(cols, ['ซึมเศร้า', '9q', 'depression']);
   var idxAssist = findGvizColIndex_(cols, ['assist']);
@@ -2976,13 +3101,20 @@ function parseGvizMentalRows_(gvizData) {
   table.rows.forEach(function(row, rowIndex) {
     var id = idxId >= 0 ? gvizCell_(row, idxId) : '';
     if (!id) return;
+    var savedAt = 0;
+    if (idxDate >= 0) {
+      savedAt = typeof parseGvizVisitDateTime_ === 'function' ? parseGvizVisitDateTime_(row, idxDate) : 0;
+      if (!savedAt && typeof parseVisitRecordedAt === 'function') {
+        savedAt = parseVisitRecordedAt(gvizCell_(row, idxDate)) || 0;
+      }
+    }
     var base = {
       id: String(id).trim(),
       name: idxName >= 0 ? gvizCell_(row, idxName) : '',
       class: idxClass >= 0 ? gvizCell_(row, idxClass) : '',
       sex: idxSex >= 0 ? gvizCell_(row, idxSex) : '',
       age: idxAge >= 0 ? gvizCell_(row, idxAge) : '',
-      savedAt: Date.now() - rowIndex * 120000,
+      savedAt: savedAt,
       fromSheet: true
     };
     [
@@ -2993,13 +3125,16 @@ function parseGvizMentalRows_(gvizData) {
       if (col.idx < 0) return;
       var parsed = parseMentalScoreRisk_(gvizCell_(row, col.idx));
       if (!parsed) return;
+      var itemSaved = savedAt || 0;
       items.push(Object.assign({}, base, {
         type: col.type,
         tool: toolMap[col.type] || col.type,
         score: parsed.score,
         risk: parsed.risk,
-        recordedAt: new Date(base.savedAt - ci * 1000).toLocaleString('th-TH'),
-        savedAt: base.savedAt - ci * 1000,
+        recordedAt: itemSaved
+          ? new Date(itemSaved - ci * 1000).toLocaleString('th-TH')
+          : (idxDate >= 0 ? gvizCell_(row, idxDate) : ''),
+        savedAt: itemSaved ? (itemSaved - ci * 1000) : 0,
         recordId: 'mh-sheet-' + rowIndex + '-' + id + '-' + col.type
       }));
     });
@@ -3297,6 +3432,7 @@ window.syncAllStudentTreatmentHistoryToSheet = syncAllStudentTreatmentHistoryToS
 window.syncAllTeacherTreatmentHistoryToSheet = syncAllTeacherTreatmentHistoryToSheet;
 window.syncRegistryProfileExtrasQuiet_ = syncRegistryProfileExtrasQuiet_;
 window.syncVisitRecordToSheet = syncVisitRecordToSheet;
+window.syncAllLocalVisitRecordsToSheet = syncAllLocalVisitRecordsToSheet;
 window.buildVisitSheetRow = buildVisitSheetRow;
 
 document.addEventListener('DOMContentLoaded', function() {

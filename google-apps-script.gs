@@ -395,7 +395,13 @@ function handlePayload_(raw) {
       throw new Error('Unknown sheet: ' + schemaSheet);
     }
     var schemaSs = getSpreadsheet_();
-    var schemaSh = ensureSheet_(schemaSs, schemaSheet);
+    var schemaSh;
+    try {
+      schemaSh = ensureSheet_(schemaSs, schemaSheet);
+    } catch (ensureErr) {
+      /* ชีตเต็มลิมิตเซลล์ — อ่านหัวคอลัมน์เท่าที่มี ไม่บังคับอัปเกรด */
+      schemaSh = ensureSheetForWrite_(schemaSs, schemaSheet);
+    }
     var schemaHeaders = getSheetHeaders_(schemaSh, schemaSheet);
     return jsonResponse_({
       ok: true,
@@ -492,10 +498,15 @@ function getSheetHeaders_(sheet, sheetName) {
 function getSheetHeadersPhysical_(sheet, minCols) {
   minCols = minCols || 1;
   var lastCol = Math.max(sheet.getLastColumn(), minCols);
+  /* กันอ่านคอลัมน์ว่างยาวๆ ที่เคยถูกขยายโดยไม่ตั้งใจ */
+  if (lastCol > 80) lastCol = 80;
   var row1 = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   var headers = [];
   for (var i = 0; i < lastCol; i++) {
     headers.push(row1[i] !== '' && row1[i] != null ? String(row1[i]) : '');
+  }
+  while (headers.length && !String(headers[headers.length - 1] || '').trim()) {
+    headers.pop();
   }
   var hasAny = false;
   for (var j = 0; j < headers.length; j++) {
@@ -510,9 +521,10 @@ function getWriteHeaders_(sheetName) {
 
 function forceSchemaHeaderRow_(sheet, schemaHeaders) {
   if (!schemaHeaders || !schemaHeaders.length) return;
-  var extraCols = Math.max(sheet.getLastColumn(), sheet.getMaxColumns ? sheet.getMaxColumns() : 0);
-  if (extraCols > schemaHeaders.length) {
-    sheet.getRange(1, schemaHeaders.length + 1, 1, extraCols).clearContent();
+  /* ห้ามใช้ getMaxColumns() — เคยขยายชีตจนชนลิมิต 10 ล้านเซลล์ */
+  var lastCol = Math.max(sheet.getLastColumn() || 0, 1);
+  if (lastCol > schemaHeaders.length) {
+    sheet.getRange(1, schemaHeaders.length + 1, 1, lastCol).clearContent();
   }
   sheet.getRange(1, 1, 1, schemaHeaders.length).setValues([schemaHeaders]);
   styleHeaderRow_(sheet, schemaHeaders.length);
@@ -533,12 +545,27 @@ function schemaHeadersNeedUpgrade_(headers, schemaHeaders) {
   for (var j = 0; j < headers.length; j++) {
     if (LEGACY_BLOB_HEADERS_[String(headers[j] || '').trim()]) return true;
   }
-  if (headers.length < schemaHeaders.length) return true;
-  if (headers.length > schemaHeaders.length) return true;
+  /* มีคอลัมน์เกินสคีมาไม่ถือว่าต้องอัปเกรด — กัน rewrite ที่ขยายเซลล์ */
   for (var i = 0; i < schemaHeaders.length; i++) {
-    if (String(headers[i] || '').trim() !== schemaHeaders[i]) return true;
+    if (findHeaderIndex_(headers, schemaHeaders[i]) < 0) return true;
   }
   return false;
+}
+
+/** เปิดชีตเพื่อเขียนอย่างเบา — ไม่ rewrite หัวคอลัมน์ (กันชนลิมิตเซลล์) */
+function ensureSheetForWrite_(ss, sheetName) {
+  var sheet = ss.getSheetByName(sheetName);
+  if (!sheet) {
+    sheet = ss.insertSheet(sheetName);
+    var schemaHeaders = SHEET_SCHEMAS[sheetName] || [];
+    if (schemaHeaders.length) forceSchemaHeaderRow_(sheet, schemaHeaders);
+    return sheet;
+  }
+  if (sheet.getLastRow() === 0) {
+    var emptyHeaders = SHEET_SCHEMAS[sheetName] || [];
+    if (emptyHeaders.length) forceSchemaHeaderRow_(sheet, emptyHeaders);
+  }
+  return sheet;
 }
 
 function upgradeSheetHeaders_(sheet, sheetName, schemaHeaders) {
@@ -583,7 +610,12 @@ function ensureSheet_(ss, sheetName) {
   }
   var physical = getSheetHeadersPhysical_(sheet, schemaHeaders.length);
   if (schemaHeaders.length && schemaHeadersNeedUpgrade_(physical, schemaHeaders)) {
-    upgradeSheetHeaders_(sheet, sheetName, schemaHeaders);
+    try {
+      upgradeSheetHeaders_(sheet, sheetName, schemaHeaders);
+    } catch (upErr) {
+      /* เต็มลิมิตเซลล์หรือ merge — คงหัวคอลัมน์เดิม แล้วเขียนต่อได้ */
+      console.warn('upgradeSheetHeaders_ skipped: ' + String(upErr && upErr.message || upErr));
+    }
   }
   return sheet;
 }
@@ -598,13 +630,16 @@ function styleHeaderRow_(sheet, colCount) {
 
 function appendRow_(sheetName, rowObject) {
   var ss = getSpreadsheet_();
-  var sheet = ensureSheet_(ss, sheetName);
-  var headers = getWriteHeaders_(sheetName);
+  var sheet = ensureSheetForWrite_(ss, sheetName);
+  /* ใช้หัวคอลัมน์จริงในชีตก่อน — ไม่บังคับขยายตามสคีมา */
+  var headers = getSheetHeadersPhysical_(sheet, 1);
+  if (!headers.length) headers = getWriteHeaders_(sheetName);
   if (!headers.length) headers = getSheetHeaders_(sheet, sheetName);
   if (Array.isArray(rowObject)) {
     sheet.appendRow(rowObject.map(function(v) { return v == null ? '' : String(v); }));
   } else {
     var values = headers.map(function(h) {
+      if (!h) return '';
       var v = getValueForHeader_(h, rowObject);
       if (Array.isArray(v)) return v.join(', ');
       return v === undefined || v === null ? '' : String(v);
@@ -708,16 +743,18 @@ function readRowValuesSafe_(sheet, rowNum, colCount) {
 
 function upsertMentalRow_(sheetName, matchKey, rowObject) {
   var ss = getSpreadsheet_();
-  var sheet = ensureSheet_(ss, sheetName);
-  var headers = getWriteHeaders_(sheetName);
+  var sheet = ensureSheetForWrite_(ss, sheetName);
+  var headers = getSheetHeadersPhysical_(sheet, 1);
+  if (!headers.length) headers = getWriteHeaders_(sheetName);
   if (!headers.length) headers = getSheetHeaders_(sheet, sheetName);
-  var match = resolveMentalMatch_(headers, matchKey, rowObject);
-  var matchIndex = match.index;
+  /* จับคู่เฉพาะคอลัมน์ที่ระบุ — ห้าม fallback ไปคอลัมน์ "รหัส" (จะทับแถวคนละรายการ) */
+  var matchIndex = findHeaderIndex_(headers, matchKey);
   if (matchIndex < 0) {
-    /* ชีตเก่าที่ยังไม่มีคอลัมน์จับคู่ — append แทน error */
     return appendRow_(sheetName, rowObject);
   }
-  var matchValue = match.value;
+  var matchValue = getValueForHeader_(headers[matchIndex], rowObject);
+  if (!matchValue && rowObject && rowObject[matchKey]) matchValue = rowObject[matchKey];
+  if (!matchValue && rowObject && rowObject.recordId) matchValue = rowObject.recordId;
   if (!matchValue) {
     return appendRow_(sheetName, rowObject);
   }
@@ -736,6 +773,7 @@ function upsertMentalRow_(sheetName, matchKey, rowObject) {
 
   if (foundRow < 0) {
     var newValues = headers.map(function(h) {
+      if (!h) return '';
       var v = getValueForHeader_(h, rowObject);
       if (Array.isArray(v)) return v.join(', ');
       return v === undefined || v === null ? '' : String(v);
@@ -748,6 +786,7 @@ function upsertMentalRow_(sheetName, matchKey, rowObject) {
   // อัปเดตแถวเดิม: ค่าว่างจาก client ไม่ทับค่าเดิมในชีต (กันข้อมูลหาย)
   var existing = readRowValuesSafe_(sheet, foundRow, headers.length);
   var fullValues = headers.map(function(h, idx) {
+    if (!h) return existing[idx] == null ? '' : String(existing[idx]);
     var v = getValueForHeader_(h, rowObject);
     if (Array.isArray(v)) v = v.join(', ');
     if (v === undefined || v === null || v === '') {
@@ -863,7 +902,21 @@ function normalizeSheetDate_(v) {
     return y + '-' + m + '-' + d;
   }
   var s = String(v).trim();
-  if (/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+    var yIso = parseInt(s.slice(0, 4), 10);
+    if (yIso > 2400) yIso -= 543;
+    return yIso + s.slice(4, 10);
+  }
+  var slash = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})/);
+  if (slash) {
+    var y2 = parseInt(slash[3], 10);
+    if (y2 > 2400) y2 -= 543;
+    var mm = String(parseInt(slash[2], 10));
+    if (mm.length < 2) mm = '0' + mm;
+    var dd = String(parseInt(slash[1], 10));
+    if (dd.length < 2) dd = '0' + dd;
+    return y2 + '-' + mm + '-' + dd;
+  }
   return s;
 }
 
@@ -1008,6 +1061,50 @@ function deleteAppointmentRow_(sheetName, studentId) {
   SpreadsheetApp.flush();
 }
 
+function parseVisitSavedAtFromCell_(v) {
+  if (v == null || v === '') return 0;
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) {
+    var t = v.getTime();
+    return t > 946684800000 ? t : 0;
+  }
+  var s = String(v).trim();
+  if (!s) return 0;
+  var thMonths = {
+    'ม.ค.': 1, 'ก.พ.': 2, 'มี.ค.': 3, 'เม.ย.': 4, 'พ.ค.': 5, 'มิ.ย.': 6,
+    'ก.ค.': 7, 'ส.ค.': 8, 'ก.ย.': 9, 'ต.ค.': 10, 'พ.ย.': 11, 'ธ.ค.': 12
+  };
+  var thMatch = s.match(/(\d{1,2})\s+([ก-ฮ\.]+)\s+(\d{2,4})(?:[,\s]+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (thMatch) {
+    var dayT = parseInt(thMatch[1], 10);
+    var monKey = thMatch[2];
+    var yearT = parseInt(thMatch[3], 10);
+    if (yearT > 2400) yearT -= 543;
+    else if (yearT < 100) yearT += 2000;
+    var monthT = thMonths[monKey] || 0;
+    if (!monthT) {
+      Object.keys(thMonths).forEach(function(k) {
+        if (!monthT && monKey.indexOf(k.replace(/\./g, '')) !== -1) monthT = thMonths[k];
+      });
+    }
+    if (monthT && yearT >= 2000 && yearT <= 2100) {
+      var dtT = new Date(yearT, monthT - 1, dayT,
+        parseInt(thMatch[4] || '12', 10), parseInt(thMatch[5] || '0', 10), parseInt(thMatch[6] || '0', 10));
+      if (!isNaN(dtT.getTime()) && dtT.getTime() > 946684800000) return dtT.getTime();
+    }
+  }
+  var m = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    var y = parseInt(m[3], 10);
+    if (y > 2400) y -= 543;
+    var dt = new Date(y, parseInt(m[2], 10) - 1, parseInt(m[1], 10),
+      parseInt(m[4] || '0', 10), parseInt(m[5] || '0', 10), parseInt(m[6] || '0', 10));
+    if (!isNaN(dt.getTime()) && dt.getTime() > 946684800000) return dt.getTime();
+  }
+  var iso = new Date(s);
+  if (!isNaN(iso.getTime()) && iso.getTime() > 946684800000) return iso.getTime();
+  return 0;
+}
+
 function getVisitsByStudentId_(sheetName, studentId) {
   if (!studentId) return [];
   var ss = getSpreadsheet_();
@@ -1023,10 +1120,19 @@ function getVisitsByStudentId_(sheetName, studentId) {
   for (var i = 0; i < data.length; i++) {
     if (!idsMatch_(data[i][idIdx], studentId)) continue;
     var obj = rowObjectFromSheet_(headers, data[i]);
-    var recordedAt = String(getValueForHeader_('วันที่เวลา', obj) || '');
+    var rawDate = getValueForHeader_('วันที่เวลา', obj);
+    if (rawDate == null || rawDate === '') rawDate = getValueForHeader_('วันที่บันทึก', obj);
+    var recordedAt = '';
+    if (Object.prototype.toString.call(rawDate) === '[object Date]' && !isNaN(rawDate.getTime())) {
+      recordedAt = Utilities.formatDate(rawDate, Session.getScriptTimeZone(), 'dd/MM/yyyy HH:mm:ss');
+    } else {
+      recordedAt = String(rawDate || '');
+    }
+    var savedAt = parseVisitSavedAtFromCell_(rawDate);
     var providerName = String(getValueForHeader_('ผู้ให้บริการ', obj) || '');
     var providerRole = String(getValueForHeader_('ตำแหน่งผู้ให้บริการ', obj) || '');
     var providerClass = String(getValueForHeader_('ระดับชั้นผู้ให้บริการ (นักเรียน)', obj) || '');
+    var recordId = String(getValueForHeader_('รหัสรายการ', obj) || '').trim();
     visits.push({
       id: String(getValueForHeader_('รหัส', obj) || studentId),
       name: String(getValueForHeader_('ชื่อ', obj) || getValueForHeader_('ชื่อ-นามสกุล', obj) || ''),
@@ -1044,7 +1150,8 @@ function getVisitsByStudentId_(sheetName, studentId) {
       providerRole: providerRole,
       providerClass: providerClass,
       recordedAt: recordedAt,
-      savedAt: (i + 2) * 1000
+      savedAt: savedAt,
+      recordId: recordId
     });
   }
   visits.sort(function(a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
