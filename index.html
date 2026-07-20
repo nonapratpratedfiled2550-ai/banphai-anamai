@@ -4650,8 +4650,8 @@
             </div>
           </div>
           <div class="form-group" style="margin-top:10px;">
-            <label>การรักษาและยาที่ให้</label>
-            <textarea id="vis-treatment" placeholder="เลือกยาด้านล่างหลังวินิจฉัย หรือกรอกรายการยา ขนาด วิธีใช้..."></textarea>
+            <label>อาการ / ปัญหาสุขภาพ</label>
+            <textarea id="vis-symptom" placeholder="บรรยายอาการที่มาพบ..."></textarea>
           </div>
           <div class="form-grid" style="margin-top:10px;">
             <div class="form-group">
@@ -4700,8 +4700,8 @@
             </div>
           </div>
           <div class="form-group" style="margin-top:10px;">
-            <label>อาการ / ปัญหาสุขภาพ</label>
-            <textarea id="vis-symptom" placeholder="บรรยายอาการที่มาพบ..."></textarea>
+            <label>การรักษาและยาที่ให้</label>
+            <textarea id="vis-treatment" placeholder="เลือกยาด้านบนหลังวินิจฉัย หรือกรอกรายการยา ขนาด วิธีใช้..."></textarea>
           </div>
           <div class="form-grid" style="margin-top:10px;">
             <div class="form-group">
@@ -4924,8 +4924,8 @@
             </div>
           </div>
           <div class="form-group" style="margin-top:10px;">
-            <label>การรักษาและยาที่ให้</label>
-            <textarea id="vis-rec-treatment" placeholder="เลือกยาด้านล่างหลังวินิจฉัย หรือกรอกรายการยา ขนาด วิธีใช้..."></textarea>
+            <label>อาการ / ปัญหาสุขภาพ</label>
+            <textarea id="vis-rec-symptom" placeholder="บรรยายอาการที่มาพบ..."></textarea>
           </div>
           <div class="form-grid" style="margin-top:10px;">
             <div class="form-group">
@@ -4974,8 +4974,8 @@
             </div>
           </div>
           <div class="form-group" style="margin-top:10px;">
-            <label>อาการ / ปัญหาสุขภาพ</label>
-            <textarea id="vis-rec-symptom" placeholder="บรรยายอาการที่มาพบ..."></textarea>
+            <label>การรักษาและยาที่ให้</label>
+            <textarea id="vis-rec-treatment" placeholder="เลือกยาด้านบนหลังวินิจฉัย หรือกรอกรายการยา ขนาด วิธีใช้..."></textarea>
           </div>
           <div class="form-grid" style="margin-top:10px;">
             <div class="form-group">
@@ -7042,21 +7042,38 @@
       <button class="modal-close" onclick="closeModal()">✕</button>
     </div>
     <div class="form-grid">
-      <div class="form-group"><label>เลขประจำตัวนักเรียน</label><input type="text"></div>
-      <div class="form-group"><label>ชื่อ</label><input type="text"></div>
-      <div class="form-group"><label>นามสกุล</label><input type="text"></div>
-      <div class="form-group"><label>ระดับชั้น</label><select><option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option></select></div>
-      <div class="form-group"><label>เพศ</label><select><option>ชาย</option><option>หญิง</option></select></div>
-      <div class="form-group"><label>อายุ</label><input type="number"></div>
+      <div class="form-group"><label>เลขประจำตัวนักเรียน</label><input type="text" id="add-stu-id" inputmode="numeric" autocomplete="off" placeholder="เช่น 41230"></div>
+      <div class="form-group"><label>ชื่อ</label><input type="text" id="add-stu-firstname" autocomplete="off" placeholder="เช่น นาย ชุติเทพ"></div>
+      <div class="form-group"><label>นามสกุล</label><input type="text" id="add-stu-lastname" autocomplete="off" placeholder="เช่น วิเศษศรี"></div>
+      <div class="form-group"><label>ระดับชั้น</label>
+        <select id="add-stu-grade">
+          <option value="ม.1">ม.1</option><option value="ม.2">ม.2</option><option value="ม.3">ม.3</option>
+          <option value="ม.4">ม.4</option><option value="ม.5">ม.5</option><option value="ม.6">ม.6</option>
+        </select>
+      </div>
+      <div class="form-group"><label>ห้อง</label>
+        <select id="add-stu-room">
+          <option value="">—</option>
+          <option value="1">1</option><option value="2">2</option><option value="3">3</option>
+          <option value="4">4</option><option value="5">5</option><option value="6">6</option>
+          <option value="7">7</option><option value="8">8</option><option value="9">9</option>
+          <option value="10">10</option><option value="11">11</option><option value="12">12</option>
+        </select>
+      </div>
+      <div class="form-group"><label>เพศ</label>
+        <select id="add-stu-gender"><option value="ช">ชาย</option><option value="ญ">หญิง</option></select>
+      </div>
+      <div class="form-group"><label>วันเกิด (พ.ศ.)</label><input type="text" id="add-stu-dob" placeholder="วัน/เดือน/ปี เช่น 06/03/2554" autocomplete="off"></div>
+      <div class="form-group"><label>อายุ</label><input type="number" id="add-stu-age" min="1" max="25" placeholder="เช่น 15"></div>
       <div class="form-group"><label>โรคประจำตัว</label><input type="text" id="add-stu-chronic" placeholder="(ถ้ามี)"></div>
       <div class="form-group"><label>การแพ้ยา</label><input type="text" id="add-stu-drug" placeholder="(ถ้ามี)"></div>
       <div class="form-group"><label>แพ้อาหาร</label><input type="text" id="add-stu-food" placeholder="(ถ้ามี)"></div>
       <div class="form-group full-width"><label>ข้อควรระวัง</label><textarea id="add-stu-precaution" placeholder="ข้อมูลที่ควรทราบ..." rows="2"></textarea></div>
-      <div class="form-group"><label>เบอร์ผู้ปกครอง</label><input type="tel" id="add-stu-phone"></div>
+      <div class="form-group"><label>เบอร์ผู้ปกครอง</label><input type="tel" id="add-stu-phone" placeholder="เช่น 08xxxxxxxx"></div>
     </div>
     <div style="margin-top:16px;display:flex;gap:8px;">
-      <button class="btn btn-primary">บันทึก</button>
-      <button class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
+      <button type="button" class="btn btn-primary" onclick="saveAddStudent()">บันทึก</button>
+      <button type="button" class="btn btn-secondary" onclick="closeModal()">ยกเลิก</button>
     </div>
   </div>
 </div>
@@ -7603,8 +7620,14 @@
     Object.keys(patches).forEach(function(id) {
       if (id === '__remap__') return;
       var targetId = resolveRemappedId(id);
-      if (!STUDENT_BASIC[targetId] || !patches[id] || typeof patches[id] !== 'object') return;
+      if (!patches[id] || typeof patches[id] !== 'object') return;
+      // สร้างโปรไฟล์ใหม่จาก patch (กรณีเพิ่มนักเรียนผ่านฟอร์ม) — ต้องมีชื่อจริงเท่านั้น
+      if (!STUDENT_BASIC[targetId]) {
+        if (!patches[id].fullName) return;
+        STUDENT_BASIC[targetId] = { school: 'บ้านไผ่' };
+      }
       Object.keys(patches[id]).forEach(function(field) {
+        if (field === '__isNew') return;
         STUDENT_BASIC[targetId][field] = patches[id][field];
       });
     });
@@ -14303,19 +14326,36 @@
   function notifyVisitParent(prefix) {
     openGuardianContactModal(prefix || 'vis');
   }
+  function getSchoolLogoSrcForPrint_() {
+    try {
+      var img = document.querySelector('.brand-logo-role') || document.querySelector('.brand-logo');
+      var src = img && (img.getAttribute('src') || img.src);
+      return src ? String(src) : '';
+    } catch (e) {
+      return '';
+    }
+  }
   function buildVisitCertificateHtml(data, contact) {
     var now = new Date().toLocaleString('th-TH');
     function row(label, value) {
       return '<tr><td>' + escVisitHtml(label) + '</td><td>' + escVisitHtml(value || '—') + '</td></tr>';
     }
+    var logoSrc = getSchoolLogoSrcForPrint_();
+    var logoHtml = logoSrc
+      ? '<img class="cert-logo" src="' + String(logoSrc).replace(/"/g, '&quot;') + '" alt="โลโก้โรงเรียนบ้านไผ่">'
+      : '';
     return '<!DOCTYPE html><html lang="th"><head><meta charset="utf-8"><title>ใบรับรองการรักษา</title>' +
       '<style>body{font-family:"Sarabun",Tahoma,sans-serif;padding:28px;color:#111;max-width:720px;margin:0 auto;}' +
+      '.cert-head{position:relative;min-height:118px;margin-bottom:10px;padding:6px 0 8px 128px;}' +
+      '.cert-logo{position:absolute;left:0;top:0;height:112px;width:auto;max-width:120px;object-fit:contain;' +
+      'background:#fff;padding:4px;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,0.08);}' +
       'h1{text-align:center;font-size:20px;margin:0 0 4px;} .sub{text-align:center;font-size:14px;margin-bottom:22px;color:#444;}' +
       'table{width:100%;border-collapse:collapse;margin:14px 0;} td{padding:8px 10px;border:1px solid #ccc;vertical-align:top;}' +
       'td:first-child{width:36%;font-weight:700;background:#f7faf8;} .sign{margin-top:48px;text-align:right;font-size:14px;line-height:1.8;}' +
-      '@media print{body{padding:12px;}}</style></head><body>' +
+      '@media print{body{padding:12px;}.cert-logo{-webkit-print-color-adjust:exact;print-color-adjust:exact;}}</style></head><body>' +
+      '<div class="cert-head">' + logoHtml +
       '<h1>ใบรับรองการรักษา / รับบริการห้องพยาบาล</h1>' +
-      '<div class="sub">โรงเรียนบ้านไผ่</div><table>' +
+      '<div class="sub">โรงเรียนบ้านไผ่</div></div><table>' +
       row('วันที่/เวลา', now) +
       row('เลขประจำตัว', data.id) +
       row('ชื่อ-นามสกุล', data.name) +
@@ -18747,8 +18787,154 @@
   window.fillVisitFromId = fillVisitFromId;
 
   // Modal
-  function openAddStudent() { document.getElementById('modal').classList.add('open'); }
-  function closeModal() { document.getElementById('modal').classList.remove('open'); }
+  function clearAddStudentForm_() {
+    ['add-stu-id', 'add-stu-firstname', 'add-stu-lastname', 'add-stu-dob', 'add-stu-age',
+      'add-stu-chronic', 'add-stu-drug', 'add-stu-food', 'add-stu-precaution', 'add-stu-phone'].forEach(function(fid) {
+      var el = document.getElementById(fid);
+      if (el) el.value = '';
+    });
+    var grade = document.getElementById('add-stu-grade');
+    if (grade) grade.value = 'ม.1';
+    var room = document.getElementById('add-stu-room');
+    if (room) room.value = '';
+    var gender = document.getElementById('add-stu-gender');
+    if (gender) gender.value = 'ช';
+  }
+  function openAddStudent() {
+    clearAddStudentForm_();
+    var modal = document.getElementById('modal');
+    if (modal) modal.classList.add('open');
+    var idEl = document.getElementById('add-stu-id');
+    if (idEl) setTimeout(function() { try { idEl.focus(); } catch (e) {} }, 50);
+  }
+  function closeModal() {
+    var modal = document.getElementById('modal');
+    if (modal) modal.classList.remove('open');
+  }
+  function saveAddStudent() {
+    if (typeof STUDENT_BASIC === 'undefined') {
+      alert('ยังโหลดข้อมูลทะเบียนนักเรียนไม่สำเร็จ');
+      return;
+    }
+    function val_(id) {
+      var el = document.getElementById(id);
+      return el ? String(el.value || '').trim() : '';
+    }
+    var id = val_('add-stu-id').replace(/\s+/g, '');
+    var firstName = val_('add-stu-firstname');
+    var lastName = val_('add-stu-lastname');
+    var fullName = (firstName + ' ' + lastName).replace(/\s+/g, ' ').trim();
+    var grade = val_('add-stu-grade') || 'ม.1';
+    var room = val_('add-stu-room');
+    var classText = room ? (grade + '/' + room) : grade;
+    var gender = val_('add-stu-gender') || 'ช';
+    if (gender === 'ชาย') gender = 'ช';
+    if (gender === 'หญิง') gender = 'ญ';
+    var dob = val_('add-stu-dob');
+    var age = val_('add-stu-age');
+    var chronic = val_('add-stu-chronic');
+    var drug = val_('add-stu-drug');
+    var food = val_('add-stu-food');
+    var precautions = val_('add-stu-precaution');
+    var phone = val_('add-stu-phone');
+
+    if (!id || !fullName) {
+      alert('กรุณากรอกรหัสนักเรียนและชื่อ-นามสกุลให้ครบ');
+      return;
+    }
+    if (!/^\d+$/.test(id)) {
+      alert('รหัสนักเรียนต้องเป็นตัวเลขเท่านั้น');
+      return;
+    }
+    if (typeof lookupStudent === 'function' && lookupStudent(id)) {
+      alert('รหัสนักเรียน "' + id + '" มีอยู่ในระบบแล้ว');
+      return;
+    }
+    if (dob && typeof normalizeDob === 'function') {
+      var nd = normalizeDob(dob);
+      if (!nd || nd.split('/').length !== 3) {
+        alert('รูปแบบวันเกิดไม่ถูกต้อง — ใช้ วัน/เดือน/ปี พ.ศ. เช่น 06/03/2554');
+        return;
+      }
+      dob = nd;
+      if (!age && typeof calcAgeFromDob === 'function') {
+        age = String(calcAgeFromDob(dob) || '');
+      }
+    }
+
+    var fields = {
+      school: 'บ้านไผ่',
+      fullName: fullName,
+      gender: gender,
+      age: age || '',
+      dob: dob || '',
+      classLevel: classText,
+      guardianPhone: phone || ''
+    };
+    var savedKey = (typeof persistStudentBasicPatch_ === 'function')
+      ? persistStudentBasicPatch_(id, fields)
+      : null;
+    if (!savedKey) {
+      STUDENT_BASIC[id] = Object.assign({ school: 'บ้านไผ่' }, fields);
+      savedKey = id;
+    } else {
+      // ติดธงว่าเป็นรายการที่สร้างใหม่ เพื่อให้โหลดซ้ำจาก patch ได้
+      try {
+        var patches = loadStudentProfilePatches();
+        patches[savedKey] = Object.assign({}, patches[savedKey] || {}, fields, { __isNew: true });
+        saveStudentProfilePatches(patches);
+      } catch (ePatch) {}
+    }
+
+    if (typeof getStudentRegistryClassMap === 'function' && typeof saveStudentRegistryClassMap === 'function') {
+      var classMap = getStudentRegistryClassMap(false);
+      classMap[savedKey] = classText;
+      saveStudentRegistryClassMap(classMap);
+    }
+
+    if (typeof setStudentHealthExtra === 'function') {
+      var healthPatch = {};
+      if (chronic) healthPatch.chronic = chronic;
+      if (drug) healthPatch.drugAllergy = drug;
+      if (food) healthPatch.foodAllergy = food;
+      if (precautions) healthPatch.precautions = precautions;
+      if (phone) healthPatch.guardianPhone = phone;
+      if (Object.keys(healthPatch).length) setStudentHealthExtra(savedKey, healthPatch);
+    }
+
+    if (typeof invalidateStudentIdIndex_ === 'function') invalidateStudentIdIndex_();
+    if (typeof invalidateStudentLoginCredCache === 'function') invalidateStudentLoginCredCache();
+    if (typeof _studentRegistryLazy !== 'undefined') {
+      _studentRegistryLazy.allIds = [];
+      _studentRegistryLazy.filteredIds = [];
+      _studentRegistryLazy.built = false;
+    }
+    if (typeof updateStudentCounts === 'function') {
+      try { updateStudentCounts(); } catch (eCnt) {}
+    }
+    if (typeof filterStudentRegistry === 'function') {
+      try { filterStudentRegistry(); } catch (eReg) {}
+    } else if (typeof refreshStudentRegistryRow === 'function') {
+      try { refreshStudentRegistryRow(savedKey); } catch (eRow) {}
+    }
+
+    try {
+      if (typeof syncStudentBasicInfoQuiet === 'function') syncStudentBasicInfoQuiet(savedKey);
+      if (typeof collectStudentRegistryEntry === 'function' && typeof syncStudentRegistryEntryQuiet === 'function') {
+        var regEntry = collectStudentRegistryEntry(savedKey);
+        if (regEntry) syncStudentRegistryEntryQuiet(regEntry);
+      }
+    } catch (eSync) {
+      console.warn('[SH add-student] sheet sync', eSync);
+    }
+
+    closeModal();
+    clearAddStudentForm_();
+    alert('✅ เพิ่มนักเรียน "' + fullName + '" (รหัส ' + savedKey + ') เรียบร้อยแล้ว');
+  }
+  window.openAddStudent = openAddStudent;
+  window.closeModal = closeModal;
+  window.saveAddStudent = saveAddStudent;
   var modalEl = document.getElementById('modal');
   if (modalEl) {
     modalEl.addEventListener('click', function(e) {
