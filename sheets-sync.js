@@ -4,7 +4,7 @@
 var SHEETS_CONFIG = {
   ENABLED: true,
   SPREADSHEET_ID: '15IlAOVYRi3MixwzvhwO10ZkDonm_oam_wzSM-3-BpIw',
-  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbz5VTou4-dFWVf-oHIgemDnsJopq9br_dKZnSLpSuzvllfHYBp_hSbi1LO6kn2qNUQciw/exec',
+  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbygNgBLPY6mBFK03wwIV_wr1rbaMVaR-GNJPcGCeudoVaJb5I0X_WOkcb76CBBQkCKTxg/exec',
   QUEUE_KEY: 'sh-sheets-queue',
   IS_WORKSPACE: false
 };
@@ -1380,6 +1380,84 @@ function parseGvizStudentRegistryRows_(gvizData) {
     });
   });
   return items;
+}
+
+function parseGvizStudentBasicInfoRows_(gvizData) {
+  var table = gvizData && gvizData.table;
+  if (!table || !Array.isArray(table.rows)) return [];
+  var cols = table.cols || [];
+  var idxId = findGvizColIndex_(cols, ['รหัสนักเรียน', 'เลขประจำตัว', 'id']);
+  var idxName = findGvizColIndex_(cols, ['ชื่อ-นามสกุล', 'ชื่อนามสกุล', 'name']);
+  var idxClass = findGvizColIndex_(cols, ['ชั้น', 'class']);
+  var idxCitizen = findGvizColIndex_(cols, ['เลขประจำตัวประชาชน', 'citizenid']);
+  var idxGender = findGvizColIndex_(cols, ['เพศ', 'gender']);
+  var idxDob = findGvizColIndex_(cols, ['วันเกิด', 'dob']);
+  var idxAge = findGvizColIndex_(cols, ['อายุ', 'age']);
+  var idxReligion = findGvizColIndex_(cols, ['ศาสนา', 'religion']);
+  var idxRace = findGvizColIndex_(cols, ['เชื้อชาติ', 'race']);
+  var idxNationality = findGvizColIndex_(cols, ['สัญชาติ', 'nationality']);
+  var idxWeight = findGvizColIndex_(cols, ['น้ำหนัก(kg)', 'น้ำหนัก', 'weight']);
+  var idxHeight = findGvizColIndex_(cols, ['ส่วนสูง(cm)', 'ส่วนสูง', 'height']);
+  var idxBlood = findGvizColIndex_(cols, ['กลุ่มเลือด', 'bloodtype']);
+  var idxDisadv = findGvizColIndex_(cols, ['ความด้อยโอกาส', 'disadvantaged']);
+  var idxAddress = findGvizColIndex_(cols, ['ที่อยู่', 'address']);
+  var idxGuardian = findGvizColIndex_(cols, ['ผู้ปกครอง', 'guardian']);
+  var idxGuardianRel = findGvizColIndex_(cols, ['ความสัมพันธ์ผู้ปกครอง', 'guardianrel']);
+  var idxPhone = findGvizColIndex_(cols, ['เบอร์ผู้ปกครอง', 'phone']);
+  var idxGuardianJob = findGvizColIndex_(cols, ['อาชีพผู้ปกครอง', 'guardianjob']);
+  var idxFather = findGvizColIndex_(cols, ['บิดา', 'father']);
+  var idxFatherJob = findGvizColIndex_(cols, ['อาชีพบิดา', 'fatherjob']);
+  var idxMother = findGvizColIndex_(cols, ['มารดา', 'mother']);
+  var idxMotherJob = findGvizColIndex_(cols, ['อาชีพมารดา', 'motherjob']);
+  var idxChronic = findGvizColIndex_(cols, ['โรคประจำตัว', 'chronic']);
+  var idxDrug = findGvizColIndex_(cols, ['แพ้ยา', 'drug']);
+  var idxFood = findGvizColIndex_(cols, ['แพ้อาหาร', 'food']);
+  var idxPrec = findGvizColIndex_(cols, ['ข้อควรระวัง', 'precautions']);
+  var items = [];
+  table.rows.forEach(function(row) {
+    var id = idxId >= 0 ? gvizCell_(row, idxId) : '';
+    if (!id) return;
+    items.push({
+      id: String(id).trim(),
+      name: idxName >= 0 ? gvizCell_(row, idxName) : '',
+      class: idxClass >= 0 ? gvizCell_(row, idxClass) : '',
+      citizenId: idxCitizen >= 0 ? gvizCell_(row, idxCitizen) : '',
+      gender: idxGender >= 0 ? gvizCell_(row, idxGender) : '',
+      dob: idxDob >= 0 ? gvizCell_(row, idxDob) : '',
+      age: idxAge >= 0 ? gvizCell_(row, idxAge) : '',
+      religion: idxReligion >= 0 ? gvizCell_(row, idxReligion) : '',
+      race: idxRace >= 0 ? gvizCell_(row, idxRace) : '',
+      nationality: idxNationality >= 0 ? gvizCell_(row, idxNationality) : '',
+      weight: idxWeight >= 0 ? gvizCell_(row, idxWeight) : '',
+      height: idxHeight >= 0 ? gvizCell_(row, idxHeight) : '',
+      bloodType: idxBlood >= 0 ? gvizCell_(row, idxBlood) : '',
+      disadvantaged: idxDisadv >= 0 ? gvizCell_(row, idxDisadv) : '',
+      address: idxAddress >= 0 ? gvizCell_(row, idxAddress) : '',
+      guardian: idxGuardian >= 0 ? gvizCell_(row, idxGuardian) : '',
+      guardianRel: idxGuardianRel >= 0 ? gvizCell_(row, idxGuardianRel) : '',
+      guardianPhone: idxPhone >= 0 ? gvizCell_(row, idxPhone) : '',
+      guardianJob: idxGuardianJob >= 0 ? gvizCell_(row, idxGuardianJob) : '',
+      father: idxFather >= 0 ? gvizCell_(row, idxFather) : '',
+      fatherJob: idxFatherJob >= 0 ? gvizCell_(row, idxFatherJob) : '',
+      mother: idxMother >= 0 ? gvizCell_(row, idxMother) : '',
+      motherJob: idxMotherJob >= 0 ? gvizCell_(row, idxMotherJob) : '',
+      chronic: idxChronic >= 0 ? gvizCell_(row, idxChronic) : '',
+      drug: idxDrug >= 0 ? gvizCell_(row, idxDrug) : '',
+      food: idxFood >= 0 ? gvizCell_(row, idxFood) : '',
+      precautions: idxPrec >= 0 ? gvizCell_(row, idxPrec) : ''
+    });
+  });
+  return items;
+}
+
+function fetchStudentBasicInfoFromSheet() {
+  if (!SHEETS_CONFIG.ENABLED || !SHEET_NAMES.studentBasicInfo) {
+    return Promise.resolve([]);
+  }
+  return fetchGvizSheet_(SHEET_NAMES.studentBasicInfo).then(function(data) {
+    if (!data) return [];
+    return parseGvizStudentBasicInfoRows_(data);
+  });
 }
 
 function fetchStudentRegistryFromSheet() {
@@ -3413,6 +3491,7 @@ window.localStorageNeedsSheetBootstrap = localStorageNeedsSheetBootstrap;
 window.shouldBootstrapCloudData = shouldBootstrapCloudData;
 window.fetchAllCloudDataFromSheet = fetchAllCloudDataFromSheet;
 window.fetchStudentRegistryFromSheet = fetchStudentRegistryFromSheet;
+window.fetchStudentBasicInfoFromSheet = fetchStudentBasicInfoFromSheet;
 window.fetchTeacherRegistryFromSheet = fetchTeacherRegistryFromSheet;
 window.buildStudentRegistrySheetRow = buildStudentRegistrySheetRow;
 window.buildStudentBasicInfoSheetRow = buildStudentBasicInfoSheetRow;

@@ -18971,6 +18971,11 @@
       alert('รหัสนักเรียนต้องเป็นตัวเลขเท่านั้น');
       return;
     }
+    // เคลียร์ tombstone + miss-cache ก่อน — กันเคสเคยลบรหัสนี้แล้วเพิ่มใหม่แล้วหายหลังรีเฟรช
+    if (typeof unmarkStudentDeleted_ === 'function') unmarkStudentDeleted_(id);
+    if (typeof _studentLookupMiss !== 'undefined' && _studentLookupMiss) {
+      try { delete _studentLookupMiss[id]; } catch (eMiss) {}
+    }
     if (typeof lookupStudent === 'function' && lookupStudent(id)) {
       alert('รหัสนักเรียน "' + id + '" มีอยู่ในระบบแล้ว');
       return;
@@ -19002,14 +19007,13 @@
     if (!savedKey) {
       STUDENT_BASIC[id] = Object.assign({ school: 'บ้านไผ่' }, fields);
       savedKey = id;
-    } else {
-      // ติดธงว่าเป็นรายการที่สร้างใหม่ เพื่อให้โหลดซ้ำจาก patch ได้
-      try {
-        var patches = loadStudentProfilePatches();
-        patches[savedKey] = Object.assign({}, patches[savedKey] || {}, fields, { __isNew: true });
-        saveStudentProfilePatches(patches);
-      } catch (ePatch) {}
     }
+    // บันทึก patch เสมอ เพื่อให้รีเฟรชแล้วยังอยู่ (เคยพลาดเมื่อ persist คืน false)
+    try {
+      var patches = loadStudentProfilePatches();
+      patches[savedKey] = Object.assign({}, patches[savedKey] || {}, fields, { __isNew: true });
+      saveStudentProfilePatches(patches);
+    } catch (ePatch) {}
 
     if (typeof unmarkStudentDeleted_ === 'function') {
       unmarkStudentDeleted_(savedKey);
@@ -20055,6 +20059,7 @@
     if (!items || !items.length) return;
     var classMap = getStudentRegistryClassMap(false);
     var extras = loadStudentHealthExtras();
+    var createdAny = false;
     items.forEach(function(it) {
       if (!it || !it.id) return;
       var k = canonicalStudentIdKey(it.id);
@@ -20072,9 +20077,32 @@
       if (Object.keys(patch).length) extras[k] = Object.assign({}, extras[k] || {}, patch);
       if (typeof STUDENT_BASIC !== 'undefined') {
         var stu = lookupStudent(k) || lookupStudent(it.id);
+        if (!stu) {
+          var g = String(it.gender || '').trim();
+          var genderCode = (g === 'หญิง' || g === 'ญ') ? 'ญ' : ((g === 'ชาย' || g === 'ช') ? 'ช' : (g || 'ช'));
+          var created = {
+            school: 'บ้านไผ่',
+            fullName: (it.name && it.name !== '—') ? it.name : '',
+            age: (it.age && it.age !== '—') ? it.age : '',
+            gender: genderCode,
+            classLevel: (it.class && it.class !== '—') ? it.class : '',
+            guardianPhone: it.guardianPhone || ''
+          };
+          if (!created.fullName) return;
+          STUDENT_BASIC[k] = created;
+          createdAny = true;
+          try {
+            var patchesNew = loadStudentProfilePatches();
+            patchesNew[k] = Object.assign({}, patchesNew[k] || {}, created, { __isNew: true });
+            saveStudentProfilePatches(patchesNew);
+          } catch (ePatNew) {}
+          stu = STUDENT_BASIC[k];
+        }
         if (stu) {
           if (it.name && it.name !== '—') stu.fullName = it.name;
           if (it.age && it.age !== '—') stu.age = it.age;
+          if (it.class && it.class !== '—') stu.classLevel = it.class;
+          if (it.guardianPhone) stu.guardianPhone = it.guardianPhone;
           if (it.gender && it.gender !== '—') {
             stu.gender = (it.gender === 'หญิง' || it.gender === 'ญ') ? 'ญ'
               : ((it.gender === 'ชาย' || it.gender === 'ช') ? 'ช' : stu.gender);
@@ -20084,6 +20112,7 @@
     });
     saveStudentRegistryClassMap(classMap);
     if (Object.keys(extras).length) saveStudentHealthExtras(extras);
+    if (createdAny && typeof invalidateStudentIdIndex_ === 'function') invalidateStudentIdIndex_();
     if (typeof invalidateStudentLoginCredCache === 'function') invalidateStudentLoginCredCache();
     if (typeof applyStudentProfilePatches === 'function') applyStudentProfilePatches();
     if (typeof renderTeacherHomeroomRoster === 'function') renderTeacherHomeroomRoster();
@@ -20107,6 +20136,84 @@
       if (typeof refreshStudentRegistryRow === 'function') refreshStudentRegistryRow(it.id);
     });
   }
+  function applyStudentBasicInfoFromSheet(items) {
+    if (!items || !items.length || typeof STUDENT_BASIC === 'undefined') return;
+    var createdAny = false;
+    var extras = (typeof loadStudentHealthExtras === 'function') ? loadStudentHealthExtras() : {};
+    var classMap = (typeof getStudentRegistryClassMap === 'function') ? getStudentRegistryClassMap(false) : {};
+    items.forEach(function(it) {
+      if (!it || !it.id) return;
+      var k = (typeof canonicalStudentIdKey === 'function') ? canonicalStudentIdKey(it.id) : String(it.id).trim();
+      if (typeof isStudentMarkedDeleted_ === 'function' &&
+          (isStudentMarkedDeleted_(it.id) || isStudentMarkedDeleted_(k))) {
+        return;
+      }
+      var g = String(it.gender || '').trim();
+      var genderCode = (g === 'หญิง' || g === 'ญ') ? 'ญ' : ((g === 'ชาย' || g === 'ช') ? 'ช' : '');
+      var fields = {
+        school: 'บ้านไผ่',
+        fullName: it.name || '',
+        citizenId: it.citizenId || '',
+        gender: genderCode || undefined,
+        dob: it.dob || '',
+        age: it.age || '',
+        religion: it.religion || '',
+        race: it.race || '',
+        nationality: it.nationality || '',
+        weight: it.weight || '',
+        height: it.height || '',
+        bloodType: it.bloodType || '',
+        disadvantaged: it.disadvantaged || '',
+        address: it.address || '',
+        guardian: it.guardian || '',
+        guardianRel: it.guardianRel || '',
+        guardianPhone: it.guardianPhone || '',
+        guardianJob: it.guardianJob || '',
+        father: it.father || '',
+        fatherJob: it.fatherJob || '',
+        mother: it.mother || '',
+        motherJob: it.motherJob || '',
+        classLevel: it.class || ''
+      };
+      Object.keys(fields).forEach(function(f) {
+        if (fields[f] === undefined || fields[f] === '') delete fields[f];
+      });
+      if (!fields.fullName && !lookupStudent(k) && !lookupStudent(it.id)) return;
+      var stu = lookupStudent(k) || lookupStudent(it.id);
+      if (!stu) {
+        if (!fields.fullName) return;
+        STUDENT_BASIC[k] = Object.assign({ school: 'บ้านไผ่' }, fields);
+        createdAny = true;
+        stu = STUDENT_BASIC[k];
+      } else {
+        Object.keys(fields).forEach(function(f) {
+          if (fields[f] !== undefined && fields[f] !== '') stu[f] = fields[f];
+        });
+      }
+      try {
+        var patches = loadStudentProfilePatches();
+        var patchKey = stu && Object.keys(STUDENT_BASIC).find(function(x) { return STUDENT_BASIC[x] === stu; }) || k;
+        patches[patchKey] = Object.assign({}, patches[patchKey] || {}, fields, { __isNew: true });
+        saveStudentProfilePatches(patches);
+      } catch (eP) {}
+      if (it.class) classMap[k] = it.class;
+      var healthPatch = {};
+      if (it.drug) healthPatch.drugAllergy = it.drug;
+      if (it.food) healthPatch.foodAllergy = it.food;
+      if (it.precautions) healthPatch.precautions = it.precautions;
+      if (it.chronic) healthPatch.chronic = it.chronic;
+      if (it.guardianPhone) healthPatch.guardianPhone = it.guardianPhone;
+      if (Object.keys(healthPatch).length) extras[k] = Object.assign({}, extras[k] || {}, healthPatch);
+    });
+    if (typeof saveStudentRegistryClassMap === 'function') saveStudentRegistryClassMap(classMap);
+    if (typeof saveStudentHealthExtras === 'function') saveStudentHealthExtras(extras);
+    if (typeof invalidateStudentIdIndex_ === 'function') invalidateStudentIdIndex_();
+    if (typeof invalidateStudentLoginCredCache === 'function') invalidateStudentLoginCredCache();
+    if (typeof _studentRegistryLazy !== 'undefined' && _studentRegistryLazy) {
+      _studentRegistryLazy.allIds = [];
+      _studentRegistryLazy.built = false;
+    }
+  }
   var studentRegistrySheetRefreshPending = false;
   function refreshStudentRegistryFromSheetForStaff(callback) {
     if (typeof isFullStaffRole === 'function' && !isFullStaffRole()) {
@@ -20122,9 +20229,22 @@
       return;
     }
     studentRegistrySheetRefreshPending = true;
-    fetchStudentRegistryFromSheet().then(function(items) {
+    var regPromise = fetchStudentRegistryFromSheet().catch(function() { return []; });
+    var basicPromise = (typeof fetchStudentBasicInfoFromSheet === 'function')
+      ? fetchStudentBasicInfoFromSheet().catch(function() { return []; })
+      : Promise.resolve([]);
+    Promise.all([regPromise, basicPromise]).then(function(parts) {
       studentRegistrySheetRefreshPending = false;
-      if (items && items.length) applyStudentRegistryFromSheet(items);
+      var items = parts[0] || [];
+      var basicItems = parts[1] || [];
+      if (basicItems.length && typeof applyStudentBasicInfoFromSheet === 'function') {
+        applyStudentBasicInfoFromSheet(basicItems);
+      }
+      if (items.length) applyStudentRegistryFromSheet(items);
+      else if (basicItems.length && typeof filterStudentRegistry === 'function') {
+        _studentRegistryLazy.allIds = [];
+        filterStudentRegistry();
+      }
       if (callback) callback();
     }).catch(function() {
       studentRegistrySheetRefreshPending = false;
