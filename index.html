@@ -4751,9 +4751,9 @@
                 <button type="button" class="btn btn-primary" style="font-size:12px;padding:6px 10px;" onclick="manualPushVisitsToSheet()" title="ส่งรายการรักษาในเว็บขึ้นแท็บบันทึกการรักษา">⬆️ ส่งขึ้นชีต</button>
                 <select id="visit-list-period" onchange="renderVisitToday()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--white);color:var(--gray-dark);min-width:150px;">
                 <option value="today">รายการวันนี้</option>
-                <option value="week">รายการสัปดาห์นี้</option>
-                <option value="month">รายการเดือนนี้</option>
-                <option value="year">รายการปีนี้</option>
+                <option value="week">ย้อนหลัง 7 วัน</option>
+                <option value="month">ย้อนหลัง 30 วัน</option>
+                <option value="year">ย้อนหลัง 1 ปี</option>
               </select>
               </div>
             </div>
@@ -4767,7 +4767,7 @@
           </div>
           <div class="card">
             <div class="card-title"><span>🕐</span>ประวัติย้อนหลัง</div>
-            <p style="font-size:12px;color:var(--gray-mid);margin:-4px 0 12px;">บันทึกถาวรทุกรายการ — ค้นหาย้อนหลังได้ตลอด ไม่ว่าจะผ่านไปนานแค่ไหน</p>
+            <p style="font-size:12px;color:var(--gray-mid);margin:-4px 0 12px;">รายการที่บันทึกมาแล้วเกิน 1 ปี — รายการใหม่กว่าเลือกจากตัวกรองด้านบน</p>
             <div class="table-wrap" style="max-height:320px;overflow-y:auto;">
               <table>
                 <thead><tr><th>วันที่/เวลา</th><th class="visit-col-staff">ชื่อ</th><th class="visit-col-staff">ชั้น</th><th>อาการ</th><th>สถานะ</th><th>คำแนะนำ</th><th class="visit-col-action">จัดการ</th></tr></thead>
@@ -5023,9 +5023,9 @@
                 <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
                   <select id="visit-rec-list-period" onchange="renderVisitRecordToday()" style="font-size:12px;padding:6px 10px;border:1px solid var(--border);border-radius:8px;background:var(--white);color:var(--gray-dark);min-width:150px;">
                     <option value="today">รายการวันนี้</option>
-                    <option value="week">รายการสัปดาห์นี้</option>
-                    <option value="month">รายการเดือนนี้</option>
-                    <option value="year">รายการปีนี้</option>
+                    <option value="week">ย้อนหลัง 7 วัน</option>
+                    <option value="month">ย้อนหลัง 30 วัน</option>
+                    <option value="year">ย้อนหลัง 1 ปี</option>
                   </select>
                 </div>
               </div>
@@ -6156,7 +6156,7 @@
         <div class="student-count" id="student-count"></div>
         <div class="table-wrap">
           <table>
-            <thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th><th>อายุ</th><th>เพศ</th><th>โรคประจำตัว</th><th>แพ้ยา</th><th>แพ้อาหาร</th><th>ข้อควรระวัง</th><th>ใบนัด</th><th>ข้อมูลพื้นฐาน</th><th>ประวัติ</th></tr></thead>
+            <thead><tr><th>รหัส</th><th>ชื่อ-นามสกุล</th><th>ชั้น</th><th>อายุ</th><th>เพศ</th><th>โรคประจำตัว</th><th>แพ้ยา</th><th>แพ้อาหาร</th><th>ข้อควรระวัง</th><th>ใบนัด</th><th>ข้อมูลพื้นฐาน</th><th>ประวัติ</th><th>ลบ</th></tr></thead>
             <tbody id="student-registry-tbody"></tbody>
           </table>
         </div>
@@ -7570,6 +7570,74 @@
 
   var STUDENT_PROFILE_PATCH_KEY = 'sh-student-profile-patches';
   var TEACHER_PROFILE_PATCH_KEY = 'sh-teacher-profile-patches';
+  var STUDENT_DELETED_IDS_KEY = 'sh-student-deleted-ids';
+  function loadStudentDeletedIds_() {
+    try {
+      var raw = JSON.parse(localStorage.getItem(STUDENT_DELETED_IDS_KEY) || '[]');
+      return Array.isArray(raw) ? raw.map(function(v) { return String(v || '').trim(); }).filter(Boolean) : [];
+    } catch (e) { return []; }
+  }
+  function saveStudentDeletedIds_(ids) {
+    try {
+      var uniq = [];
+      var seen = Object.create(null);
+      (ids || []).forEach(function(id) {
+        var k = String(id || '').trim();
+        if (!k || seen[k]) return;
+        seen[k] = 1;
+        uniq.push(k);
+      });
+      localStorage.setItem(STUDENT_DELETED_IDS_KEY, JSON.stringify(uniq));
+    } catch (e) {}
+  }
+  function isStudentMarkedDeleted_(id) {
+    id = String(id || '').trim();
+    if (!id) return false;
+    var list = loadStudentDeletedIds_();
+    for (var i = 0; i < list.length; i++) {
+      if (typeof visitIdMatch === 'function' ? visitIdMatch(list[i], id) : list[i] === id) return true;
+    }
+    return false;
+  }
+  function markStudentDeleted_(id) {
+    id = String(id || '').trim();
+    if (!id) return;
+    var list = loadStudentDeletedIds_();
+    if (!isStudentMarkedDeleted_(id)) list.push(id);
+    saveStudentDeletedIds_(list);
+  }
+  function unmarkStudentDeleted_(id) {
+    id = String(id || '').trim();
+    if (!id) return;
+    var list = loadStudentDeletedIds_().filter(function(v) {
+      return !(typeof visitIdMatch === 'function' ? visitIdMatch(v, id) : v === id);
+    });
+    saveStudentDeletedIds_(list);
+  }
+  function applyStudentDeletedIds_() {
+    if (typeof STUDENT_BASIC === 'undefined') return;
+    var list = loadStudentDeletedIds_();
+    if (!list.length) return;
+    var keys = Object.keys(STUDENT_BASIC);
+    var removed = false;
+    list.forEach(function(delId) {
+      keys.forEach(function(k) {
+        if (typeof visitIdMatch === 'function' ? visitIdMatch(k, delId) : k === delId) {
+          delete STUDENT_BASIC[k];
+          removed = true;
+        }
+      });
+    });
+    if (removed) {
+      if (typeof _studentRegistryLazy !== 'undefined' && _studentRegistryLazy) {
+        _studentRegistryLazy.allIds = [];
+        _studentRegistryLazy.filteredIds = [];
+        _studentRegistryLazy.built = false;
+      }
+      if (typeof invalidateStudentIdIndex_ === 'function') invalidateStudentIdIndex_();
+      if (typeof invalidateStudentLoginCredCache === 'function') invalidateStudentLoginCredCache();
+    }
+  }
   function loadStudentProfilePatches() {
     try { return JSON.parse(localStorage.getItem(STUDENT_PROFILE_PATCH_KEY) || '{}'); } catch (e) { return {}; }
   }
@@ -7607,8 +7675,17 @@
       }
       return cur;
     }
+    // ตัดรายการที่ลบออกก่อน — กัน remap ย้ายรหัสแล้วโผล่ใหม่
+    if (typeof applyStudentDeletedIds_ === 'function') applyStudentDeletedIds_();
+    var remapDirty = false;
     Object.keys(remap).forEach(function(oldId) {
       var newId = resolveRemappedId(oldId);
+      if (typeof isStudentMarkedDeleted_ === 'function' &&
+          (isStudentMarkedDeleted_(oldId) || isStudentMarkedDeleted_(newId))) {
+        delete remap[oldId];
+        remapDirty = true;
+        return;
+      }
       if (!newId || newId === oldId || !STUDENT_BASIC[oldId]) return;
       if (!STUDENT_BASIC[newId]) {
         STUDENT_BASIC[newId] = STUDENT_BASIC[oldId];
@@ -7617,10 +7694,18 @@
         delete STUDENT_BASIC[oldId];
       }
     });
+    if (remapDirty) {
+      patches.__remap__ = remap;
+      saveStudentProfilePatches(patches);
+    }
     Object.keys(patches).forEach(function(id) {
       if (id === '__remap__') return;
       var targetId = resolveRemappedId(id);
       if (!patches[id] || typeof patches[id] !== 'object') return;
+      if (typeof isStudentMarkedDeleted_ === 'function' &&
+          (isStudentMarkedDeleted_(targetId) || isStudentMarkedDeleted_(id))) {
+        return;
+      }
       // สร้างโปรไฟล์ใหม่จาก patch (กรณีเพิ่มนักเรียนผ่านฟอร์ม) — ต้องมีชื่อจริงเท่านั้น
       if (!STUDENT_BASIC[targetId]) {
         if (!patches[id].fullName) return;
@@ -7631,6 +7716,12 @@
         STUDENT_BASIC[targetId][field] = patches[id][field];
       });
     });
+    if (typeof applyStudentDeletedIds_ === 'function') applyStudentDeletedIds_();
+    if (typeof _studentRegistryLazy !== 'undefined' && _studentRegistryLazy) {
+      _studentRegistryLazy.allIds = [];
+      _studentRegistryLazy.filteredIds = [];
+      _studentRegistryLazy.built = false;
+    }
     if (typeof invalidateStudentIdIndex_ === 'function') invalidateStudentIdIndex_();
     if (typeof invalidateStudentLoginCredCache === 'function') invalidateStudentLoginCredCache();
   }
@@ -7847,12 +7938,18 @@
   function persistStudentBasicPatch_(id, fields) {
     id = String(id || '').trim();
     if (!id || !fields || typeof STUDENT_BASIC === 'undefined') return false;
+    if (typeof isStudentMarkedDeleted_ === 'function' && isStudentMarkedDeleted_(id)) {
+      return false;
+    }
     var key = (typeof canonicalStudentIdKey === 'function') ? canonicalStudentIdKey(id) : id;
     if (!STUDENT_BASIC[key]) {
       var found = Object.keys(STUDENT_BASIC).find(function(k) {
         return typeof visitIdMatch === 'function' ? visitIdMatch(k, id) : String(k) === String(id);
       });
       key = found || id;
+    }
+    if (typeof isStudentMarkedDeleted_ === 'function' && isStudentMarkedDeleted_(key)) {
+      return false;
     }
     if (!STUDENT_BASIC[key]) {
       STUDENT_BASIC[key] = {};
@@ -8347,7 +8444,7 @@
       }
       if (!rows.length) {
         tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--gray-mid);padding:18px;">' +
-          (q ? 'ไม่พบนักเรียนที่ตรงกับคำค้น' : 'ยังไม่มีนักเรียนในชั้น ' + room + ' — รอข้อมูลชั้นจากทะเบียน') +
+          (q ? 'ไม่พบนักเรียนที่ตรงกับคำค้น' : ('ยังไม่มีนักเรียนในชั้น ' + escStudentCell(room) + ' — รอข้อมูลชั้นจากทะเบียน')) +
           '</td></tr>';
         return;
       }
@@ -9253,8 +9350,8 @@
     tbody.innerHTML = needFollow.map(r => {
       const c = getNutritionCategory(r.bmi);
       const btnCls = c.badge === 'badge-red' ? 'btn-danger' : 'btn-gold';
-      return '<tr><td>' + r.name + '</td><td>' + r.class + '</td><td>' + r.bmi +
-        '</td><td><span class="badge ' + c.badge + '">' + c.label + '</span></td><td>' + r.date +
+      return '<tr><td>' + escVisitHtml(r.name) + '</td><td>' + escVisitHtml(r.class) + '</td><td>' + escVisitHtml(r.bmi) +
+        '</td><td><span class="badge ' + c.badge + '">' + escVisitHtml(c.label) + '</span></td><td>' + escVisitHtml(r.date) +
         '</td><td><button type="button" class="btn btn-sm ' + btnCls + '">ติดตาม</button></td></tr>';
     }).join('');
   }
@@ -10105,8 +10202,8 @@
           badge = p >= Math.ceil(t * 0.6) ? 'badge-green' : (p >= Math.ceil(t * 0.4) ? 'badge-gold' : 'badge-red');
         }
       }
-      return '<tr><td>' + (r.recordedAt || '—') + '</td><td>' + (labels[r.type] || r.type) + '</td><td>' + r.id +
-        '</td><td>' + r.name + '</td><td>' + (r.class || '—') + '</td><td><span class="badge ' + badge + '">' + (r.summary || '—') + '</span></td></tr>';
+      return '<tr><td>' + escVisitHtml(r.recordedAt || '—') + '</td><td>' + escVisitHtml(labels[r.type] || r.type) + '</td><td>' + escVisitHtml(r.id) +
+        '</td><td>' + escVisitHtml(r.name) + '</td><td>' + escVisitHtml(r.class || '—') + '</td><td><span class="badge ' + badge + '">' + escVisitHtml(r.summary || '—') + '</span></td></tr>';
     }).join('');
   }
   function clearFormFieldIds_(ids) {
@@ -14120,7 +14217,13 @@
     _suppressVisitSheetRefreshUntil = Date.now() + 45000;
     try {
       discardedSoft.forEach(function(old) {
+        if (!old) return;
         if (typeof removeVisitFromStudentHealthExtra_ === 'function') removeVisitFromStudentHealthExtra_(old);
+        /* ลบแถวชีตของรายการที่ถูกยุบ — ยกเว้นรหัสที่ reuse แล้ว */
+        if (old.recordId && String(old.recordId) !== String(record.recordId) &&
+            typeof syncDeleteVisitQuiet === 'function') {
+          try { syncDeleteVisitQuiet(old); } catch (eDelSoft) {}
+        }
       });
     } catch (ePrune) {}
     try {
@@ -14269,14 +14372,19 @@
     callEl.style.opacity = phone ? '1' : '0.55';
     smsEl.style.opacity = phone ? '1' : '0.55';
   }
-  function openGuardianContactModal(prefix) {
-    var data = collectVisitFormData(prefix);
+  function openGuardianContactModal(prefix, opts) {
+    opts = opts || {};
+    var data = opts.data || collectVisitFormData(prefix);
     if (!data.id || !data.name) {
       alert('กรุณากรอกเลขประจำตัวและชื่อ-นามสกุลของนักเรียนก่อน');
       return;
     }
-    var contact = getStudentGuardianContact(data.id);
-    guardianContactContext = { prefix: prefix, data: data, contact: contact };
+    var contact = opts.contact || getStudentGuardianContact(data.id);
+    var forPrint = !!opts.forPrint;
+    if (forPrint && !data.recordedAt) {
+      data.recordedAt = new Date().toLocaleString('th-TH');
+    }
+    guardianContactContext = { prefix: prefix, data: data, contact: contact, forPrint: forPrint };
     var studentEl = document.getElementById('guardian-contact-student');
     var guardianEl = document.getElementById('guardian-contact-guardian');
     var phoneEl = document.getElementById('guardian-contact-phone');
@@ -14336,7 +14444,12 @@
     }
   }
   function buildVisitCertificateHtml(data, contact) {
-    var now = new Date().toLocaleString('th-TH');
+    var when = '';
+    if (data && data.recordedAt) when = String(data.recordedAt);
+    else if (data && data.savedAt) {
+      try { when = new Date(Number(data.savedAt)).toLocaleString('th-TH'); } catch (eWhen) { when = ''; }
+    }
+    if (!when) when = new Date().toLocaleString('th-TH');
     function row(label, value) {
       return '<tr><td>' + escVisitHtml(label) + '</td><td>' + escVisitHtml(value || '—') + '</td></tr>';
     }
@@ -14356,7 +14469,7 @@
       '<div class="cert-head">' + logoHtml +
       '<h1>ใบรับรองการรักษา / รับบริการห้องพยาบาล</h1>' +
       '<div class="sub">โรงเรียนบ้านไผ่</div></div><table>' +
-      row('วันที่/เวลา', now) +
+      row('วันที่/เวลา', when) +
       row('เลขประจำตัว', data.id) +
       row('ชื่อ-นามสกุล', data.name) +
       row('ชั้น/ตำแหน่ง', data.class) +
@@ -14397,13 +14510,13 @@
       alert('กรุณากรอกเลขประจำตัวและชื่อ-นามสกุลของนักเรียนก่อน');
       return;
     }
+    if (!data.recordedAt) data.recordedAt = new Date().toLocaleString('th-TH');
     var contact = getStudentGuardianContact(data.id);
     if (!contact.phone) {
-      guardianContactContext = { prefix: prefix || 'vis', data: data, contact: contact, forPrint: true };
-      openGuardianContactModal(prefix || 'vis');
+      openGuardianContactModal(prefix || 'vis', { forPrint: true, data: data, contact: contact });
       return;
     }
-    guardianContactContext = { prefix: prefix || 'vis', data: data, contact: contact };
+    guardianContactContext = { prefix: prefix || 'vis', data: data, contact: contact, forPrint: true };
     printVisitCertificateFromModal();
     guardianContactContext = null;
   }
@@ -17121,19 +17234,19 @@
     var ts = resolveVisitRecordTimestamp(record);
     if (!ts) return false;
     var age = Date.now() - ts;
-    return age >= 0 && age < VISIT_WEEK_MS;
+    return age >= 0 && age <= VISIT_WEEK_MS;
   }
   function isVisitPeriodMonth(record) {
     var ts = resolveVisitRecordTimestamp(record);
     if (!ts) return false;
     var age = Date.now() - ts;
-    return age >= 0 && age < VISIT_MONTH_MS;
+    return age >= 0 && age <= VISIT_MONTH_MS;
   }
   function isVisitPeriodYear(record) {
     var ts = resolveVisitRecordTimestamp(record);
     if (!ts) return false;
     var age = Date.now() - ts;
-    return age >= 0 && age < VISIT_YEAR_MS;
+    return age >= 0 && age <= VISIT_YEAR_MS;
   }
   function isVisitPeriodHistory(record) {
     return getVisitPeriodBucket_(record) === 'history';
@@ -17291,9 +17404,9 @@
     const period = getVisitListPeriod();
     const periodLabels = {
       today: 'รายการวันนี้',
-      week: 'รายการสัปดาห์นี้',
-      month: 'รายการเดือนนี้',
-      year: 'รายการปีนี้'
+      week: 'ย้อนหลัง 7 วัน',
+      month: 'ย้อนหลัง 30 วัน',
+      year: 'ย้อนหลัง 1 ปี'
     };
     const emptyLabels = {
       today: 'ยังไม่มีรายการวันนี้',
@@ -17404,17 +17517,21 @@
   function isClientVisitRecordId_(recordId) {
     return /^v-\d{10,}-[a-z0-9]+$/i.test(String(recordId || '').trim());
   }
-  /** รวมอาการ+วินิจฉัยให้เทียบกันได้แม้ช่องหนึ่งว่างหรือสลับค่า */
+  /** รวมอาการ+วินิจฉัย+การรักษา+ผล — กัน soft-replace ทับเคสที่ยา/ผลต่างกัน */
   function visitClinicalSig_(r) {
     if (!r) return '';
     var symptom = String(r.symptom || '').trim();
     var diagnosis = String(r.diagnosis || '').trim();
     if (diagnosis === '-- เลือก --') diagnosis = '';
+    var treatment = String(r.treatment || '').replace(/\s+/g, ' ').trim();
+    var result = String(r.result || '').trim();
     var parts = [];
     if (symptom) parts.push(symptom);
     if (diagnosis && diagnosis !== symptom) parts.push(diagnosis);
     if (parts.length > 1) parts.sort();
-    return parts.join('|');
+    var clin = parts.join('|');
+    if (!clin && !treatment && !result) return '';
+    return clin + '||' + treatment + '||' + result;
   }
   function visitRecordSoftKey_(r) {
     if (!r) return '';
@@ -18075,9 +18192,9 @@
     var period = getVisitRecordListPeriod();
     var periodLabels = {
       today: 'รายการวันนี้',
-      week: 'รายการสัปดาห์นี้',
-      month: 'รายการเดือนนี้',
-      year: 'รายการปีนี้'
+      week: 'ย้อนหลัง 7 วัน',
+      month: 'ย้อนหลัง 30 วัน',
+      year: 'ย้อนหลัง 1 ปี'
     };
     var emptyLabels = {
       today: 'ยังไม่มีรายการวันนี้',
@@ -18801,6 +18918,10 @@
     if (gender) gender.value = 'ช';
   }
   function openAddStudent() {
+    if (typeof isFullStaffRole === 'function' && !isFullStaffRole()) {
+      alert('เฉพาะเจ้าหน้าที่อนามัย / ผู้บริหารเท่านั้นที่เพิ่มนักเรียนได้');
+      return;
+    }
     clearAddStudentForm_();
     var modal = document.getElementById('modal');
     if (modal) modal.classList.add('open');
@@ -18812,6 +18933,10 @@
     if (modal) modal.classList.remove('open');
   }
   function saveAddStudent() {
+    if (typeof isFullStaffRole === 'function' && !isFullStaffRole()) {
+      alert('เฉพาะเจ้าหน้าที่อนามัย / ผู้บริหารเท่านั้นที่เพิ่มนักเรียนได้');
+      return;
+    }
     if (typeof STUDENT_BASIC === 'undefined') {
       alert('ยังโหลดข้อมูลทะเบียนนักเรียนไม่สำเร็จ');
       return;
@@ -18884,6 +19009,11 @@
         patches[savedKey] = Object.assign({}, patches[savedKey] || {}, fields, { __isNew: true });
         saveStudentProfilePatches(patches);
       } catch (ePatch) {}
+    }
+
+    if (typeof unmarkStudentDeleted_ === 'function') {
+      unmarkStudentDeleted_(savedKey);
+      if (savedKey !== id) unmarkStudentDeleted_(id);
     }
 
     if (typeof getStudentRegistryClassMap === 'function' && typeof saveStudentRegistryClassMap === 'function') {
@@ -19834,6 +19964,7 @@
   function collectStudentRegistryEntry(id) {
     id = String(id || '').trim();
     if (!id || typeof STUDENT_BASIC === 'undefined' || !lookupStudent(id)) return null;
+    if (typeof isStudentMarkedDeleted_ === 'function' && isStudentMarkedDeleted_(id)) return null;
     var student = lookupStudent(id);
     var k = canonicalStudentIdKey(id);
     var classMap = getStudentRegistryClassMap();
@@ -19867,6 +19998,7 @@
   function collectStudentBasicInfoEntry(id) {
     id = String(id || '').trim();
     if (!id || typeof STUDENT_BASIC === 'undefined' || !lookupStudent(id)) return null;
+    if (typeof isStudentMarkedDeleted_ === 'function' && isStudentMarkedDeleted_(id)) return null;
     var student = lookupStudent(id);
     var k = canonicalStudentIdKey(id);
     var classMap = getStudentRegistryClassMap();
@@ -19926,6 +20058,10 @@
     items.forEach(function(it) {
       if (!it || !it.id) return;
       var k = canonicalStudentIdKey(it.id);
+      if (typeof isStudentMarkedDeleted_ === 'function' &&
+          (isStudentMarkedDeleted_(it.id) || isStudentMarkedDeleted_(k))) {
+        return;
+      }
       if (it.class && it.class !== '—') classMap[k] = it.class;
       var patch = {};
       if (it.drug) patch.drugAllergy = it.drug;
@@ -19956,6 +20092,7 @@
       if (loginPanel && loginPanel.classList.contains('active')) renderStudentLoginCredsTable();
     }
     if (_studentRegistryLazy.built && typeof filterStudentRegistry === 'function') {
+      _studentRegistryLazy.allIds = [];
       filterStudentRegistry();
       return;
     }
@@ -20068,6 +20205,9 @@
     if (isStaff) {
       apptHtml += '<div style="margin-top:4px;"><button type="button" class="btn btn-sm btn-secondary" onclick="openStudentAppointment(\'' + sid + '\')">📅 ใบนัด</button></div>';
     }
+    var deleteCell = isStaff
+      ? '<td><button type="button" class="btn btn-sm btn-danger" title="ลบออกจากทะเบียน" onclick="deleteStudentFromRegistry(\'' + sid + '\')">ลบ</button></td>'
+      : '<td>—</td>';
     return '<td>' + escStudentCell(id) + '</td>' +
       '<td>' + escStudentCell(name) + '</td>' +
       '<td>' + escStudentCell(cls) + '</td>' +
@@ -20079,8 +20219,127 @@
       '<td>' + escStudentCell(health.precautions) + '</td>' +
       '<td class="stu-appt-cell">' + apptHtml + '</td>' +
       '<td><div class="action-btns"><button type="button" class="btn btn-sm btn-info" onclick="showStudentBasic(\'' + sid + '\')">ข้อมูลพื้นฐาน</button></div></td>' +
-      '<td><button type="button" class="btn btn-sm btn-secondary" onclick="showStudentHistory(\'' + sid + '\')">ดูประวัติ</button></td>';
+      '<td><button type="button" class="btn btn-sm btn-secondary" onclick="showStudentHistory(\'' + sid + '\')">ดูประวัติ</button></td>' +
+      deleteCell;
   }
+  function deleteStudentFromRegistry(id) {
+    id = String(id || '').trim();
+    if (!id) return;
+    if (typeof isFullStaffRole === 'function' && !isFullStaffRole()) {
+      alert('เฉพาะเจ้าหน้าที่อนามัย / ผู้บริหารเท่านั้นที่ลบทะเบียนนักเรียนได้');
+      return;
+    }
+    if (typeof STUDENT_BASIC === 'undefined') {
+      alert('ยังโหลดข้อมูลทะเบียนนักเรียนไม่สำเร็จ');
+      return;
+    }
+    var student = (typeof lookupStudent === 'function') ? lookupStudent(id) : null;
+    var key = id;
+    if (student && typeof canonicalStudentIdKey === 'function') {
+      key = canonicalStudentIdKey(id) || id;
+    }
+    if (!STUDENT_BASIC[key]) {
+      var found = Object.keys(STUDENT_BASIC).find(function(k) {
+        return typeof visitIdMatch === 'function' ? visitIdMatch(k, id) : k === id;
+      });
+      if (found) key = found;
+    }
+    if (!STUDENT_BASIC[key]) {
+      alert('ไม่พบรหัสนักเรียน "' + id + '" ในทะเบียน');
+      return;
+    }
+    var name = (STUDENT_BASIC[key] && STUDENT_BASIC[key].fullName) || id;
+    if (!confirm('ลบนักเรียน "' + name + '" (รหัส ' + key + ') ออกจากทะเบียน?\n\nจะลบจากเว็บและ Google Sheet (ทะเบียน/ข้อมูลพื้นฐาน)\nประวัติการรักษาเดิมจะยังอยู่ในระบบ')) {
+      return;
+    }
+
+    try { delete STUDENT_BASIC[key]; } catch (eDel) {}
+
+    try {
+      var patches = loadStudentProfilePatches();
+      Object.keys(patches).forEach(function(pid) {
+        if (pid === '__remap__') return;
+        if (typeof visitIdMatch === 'function' ? visitIdMatch(pid, key) : pid === key) delete patches[pid];
+      });
+      if (patches.__remap__) {
+        Object.keys(patches.__remap__).forEach(function(oldId) {
+          var tgt = patches.__remap__[oldId];
+          var hitSrc = typeof visitIdMatch === 'function' ? visitIdMatch(oldId, key) : oldId === key;
+          var hitTgt = typeof visitIdMatch === 'function' ? visitIdMatch(tgt, key) : tgt === key;
+          if (hitSrc || hitTgt) delete patches.__remap__[oldId];
+        });
+      }
+      saveStudentProfilePatches(patches);
+    } catch (ePatch) {}
+
+    markStudentDeleted_(key);
+    if (key !== id) markStudentDeleted_(id);
+
+    try {
+      if (typeof getStudentRegistryClassMap === 'function' && typeof saveStudentRegistryClassMap === 'function') {
+        var classMap = getStudentRegistryClassMap(false);
+        Object.keys(classMap).forEach(function(k) {
+          if (typeof visitIdMatch === 'function' ? visitIdMatch(k, key) : k === key) delete classMap[k];
+        });
+        saveStudentRegistryClassMap(classMap);
+      }
+    } catch (eCls) {}
+
+    try {
+      if (typeof loadStudentHealthExtras === 'function' && typeof saveStudentHealthExtras === 'function') {
+        var extras = loadStudentHealthExtras();
+        Object.keys(extras).forEach(function(k) {
+          if (typeof visitIdMatch === 'function' ? visitIdMatch(k, key) : k === key) delete extras[k];
+        });
+        saveStudentHealthExtras(extras);
+      }
+    } catch (eHealth) {}
+
+    if (typeof basicInfoStudentId !== 'undefined' && basicInfoStudentId &&
+        (typeof visitIdMatch === 'function' ? visitIdMatch(basicInfoStudentId, key) : basicInfoStudentId === key)) {
+      basicInfoStudentId = '';
+      if (typeof closeBasicInfoModal === 'function') {
+        try { closeBasicInfoModal(); } catch (eModal) {}
+      }
+    }
+
+    if (typeof invalidateStudentIdIndex_ === 'function') invalidateStudentIdIndex_();
+    if (typeof invalidateStudentLoginCredCache === 'function') invalidateStudentLoginCredCache();
+    if (typeof _studentRegistryLazy !== 'undefined' && _studentRegistryLazy) {
+      _studentRegistryLazy.allIds = [];
+      _studentRegistryLazy.filteredIds = [];
+      _studentRegistryLazy.built = false;
+    }
+    if (typeof filterStudentRegistry === 'function') {
+      try { filterStudentRegistry(); } catch (eReg) {}
+    }
+    if (typeof updateStudentCounts === 'function') {
+      try { updateStudentCounts(); } catch (eCnt) {}
+    }
+    if (typeof renderTeacherHomeroomRoster === 'function') {
+      try { renderTeacherHomeroomRoster(); } catch (eRoster) {}
+    }
+
+    try {
+      if (typeof syncDeleteRowQuiet === 'function') {
+        if (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.studentBasicInfo && typeof STUDENT_ID_SHEET_KEY !== 'undefined') {
+          syncDeleteRowQuiet(SHEET_NAMES.studentBasicInfo, STUDENT_ID_SHEET_KEY, key);
+        }
+        if (typeof SHEET_NAMES !== 'undefined' && SHEET_NAMES.studentRegistry) {
+          syncDeleteRowQuiet(SHEET_NAMES.studentRegistry, 'รหัสนักเรียน', key);
+        }
+      }
+    } catch (eSync) {
+      console.warn('[SH delete-student] sheet sync', eSync);
+    }
+
+    if (typeof showSheetToast_ === 'function') {
+      showSheetToast_('ลบนักเรียน ' + key + ' จากทะเบียนแล้ว');
+    } else {
+      alert('✅ ลบนักเรียน "' + name + '" (รหัส ' + key + ') จากทะเบียนแล้ว');
+    }
+  }
+  window.deleteStudentFromRegistry = deleteStudentFromRegistry;
   var _studentRegistryLazy = {
     built: false,
     allIds: [],
@@ -20354,6 +20613,19 @@
         if (loggedInStudentId && typeof resolveStudentIdThroughProfileRemap === 'function') {
           loggedInStudentId = resolveStudentIdThroughProfileRemap(loggedInStudentId);
         }
+        if (typeof applyStudentProfilePatches === 'function') {
+          try { applyStudentProfilePatches(); } catch (ePatch) {}
+        }
+        if (loggedInStudentId && typeof isStudentMarkedDeleted_ === 'function' && isStudentMarkedDeleted_(loggedInStudentId)) {
+          loggedInStudentId = '';
+          try { sessionStorage.removeItem('sh-session'); } catch (eSess) {}
+          return false;
+        }
+        if (loggedInStudentId && typeof lookupStudent === 'function' && !lookupStudent(loggedInStudentId) && !s.masterAccess) {
+          loggedInStudentId = '';
+          try { sessionStorage.removeItem('sh-session'); } catch (eSess2) {}
+          return false;
+        }
         staffMasterAccess = !!s.masterAccess;
         enterApp('student');
         if (loggedInStudentId) restoreStudentSessionForms();
@@ -20498,6 +20770,7 @@
       return;
     }
     if (typeof applyStudentProfilePatches === 'function') applyStudentProfilePatches();
+    if (typeof applyStudentDeletedIds_ === 'function') applyStudentDeletedIds_();
     ensureStudentIdIndex_();
     var studentCount = Object.keys(STUDENT_BASIC).length;
     if (studentCount < 100 && typeof isDeployedAppHost === 'function' && isDeployedAppHost()) {

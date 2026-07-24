@@ -984,13 +984,14 @@ function deleteRowByMatchKey_(sheetName, matchKey, matchValue) {
   var matchIndex = findHeaderIndex_(headers, matchKey);
   if (matchIndex < 0) return;
   var lastRow = sheet.getLastRow();
+  var deleted = 0;
   for (var r = lastRow; r >= 2; r--) {
     if (idsMatch_(sheet.getRange(r, matchIndex + 1).getValue(), matchValue)) {
       sheet.deleteRow(r);
-      SpreadsheetApp.flush();
-      return;
+      deleted++;
     }
   }
+  if (deleted) SpreadsheetApp.flush();
 }
 
 /** ลบแถวบันทึกการรักษา — ใช้รหัสรายการก่อน แล้วค่อยจับคู่วันที่+รหัส+อาการ */
