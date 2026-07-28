@@ -2314,9 +2314,20 @@
   }
   .emergency-phone-grid {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: 10px;
     margin-top: 10px;
+  }
+  .emergency-phone-grid .emergency-phone-box .emergency-phone-num {
+    font-size: 17px;
+    font-weight: 700;
+    line-height: 1.25;
+  }
+  .emergency-phone-grid .emergency-phone-box .emergency-phone-label {
+    font-size: 11px;
+    opacity: 0.85;
+    margin-top: 4px;
+    line-height: 1.35;
   }
 
   @media (max-width: 900px) {
@@ -2836,8 +2847,16 @@
     padding: 20px;
     margin-bottom: 16px;
   }
+  .emergency-card-network {
+    background: linear-gradient(135deg, #1a6b8a, #2f8fb0);
+    color: white;
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 16px;
+  }
   .emergency-card .emergency-phone-box,
-  .emergency-card-school .emergency-phone-box {
+  .emergency-card-school .emergency-phone-box,
+  .emergency-card-network .emergency-phone-box {
     border-radius: 8px;
     padding: 10px;
     text-align: center;
@@ -2857,6 +2876,13 @@
   .emergency-card-school .emergency-phone-box:hover {
     background: rgba(255, 255, 255, 0.5);
   }
+  .emergency-card-network .emergency-phone-box {
+    background: rgba(255, 255, 255, 0.15);
+    cursor: pointer;
+  }
+  .emergency-card-network .emergency-phone-box:hover {
+    background: rgba(255, 255, 255, 0.28);
+  }
   .emergency-card .emergency-phone-link {
     color: white;
     text-decoration: none;
@@ -2869,6 +2895,12 @@
     display: block;
   }
   .emergency-card-school .emergency-phone-link:hover { text-decoration: underline; }
+  .emergency-card-network .emergency-phone-link {
+    color: white;
+    text-decoration: none;
+    display: block;
+  }
+  .emergency-card-network .emergency-phone-link:hover { text-decoration: underline; }
   .emergency-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
   .emergency-desc { font-size: 13px; opacity: 0.9; }
   .emergency-btn { background: white; color: var(--red); padding: 8px 16px; border-radius: var(--radius-sm); font-weight: 700; font-size: 13px; border: none; cursor: pointer; margin-top: 10px; }
@@ -4003,7 +4035,7 @@
         <li role="button" tabindex="0" onclick="enterGuestAccess('knowledge')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();enterGuestAccess('knowledge');}"
             class="role-side-link group flex cursor-pointer items-center gap-4 rounded-2xl border border-white/25 bg-white/10 px-5 py-4 shadow-lg shadow-emerald-950/20 backdrop-blur-md transition-all duration-300 hover:border-emerald-300/50 hover:bg-white/15 hover:shadow-xl hover:shadow-emerald-900/30">
           <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400/30 to-teal-500/20 ring-1 ring-white/20 transition-transform duration-300 group-hover:scale-105">
-            <span class="role-ico role-ico-md" aria-hidden="true">📚</span>
+            <span class="role-ico role-ico-md">📚</span>
           </span>
           <div class="min-w-0 flex-1">
             <p class="text-base font-bold tracking-tight text-white">ความรู้ด้านอนามัย</p>
@@ -4014,7 +4046,7 @@
         <li role="button" tabindex="0" onclick="enterGuestAccess('public')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();enterGuestAccess('public');}"
             class="role-side-link group flex cursor-pointer items-center gap-4 rounded-2xl border border-white/25 bg-white/10 px-5 py-4 shadow-lg shadow-emerald-950/20 backdrop-blur-md transition-all duration-300 hover:border-emerald-300/50 hover:bg-white/15 hover:shadow-xl hover:shadow-emerald-900/30">
           <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400/30 to-teal-500/20 ring-1 ring-white/20 transition-transform duration-300 group-hover:scale-105">
-            <span class="role-ico role-ico-md" aria-hidden="true">🌐</span>
+            <span class="role-ico role-ico-md">🌐</span>
           </span>
           <div class="min-w-0 flex-1">
             <p class="text-base font-bold tracking-tight text-white">บุคคลทั่วไป</p>
@@ -4025,7 +4057,7 @@
       </ul>
       <div class="mt-8 hidden lg:block animate-fade-up-delay-2">
         <div class="flex items-center gap-2 text-xs text-emerald-200/50">
-          <span class="role-ico role-ico-xs" aria-hidden="true">🏛️</span>
+          <span class="role-ico role-ico-xs">🏛️</span>
           <span>กรมอนามัย · กระทรวงสาธารณสุข</span>
         </div>
       </div>
@@ -4058,7 +4090,7 @@
             <div class="role-icon-wrap">
               <span class="role-icon-ring" aria-hidden="true"></span>
               <span class="role-icon-ring-2" aria-hidden="true"></span>
-              <span class="role-icon-box"><span class="role-ico role-ico-sm" aria-hidden="true">🩺</span></span>
+              <span class="role-icon-box"><span class="role-ico role-ico-sm">🩺</span></span>
             </div>
             <div class="role-card-text">
               <p class="role-card-title">เจ้าหน้าที่อนามัย</p>
@@ -4075,7 +4107,7 @@
             <div class="role-icon-wrap">
               <span class="role-icon-ring" aria-hidden="true"></span>
               <span class="role-icon-ring-2" aria-hidden="true"></span>
-              <span class="role-icon-box"><span class="role-ico role-ico-sm" aria-hidden="true">📖</span></span>
+              <span class="role-icon-box"><span class="role-ico role-ico-sm">📚</span></span>
             </div>
             <div class="role-card-text">
               <p class="role-card-title">ครู / ที่ปรึกษา</p>
@@ -4092,7 +4124,7 @@
             <div class="role-icon-wrap">
               <span class="role-icon-ring" aria-hidden="true"></span>
               <span class="role-icon-ring-2" aria-hidden="true"></span>
-              <span class="role-icon-box"><span class="role-ico role-ico-sm" aria-hidden="true">🏥</span></span>
+              <span class="role-icon-box"><span class="role-ico role-ico-sm">🏥</span></span>
             </div>
             <div class="role-card-text">
               <p class="role-card-title">นักเรียนพยาบาล</p>
@@ -4109,7 +4141,7 @@
             <div class="role-icon-wrap">
               <span class="role-icon-ring" aria-hidden="true"></span>
               <span class="role-icon-ring-2" aria-hidden="true"></span>
-              <span class="role-icon-box"><span class="role-ico role-ico-sm" aria-hidden="true">🎓</span></span>
+              <span class="role-icon-box"><span class="role-ico role-ico-sm">👨‍🎓</span></span>
             </div>
             <div class="role-card-text">
               <p class="role-card-title">นักเรียน / ผู้ปกครอง</p>
@@ -4126,7 +4158,7 @@
             <div class="role-icon-wrap">
               <span class="role-icon-ring" aria-hidden="true"></span>
               <span class="role-icon-ring-2" aria-hidden="true"></span>
-              <span class="role-icon-box"><span class="role-ico role-ico-sm" aria-hidden="true">📊</span></span>
+              <span class="role-icon-box"><span class="role-ico role-ico-sm">📊</span></span>
             </div>
             <div class="role-card-text">
               <p class="role-card-title">ผู้บริหารโรงเรียน</p>
@@ -4137,7 +4169,7 @@
       </div>
       <div class="mt-4 flex flex-wrap items-center justify-center gap-2 animate-fade-up-delay-4 sm:justify-start">
         <span class="role-security-chip inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-medium text-brand-800">
-          <span class="role-ico role-ico-xs" aria-hidden="true">🔒</span>
+          <span class="role-ico role-ico-xs">🔒</span>
           ข้อมูลสุขภาพเป็นความลับ — เข้าถึงตามสิทธิ์ของบทบาท
         </span>
         <span class="text-xs text-slate-400 lg:hidden">กรมอนามัย · กระทรวงสาธารณสุข</span>
@@ -4145,14 +4177,14 @@
       <div class="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:hidden animate-fade-up-delay-3">
         <button type="button" onclick="enterGuestAccess('knowledge')" class="role-mobile-link flex w-full items-center justify-between gap-3 rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3.5 text-left shadow-sm transition hover:border-emerald-400 hover:shadow-md">
           <div class="flex items-center gap-3">
-            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><span class="role-ico role-ico-sm" aria-hidden="true">📚</span></span>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-100 text-emerald-700"><span class="role-ico role-ico-sm">📚</span></span>
             <div class="min-w-0 text-left"><p class="text-sm font-bold text-slate-800">ความรู้ด้านอนามัย</p><p class="text-xs text-slate-500">วิดีโอความรู้สุขภาพ · ป้องกันโรค</p></div>
           </div>
           <span class="role-cta role-ico role-ico-xs text-emerald-500" aria-hidden="true">›</span>
         </button>
         <button type="button" onclick="enterGuestAccess('public')" class="role-mobile-link flex w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-left shadow-sm transition hover:border-emerald-300 hover:shadow-md">
           <div class="flex items-center gap-3">
-            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700"><span class="role-ico role-ico-sm" aria-hidden="true">🌐</span></span>
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700"><span class="role-ico role-ico-sm">🌐</span></span>
             <div class="min-w-0 text-left"><p class="text-sm font-bold text-slate-800">บุคคลทั่วไป</p><p class="text-xs text-slate-500">ข้อมูลสุขภาพสาธารณะ</p></div>
           </div>
           <span class="role-cta role-ico role-ico-xs text-emerald-500" aria-hidden="true">›</span>
@@ -4304,7 +4336,7 @@
         <div class="stat-card blue">
           <div class="stat-num" id="dashStaffCount">—</div>
           <div class="stat-label">ครูและบุคลากร</div>
-          <div class="stat-icon">👩‍🏫</div>
+          <div class="stat-icon">👨‍🏫</div>
         </div>
         <div class="stat-card red">
           <div class="stat-num" id="todayVisit">0</div>
@@ -4544,7 +4576,7 @@
         </div>
         <div data-school-cal-grid></div>
         <div class="school-cal-legend">
-          <span>🟢 กิจกรรมงานอนามัย</span>
+          <span><span>🟢</span> กิจกรรมงานอนามัย</span>
           <span>· คลิกวันในปฏิทินเพื่อดูรายละเอียดกิจกรรม</span>
         </div>
       </div>
@@ -4883,7 +4915,7 @@
           </div>
           <div id="school-cal-grid-host" data-school-cal-grid></div>
           <div class="school-cal-legend">
-            <span>🟢 กิจกรรมงานอนามัย</span>
+            <span><span>🟢</span> กิจกรรมงานอนามัย</span>
             <span>· คลิกวันในปฏิทินเพื่อดูรายละเอียดกิจกรรม</span>
           </div>
         </div>
@@ -5072,8 +5104,7 @@
           <span><span>📋</span> ตารางข้อมูลเข้าสู่ระบบ</span>
           <span class="teacher-homeroom-roster-meta" id="login-creds-count"></span>
         </div>
-        <div class="alert alert-info" style="margin-bottom:12px;">
-          <span>ℹ️</span>
+        <div class="alert alert-info" style="margin-bottom:12px;"><span>ℹ️</span>
           <div id="login-creds-hint">ค้นหาจากรหัส ชื่อ หรือชั้น — ใช้บอกนักเรียนเมื่อลืมรหัสผ่าน (วันเกิด)</div>
         </div>
         <div class="search-bar">
@@ -5113,12 +5144,12 @@
       </div>
 
       <div class="tabs">
-        <div class="tab active" onclick="switchTab(this,'sc-vision')">👁️ สายตา</div>
-        <div class="tab" onclick="switchTab(this,'sc-hearing')">👂 การได้ยิน</div>
-        <div class="tab" onclick="switchTab(this,'sc-blood')">🩸 โลหิตจาง</div>
-        <div class="tab" onclick="switchTab(this,'sc-oral')">🦷 ช่องปาก</div>
-        <div class="tab" onclick="switchTab(this,'sc-physical')">🏃 ร่างกาย 10 ท่า</div>
-        <div class="tab" onclick="switchTab(this,'sc-fitness')">💪 สมรรถภาพร่างกาย</div>
+        <div class="tab active" onclick="switchTab(this,'sc-vision')"><span>👁️</span> สายตา</div>
+        <div class="tab" onclick="switchTab(this,'sc-hearing')"><span>👂</span> การได้ยิน</div>
+        <div class="tab" onclick="switchTab(this,'sc-blood')"><span>🩸</span> โลหิตจาง</div>
+        <div class="tab" onclick="switchTab(this,'sc-oral')"><span>🦷</span> ช่องปาก</div>
+        <div class="tab" onclick="switchTab(this,'sc-physical')"><span>🏃</span> ร่างกาย 10 ท่า</div>
+        <div class="tab" onclick="switchTab(this,'sc-fitness')"><span>💪</span> สมรรถภาพร่างกาย</div>
       </div>
 
       <div id="sc-vision">
@@ -5233,8 +5264,7 @@
               <label style="font-size:13px;display:flex;gap:6px;"><input type="checkbox" class="oral-finding" value="ทอนซิลโต/อักเสบ" onchange="updateOralResult()"> ทอนซิลโต/อักเสบ</label>
               <label style="font-size:13px;display:flex;gap:6px;"><input type="checkbox" class="oral-finding" value="ปกติ ไม่พบความผิดปกติ" onchange="updateOralResult()"> ปกติ ไม่พบความผิดปกติ</label>
             </div>
-            <div class="alert alert-info" style="margin-top:10px;">
-              <span>🖼️</span>
+            <div class="alert alert-info" style="margin-top:10px;"><span>🖼️</span>
               <div>รูปด้านล่างเป็นภาพตัวอย่างอาการจริงเพื่อช่วยเทียบเบื้องต้นเท่านั้น การวินิจฉัยให้ยึดตามการตรวจของเจ้าหน้าที่</div>
             </div>
             <div class="oral-example-grid">
@@ -5822,9 +5852,9 @@
       </div>
 
       <div class="tabs" id="mental-tabs">
-        <div class="tab active" onclick="switchMentalTab(this,'mh-sdq')">📋 SDQ</div>
-        <div class="tab" onclick="switchMentalTab(this,'mh-9q')">😔 ซึมเศร้า (9Q)</div>
-        <div class="tab" onclick="switchMentalTab(this,'mh-assist')">💊 ASSIST</div>
+        <div class="tab active" onclick="switchMentalTab(this,'mh-sdq')"><span>📋</span> SDQ</div>
+        <div class="tab" onclick="switchMentalTab(this,'mh-9q')"><span>😔</span> ซึมเศร้า (9Q)</div>
+        <div class="tab" onclick="switchMentalTab(this,'mh-assist')"><span>💊</span> ASSIST</div>
       </div>
 
       <div id="mh-sdq">
@@ -5877,7 +5907,7 @@
           </div>
           <div class="card">
             <div class="card-title"><span>🆘</span>สายด่วนสุขภาพจิต</div>
-            <div style="font-size:36px;text-align:center;font-weight:700;color:var(--blue);padding:16px 0;">📞 1323</div>
+            <div style="font-size:36px;text-align:center;font-weight:700;color:var(--blue);padding:16px 0;"><span>📞</span> 1323</div>
             <div style="text-align:center;font-size:13px;color:var(--gray-mid);">สายด่วนสุขภาพจิต 24 ชั่วโมง</div>
             <div class="alert alert-warning" style="margin-top:12px;"><span>🚨</span><div>หากพบนักเรียนมีความเสี่ยงฆ่าตัวตาย ให้ประสานส่งต่อทันที และแจ้งผู้บริหาร ครูที่ปรึกษา ผู้ปกครอง</div></div>
             <div class="card-title" style="margin-top:18px;"><span>📌</span>เกณฑ์ความเสี่ยง ASSIST (รวม)</div>
@@ -5909,8 +5939,7 @@
         </div>
       </div>
 
-      <div class="alert alert-danger">
-        <span>🚨</span>
+      <div class="alert alert-danger"><span>🚨</span>
         <div><strong>สำคัญ:</strong> เมื่อพบโรคติดต่ออันตรายในโรงเรียน ต้องรายงานหน่วยงานสาธารณสุขภายใน <strong>24 ชั่วโมง</strong> และรายงานผู้บริหารโรงเรียนทันที</div>
       </div>
 
@@ -6005,18 +6034,118 @@
 
       <div class="emergency-card">
         <div class="emergency-title">🚨 เบอร์โทรฉุกเฉิน</div>
+        <div class="emergency-desc" style="margin-bottom:4px;">สายด่วนฉุกเฉิน โรงพยาบาล และหน่วยกู้ภัย — กดเพื่อโทรออก</div>
         <div class="emergency-phone-grid">
           <a href="tel:1669" class="emergency-phone-box emergency-phone-link">
-            <div style="font-size:20px;font-weight:700;">1669</div>
-            <div style="font-size:11px;opacity:0.85;">EMS ฉุกเฉิน</div>
+            <div class="emergency-phone-num">1669</div>
+            <div class="emergency-phone-label">สถาบันการแพทย์ฉุกเฉิน (EMS)</div>
           </a>
           <a href="tel:1323" class="emergency-phone-box emergency-phone-link">
-            <div style="font-size:20px;font-weight:700;">1323</div>
-            <div style="font-size:11px;opacity:0.85;">สุขภาพจิต</div>
+            <div class="emergency-phone-num">1323</div>
+            <div class="emergency-phone-label">สายด่วนสุขภาพจิต</div>
           </a>
           <a href="tel:191" class="emergency-phone-box emergency-phone-link">
-            <div style="font-size:20px;font-weight:700;">191</div>
-            <div style="font-size:11px;opacity:0.85;">ตำรวจ</div>
+            <div class="emergency-phone-num">191</div>
+            <div class="emergency-phone-label">ตำรวจ</div>
+          </a>
+          <a href="tel:1668" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">1668</div>
+            <div class="emergency-phone-label">กรมการแพทย์</div>
+          </a>
+          <a href="tel:1422" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">1422</div>
+            <div class="emergency-phone-label">กรมควบคุมโรค</div>
+          </a>
+          <a href="tel:1646" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">1646</div>
+            <div class="emergency-phone-label">ศูนย์เอราวัณ</div>
+          </a>
+          <a href="tel:043274141" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-274141</div>
+            <div class="emergency-phone-label">โรงพยาบาลบ้านไผ่</div>
+          </a>
+          <a href="tel:043272351" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-272351</div>
+            <div class="emergency-phone-label">สถานีตำรวจภูธรบ้านไผ่</div>
+          </a>
+          <a href="tel:043272413" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-272413</div>
+            <div class="emergency-phone-label">พุทธญาณสมาคมบ้านไผ่ (กู้ภัย)</div>
+          </a>
+          <a href="tel:043272062" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-272062</div>
+            <div class="emergency-phone-label">มูลนิธิบ้านไผ่การกุศลสงเคราะห์</div>
+          </a>
+          <a href="tel:043473539" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-473539</div>
+            <div class="emergency-phone-label">รพ.สต. ในเมือง</div>
+          </a>
+          <a href="tel:043473504" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-473504</div>
+            <div class="emergency-phone-label">สาธารณสุขอำเภอบ้านไผ่</div>
+          </a>
+          <a href="tel:043336789" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-336789</div>
+            <div class="emergency-phone-label">โรงพยาบาลศูนย์ขอนแก่น</div>
+          </a>
+          <a href="tel:043267041" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-267041</div>
+            <div class="emergency-phone-label">โรงพยาบาลสิรินธร ขอนแก่น</div>
+          </a>
+          <a href="tel:043202000" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-202000</div>
+            <div class="emergency-phone-label">โรงพยาบาลศรีนครินทร์</div>
+          </a>
+          <a href="tel:043209999" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-209999</div>
+            <div class="emergency-phone-label">รพ.จิตเวชขอนแก่นราชนครินทร์</div>
+          </a>
+          <a href="tel:043235902" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-235902</div>
+            <div class="emergency-phone-label">ศูนย์อนามัยที่ 7 ขอนแก่น</div>
+          </a>
+        </div>
+      </div>
+
+      <div class="emergency-card-network">
+        <div class="emergency-title">📞 เครือข่ายติดต่อหน่วยงาน</div>
+        <div class="emergency-desc" style="margin-bottom:4px;">เบอร์หน่วยงานในพื้นที่และสายด่วนบริการ — กดเพื่อโทรออก</div>
+        <div class="emergency-phone-grid">
+          <a href="tel:1330" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">1330</div>
+            <div class="emergency-phone-label">สปสช.</div>
+          </a>
+          <a href="tel:1506" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">1506</div>
+            <div class="emergency-phone-label">ประกันสังคม</div>
+          </a>
+          <a href="tel:043274916" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-274916</div>
+            <div class="emergency-phone-label">ที่ว่าการอำเภอบ้านไผ่</div>
+          </a>
+          <a href="tel:043473534" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-473534</div>
+            <div class="emergency-phone-label">สำนักงานขนส่งอำเภอบ้านไผ่</div>
+          </a>
+          <a href="tel:043272696" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-272696</div>
+            <div class="emergency-phone-label">สถานีขนส่งผู้โดยสารอำเภอบ้านไผ่</div>
+          </a>
+          <a href="tel:043272661" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-272661</div>
+            <div class="emergency-phone-label">เทศบาลเมืองบ้านไผ่</div>
+          </a>
+          <a href="tel:043473549" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-473549</div>
+            <div class="emergency-phone-label">เทศบาลตำบลในเมือง</div>
+          </a>
+          <a href="tel:043274157" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-274157</div>
+            <div class="emergency-phone-label">การไฟฟ้าส่วนภูมิภาค อ.บ้านไผ่</div>
+          </a>
+          <a href="tel:043272203" class="emergency-phone-box emergency-phone-link">
+            <div class="emergency-phone-num">043-272203</div>
+            <div class="emergency-phone-label">การประปาส่วนภูมิภาค สาขาบ้านไผ่</div>
           </a>
         </div>
       </div>
@@ -6024,8 +6153,8 @@
       <div class="emergency-card-school">
         <div class="emergency-title">🏫 ติดต่อเจ้าหน้าที่ในโรงเรียน</div>
         <div style="display:grid;grid-template-columns:1fr;gap:10px;margin-top:10px;max-width:320px;">
-          <a href="tel:0937107114" class="emergency-phone-box emergency-phone-link">
-            <div style="font-size:20px;font-weight:700;">093-710-7114</div>
+          <a href="tel:0817697186" class="emergency-phone-box emergency-phone-link">
+            <div style="font-size:20px;font-weight:700;">081-769-7186</div>
             <div style="font-size:11px;opacity:0.85;">ห้องพยาบาล / เจ้าหน้าที่อนามัยโรงเรียน</div>
           </a>
         </div>
@@ -6306,14 +6435,13 @@
             <button type="button" class="btn btn-secondary" onclick="toggleAllReportChecks(false)">ล้างการเลือก</button>
           </div>
           <div style="margin-top:12px;">
-            <button type="button" class="btn btn-gold" onclick="window.open('https://docs.google.com/spreadsheets/d/15IlAOVYRi3MixwzvhwO10ZkDonm_oam_wzSM-3-BpIw/edit?usp=sharing', '_blank', 'noopener')">📄 เปิดไฟล์ Google Sheet</button>
+            <button type="button" class="btn btn-gold" onclick="window.open('https://docs.google.com/spreadsheets/d/15IlAOVYRi3MixwzvhwO10ZkDonm_oam_wzSM-3-BpIw/edit?usp=sharing', '_blank', 'noopener')">📂 เปิดไฟล์ Google Sheet</button>
           </div>
         </div>
       </div>
 
       <div class="card" id="report-charts-card">
-        <div class="card-title">
-          <span>📈</span>กราฟสรุปการให้บริการ
+        <div class="card-title"><span>📈</span>กราฟสรุปการให้บริการ
           <span style="font-size:11px;font-weight:500;color:var(--green-mid);margin-left:8px;"><span class="report-live-dot"></span>อัปเดตเรียลไทม์</span>
         </div>
         <div id="report-updated-at" style="font-size:12px;color:var(--gray-mid);margin-bottom:16px;"></div>
@@ -6388,11 +6516,11 @@
       </div>
 
       <div class="tabs info-tabs">
-        <div class="tab active" data-info-page="overview" onclick="showInfoPage('overview', this)">📊 ภาพรวม</div>
-        <div class="tab" data-info-page="indicators" onclick="showInfoPage('indicators', this)">📈 ตัวชี้วัด 6 ด้าน</div>
-        <div class="tab" data-info-page="gshps" onclick="showInfoPage('gshps', this)">🏆 GSHPS 2022</div>
-        <div class="tab" data-info-page="illness" onclick="showInfoPage('illness', this)">🚑 เจ็บป่วย/อุบัติเหตุ</div>
-        <div class="tab" data-info-page="activity" onclick="showInfoPage('activity', this)">🎯 กิจกรรม</div>
+        <div class="tab active" data-info-page="overview" onclick="showInfoPage('overview', this)"><span>📊</span> ภาพรวม</div>
+        <div class="tab" data-info-page="indicators" onclick="showInfoPage('indicators', this)"><span>📈</span> ตัวชี้วัด 6 ด้าน</div>
+        <div class="tab" data-info-page="gshps" onclick="showInfoPage('gshps', this)"><span>🏆</span> GSHPS 2022</div>
+        <div class="tab" data-info-page="illness" onclick="showInfoPage('illness', this)"><span>🚑</span> เจ็บป่วย/อุบัติเหตุ</div>
+        <div class="tab" data-info-page="activity" onclick="showInfoPage('activity', this)"><span>🎯</span> กิจกรรม</div>
       </div>
 
       <div id="info-page-overview" class="info-page active">
@@ -6462,14 +6590,13 @@
       </div>
 
       <div class="tabs pub-tabs" id="pub-main-tabs">
-        <div class="tab active" data-pub-page="assessment" onclick="showPublicPage('assessment', this)">📋 แบบประเมินคัดกรอง</div>
-        <div class="tab" data-pub-page="healthscreen" onclick="showPublicPage('healthscreen', this)">🔍 ตรวจคัดกรองสุขภาพ</div>
+        <div class="tab active" data-pub-page="assessment" onclick="showPublicPage('assessment', this)"><span>📋</span> แบบประเมินคัดกรอง</div>
+        <div class="tab" data-pub-page="healthscreen" onclick="showPublicPage('healthscreen', this)"><span>🔍</span> ตรวจคัดกรองสุขภาพ</div>
       </div>
 
       <!-- แบบประเมินคัดกรอง (ทดลอง) -->
       <div id="pub-page-assessment" class="pub-page active">
-        <div class="alert alert-info">
-          <span>ℹ️</span>
+        <div class="alert alert-info"><span>ℹ️</span>
           <div>
             <strong>แบบประเมินทดลองสำหรับบุคคลทั่วไป</strong> — ใช้ทดสอบเบื้องต้นเท่านั้น ไม่บันทึกข้อมูลส่วนตัว ไม่ส่งผลไปยังโรงเรียน
             <div class="pub-screen-demo-note">หากต้องการตรวจคัดกรองอย่างเป็นทางการ กรุณาติดต่อห้องพยาบาลโรงเรียนบ้านไผ่</div>
@@ -6477,8 +6604,8 @@
         </div>
 
         <div class="tabs pub-screen-tabs" id="pub-screen-tabs">
-          <div class="tab active" onclick="switchPubScreeningTab(this,'pub-scr-nutrition')">🥗 ภาวะโภชนาการ</div>
-          <div class="tab" onclick="switchPubScreeningTab(this,'pub-scr-mental')">🧠 สุขภาพจิต</div>
+          <div class="tab active" onclick="switchPubScreeningTab(this,'pub-scr-nutrition')"><span>🥗</span> ภาวะโภชนาการ</div>
+          <div class="tab" onclick="switchPubScreeningTab(this,'pub-scr-mental')"><span>🧠</span> สุขภาพจิต</div>
         </div>
 
         <div id="pub-scr-nutrition">
@@ -6533,7 +6660,7 @@
               <div class="alert alert-danger"><span>🚨</span><div><strong>≥19 คะแนน:</strong> มีภาวะซึมเศร้ารุนแรง — ควรพบแพทย์ทันที</div></div>
               <div class="alert alert-danger" style="margin-top:12px;"><span>🆘</span><div><strong>ข้อ 9:</strong> หากตอบ ≥2 (เป็นบ่อย/ทุกวัน) เรื่องทำร้ายตัวเอง — <strong>ติดต่อสายด่วนสุขภาพจิต 1323 ทันที</strong></div></div>
               <div class="card-title" style="margin-top:18px;"><span>📞</span>สายด่วนสุขภาพจิต</div>
-              <div style="font-size:32px;text-align:center;font-weight:700;color:var(--blue);padding:12px 0;">📞 1323</div>
+              <div style="font-size:32px;text-align:center;font-weight:700;color:var(--blue);padding:12px 0;"><span>📞</span> 1323</div>
               <div style="text-align:center;font-size:13px;color:var(--gray-mid);">บริการ 24 ชั่วโมง</div>
             </div>
           </div>
@@ -6542,8 +6669,7 @@
 
       <!-- ตรวจคัดกรองสุขภาพ (ทดลอง) -->
       <div id="pub-page-healthscreen" class="pub-page">
-        <div class="alert alert-info">
-          <span>ℹ️</span>
+        <div class="alert alert-info"><span>ℹ️</span>
           <div>
             <strong>ทดลองตรวจคัดกรองสุขภาพเบื้องต้น</strong> — ใช้ประเมินตนเองได้ ไม่บันทึกข้อมูล ไม่ส่งผลไปยังโรงเรียน
             <div class="pub-screen-demo-note">การตรวจจริงในโรงเรียนให้เจ้าหน้าที่อนามัยเป็นผู้บันทึกผล</div>
@@ -6551,11 +6677,11 @@
         </div>
 
         <div class="tabs pub-screen-tabs" id="pub-health-tabs">
-          <div class="tab active" onclick="switchPubHealthTab(this,'pub-hs-vision')">👁️ สายตา</div>
-          <div class="tab" onclick="switchPubHealthTab(this,'pub-hs-hearing')">👂 การได้ยิน</div>
-          <div class="tab" onclick="switchPubHealthTab(this,'pub-hs-blood')">🩸 โลหิตจาง</div>
-          <div class="tab" onclick="switchPubHealthTab(this,'pub-hs-oral')">🦷 ช่องปาก</div>
-          <div class="tab" onclick="switchPubHealthTab(this,'pub-hs-physical')">🏃 ร่างกาย 10 ท่า</div>
+          <div class="tab active" onclick="switchPubHealthTab(this,'pub-hs-vision')"><span>👁️</span> สายตา</div>
+          <div class="tab" onclick="switchPubHealthTab(this,'pub-hs-hearing')"><span>👂</span> การได้ยิน</div>
+          <div class="tab" onclick="switchPubHealthTab(this,'pub-hs-blood')"><span>🩸</span> โลหิตจาง</div>
+          <div class="tab" onclick="switchPubHealthTab(this,'pub-hs-oral')"><span>🦷</span> ช่องปาก</div>
+          <div class="tab" onclick="switchPubHealthTab(this,'pub-hs-physical')"><span>🏃</span> ร่างกาย 10 ท่า</div>
         </div>
 
         <div id="pub-hs-vision">
@@ -6718,7 +6844,7 @@
 <div class="modal-overlay" id="schoolCalDayModal" onclick="if(event.target===this)closeSchoolCalDayModal()">
   <div class="modal">
     <div class="modal-title">
-      <span id="school-cal-day-title">📅 กิจกรรมวันนี้</span>
+      <span id="school-cal-day-title"><span>📅</span> กิจกรรมวันนี้</span>
       <button type="button" class="modal-close" onclick="closeSchoolCalDayModal()">✕</button>
     </div>
     <div id="school-cal-day-body"></div>
@@ -7081,6 +7207,7 @@
 <script src="sheets-sync.js"></script>
 <script src="student-basic-data.js"></script>
 <script src="teacher-basic-data.js"></script>
+<script src="physical-screening-images.js"></script>
 <script>
   // Date display
   const now = new Date();
@@ -7243,9 +7370,9 @@
     });
   }
   const ROLES = {
-    nurse:   { icon: 'stethoscope', name: 'เจ้าหน้าที่อนามัย / พยาบาล' },
+    nurse:   { icon: '🩺', name: 'เจ้าหน้าที่อนามัย / พยาบาล' },
     teacher: { icon: 'book-open', name: 'ครู / อาจารย์ที่ปรึกษา' },
-    nursing_student: { icon: 'hospital', name: 'นักเรียนพยาบาล' },
+    nursing_student: { icon: '🏥', name: 'นักเรียนพยาบาล' },
     student: { icon: 'graduation-cap', name: 'นักเรียน / ผู้ปกครอง' },
     admin:   { icon: 'bar-chart-3', name: 'ผู้บริหารโรงเรียน' }
   };
@@ -9617,7 +9744,7 @@
     }
     box.className = 'alert ' + result.cls;
     text.innerHTML = '<strong>คะแนนรวม: ' + result.total + '/27</strong> — ' + result.risk +
-      (result.q9 >= 2 ? '<div class="mh-score-box">⚠️ ข้อ 9 คะแนน ' + result.q9 + ' — ต้องประสานส่งต่อทันที</div>' : '');
+        (result.q9 >= 2 ? '<div class="mh-score-box">⚠️ ข้อ 9 คะแนน ' + result.q9 + ' — ต้องประสานส่งต่อทันที</div>' : '');
   }
   function calcASSISTScore() {
     var total = 0;
@@ -9981,35 +10108,39 @@
   function updateOralResult() { updateOralResultFor('oral-finding', 'oral'); }
   function updatePubOralResult() { updateOralResultFor('pub-oral-finding', 'pub-oral'); }
   var PHYS_POSE_IMG = 'assets/physical-screening/';
+  function physPoseSrc(file) {
+    var data = (typeof window !== 'undefined' && window.PHYS_POSE_IMG_DATA) ? window.PHYS_POSE_IMG_DATA[file] : '';
+    return data || (PHYS_POSE_IMG + file);
+  }
   var PHYS_POSE_ITEMS = [
     { poses: '1-2', title: 'ยื่นมือหน้า คว่ำ/หงายมือ', check: 'ตรวจเล็บ ผิวหนัง แผล ผื่น นิ้วเกิน', checkPub: 'ตรวจเล็บ ผิวหนัง แผล ผื่น', images: [
-      { src: PHYS_POSE_IMG + 'hands.jpg', alt: 'ท่าคว่ำมือ', cap: 'คว่ำมือ' },
-      { src: PHYS_POSE_IMG + 'palms.jpg', alt: 'ท่าหงายมือ', cap: 'หงายมือ' }
+      { src: physPoseSrc('hands.jpg'), alt: 'ท่าคว่ำมือ', cap: 'คว่ำมือ' },
+      { src: physPoseSrc('palms.jpg'), alt: 'ท่าหงายมือ', cap: 'หงายมือ' }
     ]},
     { poses: '3', title: 'งอแขน ดึงเปลือกตาล่าง', check: 'ตรวจตาแดง ขี้ตา เปลือกตาซีด (โลหิตจาง)', checkPub: 'ตรวจตาแดง ขี้ตา เปลือกตาซีด', images: [
-      { src: PHYS_POSE_IMG + 'anemia.jpg', alt: 'ดึงเปลือกตาล่างดูซีด', cap: 'ดึงเปลือกตาล่าง' }
+      { src: physPoseSrc('anemia.jpg'), alt: 'ดึงเปลือกตาล่างดูซีด', cap: 'ดึงเปลือกตาล่าง' }
     ]},
     { poses: '4', title: 'ดึงคอเสื้อ หมุนตัว', check: 'ตรวจไทรอยด์โต โรคผิวหนังที่คอ', checkPub: 'ตรวจไทรอยด์โต', images: [
-      { src: PHYS_POSE_IMG + 'goitre.jpg', alt: 'ตรวจคอไทรอยด์โต', cap: 'ตรวจคอ' }
+      { src: physPoseSrc('goitre.jpg'), alt: 'ตรวจคอไทรอยด์โต', cap: 'ตรวจคอ' }
     ]},
     { poses: '5-6', title: 'เสยผม/หันหน้าซ้าย-ขวา', check: 'ตรวจเหา หูน้ำหนวก ต่อมน้ำเหลืองโต', checkPub: 'ตรวจเหา หูน้ำหนวก', images: [
-      { src: PHYS_POSE_IMG + 'head-exam.jpg', alt: 'ตรวจศีรษะและหู', cap: 'เสยผม/หันหน้า' },
-      { src: PHYS_POSE_IMG + 'lice.jpg', alt: 'ตัวอย่างเหา', cap: 'เหาบนหนังศีรษะ' }
+      { src: physPoseSrc('head-exam.jpg'), alt: 'ตรวจศีรษะและหู', cap: 'เสยผม/หันหน้า' },
+      { src: physPoseSrc('lice.jpg'), alt: 'ตัวอย่างเหา', cap: 'เหาบนหนังศีรษะ' }
     ]},
     { poses: '7', title: 'กัดฟัน ยิ้มกว้าง', check: 'ตรวจริมฝีปากซีด มุมปากเปื่อย เหงือก ฟันผุ', checkPub: 'ตรวจริมฝีปาก เหงือก ฟันผุ', images: [
-      { src: PHYS_POSE_IMG + 'smile.jpg', alt: 'ยิ้มกว้างตรวจฟัน', cap: 'ยิ้มกว้าง' }
+      { src: physPoseSrc('smile.jpg'), alt: 'ยิ้มกว้างตรวจฟัน', cap: 'ยิ้มกว้าง' }
     ]},
     { poses: '8', title: 'อ้าปาก แลบลิ้น ร้อง "อา"', check: 'ตรวจคอแดง ฝ้าขาว ทอนซิลโต', checkPub: 'ตรวจคอแดง ทอนซิลโต', images: [
-      { src: PHYS_POSE_IMG + 'open-mouth.jpg', alt: 'อ้าปากแลบลิ้น', cap: 'อ้าปาก' },
-      { src: PHYS_POSE_IMG + 'tonsils.jpg', alt: 'ตัวอย่างทอนซิลโต', cap: 'ทอนซิลโต' }
+      { src: physPoseSrc('open-mouth.jpg'), alt: 'อ้าปากแลบลิ้น', cap: 'อ้าปาก' },
+      { src: physPoseSrc('tonsils.jpg'), alt: 'ตัวอย่างทอนซิลโต', cap: 'ทอนซิลโต' }
     ]},
     { poses: '9', title: 'แยกเท้า 1 ฟุต', check: 'ตรวจขา น่อง ฝ่าเท้า', checkPub: 'ตรวจขา น่อง ฝ่าเท้า', images: [
-      { src: PHYS_POSE_IMG + 'feet.jpg', alt: 'แยกเท้าตรวจขาและฝ่าเท้า', cap: 'แยกเท้า' },
-      { src: PHYS_POSE_IMG + 'sole.jpg', alt: 'ตรวจฝ่าเท้า', cap: 'ฝ่าเท้า' }
+      { src: physPoseSrc('feet.jpg'), alt: 'แยกเท้าตรวจขาและฝ่าเท้า', cap: 'แยกเท้า' },
+      { src: physPoseSrc('sole.jpg'), alt: 'ตรวจฝ่าเท้า', cap: 'ฝ่าเท้า' }
     ]},
     { poses: '10', title: 'หันหลัง เดินไป-กลับ', check: 'ตรวจกระดูกสันหลัง การเดิน ท่าทาง', checkPub: 'ตรวจกระดูกสันหลัง การเดิน', images: [
-      { src: PHYS_POSE_IMG + 'adams-test.jpg', alt: 'ทดสอบ Adams ก้มตัว', cap: 'ก้มตัวดูหลัง' },
-      { src: PHYS_POSE_IMG + 'scoliosis.jpg', alt: 'ตัวอย่างกระดูกสันหลังคด', cap: 'กระดูกสันหลัง' }
+      { src: physPoseSrc('adams-test.jpg'), alt: 'ทดสอบ Adams ก้มตัว', cap: 'ก้มตัวดูหลัง' },
+      { src: physPoseSrc('scoliosis.jpg'), alt: 'ตัวอย่างกระดูกสันหลังคด', cap: 'กระดูกสันหลัง' }
     ]}
   ];
   function renderPhysChecklist(containerId, pubMode) {
