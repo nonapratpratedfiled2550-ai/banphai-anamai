@@ -4,7 +4,7 @@
 var SHEETS_CONFIG = {
   ENABLED: true,
   SPREADSHEET_ID: '15IlAOVYRi3MixwzvhwO10ZkDonm_oam_wzSM-3-BpIw',
-  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbygNgBLPY6mBFK03wwIV_wr1rbaMVaR-GNJPcGCeudoVaJb5I0X_WOkcb76CBBQkCKTxg/exec',
+  WEB_APP_URL: 'https://script.google.com/macros/s/AKfycbz02KdR7HJAE4b9ZE17CeV9ISKVYdWVB84HKlWgfNhafjlcjvpgWpJSlDd75AFKE1PyMQ/exec',
   QUEUE_KEY: 'sh-sheets-queue',
   IS_WORKSPACE: false
 };
@@ -1154,23 +1154,42 @@ function buildCalendarSheetRow(item, index) {
     : String((index || 0) + 1);
   return {
     'ลำดับ': order,
+    'รหัสกิจกรรม': item.id || '',
     'วันเริ่ม': formatSheetDate(item.dateStart) || item.dateStart || '',
     'วันสิ้นสุด': formatSheetDate(item.dateEnd) || item.dateEnd || '',
     'รายละเอียดงาน': item.text || '',
     'สถานะ': item.done ? 'เสร็จแล้ว' : 'วางแผน',
     'วันที่บันทึก': new Date().toLocaleString('th-TH'),
     'บทบาทผู้บันทึก': getSyncRoleLabel(),
-    'รหัสกิจกรรม': item.id || '',
     id: item.id || ''
   };
 }
 
+var _calendarSchemaEnsureStarted_ = false;
 function syncCalendarToSheetQuiet(item, index, calendar) {
   if (!SHEET_NAMES.calendar || !item) return;
   if (item.sheetOrder == null || item.sheetOrder === '') {
     item.sheetOrder = getNextCalendarSheetOrder(calendar);
   }
-  syncToSheetQuiet(SHEET_NAMES.calendar, buildCalendarSheetRow(item, index));
+  var row = buildCalendarSheetRow(item, index);
+  function writeCalendarRow_() {
+    if (item.id && typeof syncUpsertRowQuiet === 'function') {
+      syncUpsertRowQuiet(SHEET_NAMES.calendar, 'รหัสกิจกรรม', row);
+    } else {
+      syncToSheetQuiet(SHEET_NAMES.calendar, row);
+    }
+  }
+  /* ครั้งแรกของเซสชัน — เติมคอลัมน์รหัสกิจกรรมในชีตถ้ายังไม่มี */
+  if (!_calendarSchemaEnsureStarted_ && typeof ensureSheetSchemaQuiet_ === 'function') {
+    _calendarSchemaEnsureStarted_ = true;
+    try {
+      ensureSheetSchemaQuiet_(SHEET_NAMES.calendar).then(writeCalendarRow_).catch(writeCalendarRow_);
+      return;
+    } catch (eEnsureCal) {
+      /* fall through */
+    }
+  }
+  writeCalendarRow_();
 }
 
 function deleteCalendarFromSheetQuiet(item) {
@@ -1179,12 +1198,12 @@ function deleteCalendarFromSheetQuiet(item) {
     syncDeleteRowQuiet(SHEET_NAMES.calendar, 'รหัสกิจกรรม', item);
     return;
   }
-  if (item.sheetOrder != null && item.sheetOrder !== '') {
-    syncDeleteRowQuiet(SHEET_NAMES.calendar, 'ลำดับ', String(item.sheetOrder));
-    return;
-  }
   if (item.id) {
     syncDeleteRowQuiet(SHEET_NAMES.calendar, 'รหัสกิจกรรม', item.id);
+    return;
+  }
+  if (item.sheetOrder != null && item.sheetOrder !== '') {
+    syncDeleteRowQuiet(SHEET_NAMES.calendar, 'ลำดับ', String(item.sheetOrder));
   }
 }
 

@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -4054,6 +4054,17 @@
           </div>
           <span class="role-cta role-ico role-ico-sm text-emerald-300/80" aria-hidden="true">›</span>
         </li>
+        <li role="button" tabindex="0" onclick="enterGuestAccess('info')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();enterGuestAccess('info');}"
+            class="role-side-link group flex cursor-pointer items-center gap-4 rounded-2xl border border-white/25 bg-white/10 px-5 py-4 shadow-lg shadow-emerald-950/20 backdrop-blur-md transition-all duration-300 hover:border-emerald-300/50 hover:bg-white/15 hover:shadow-xl hover:shadow-emerald-900/30">
+          <span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400/30 to-teal-500/20 ring-1 ring-white/20 transition-transform duration-300 group-hover:scale-105">
+            <span class="role-ico role-ico-md">🏆</span>
+          </span>
+          <div class="min-w-0 flex-1">
+            <p class="text-base font-bold tracking-tight text-white">สารสนเทศ</p>
+            <p class="mt-0.5 text-xs leading-snug text-emerald-100/75">GSHPS · ภาพรวมสุขภาพโรงเรียน</p>
+          </div>
+          <span class="role-cta role-ico role-ico-sm text-emerald-300/80" aria-hidden="true">›</span>
+        </li>
       </ul>
       <div class="mt-8 hidden lg:block animate-fade-up-delay-2">
         <div class="flex items-center gap-2 text-xs text-emerald-200/50">
@@ -4186,6 +4197,13 @@
           <div class="flex items-center gap-3">
             <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-sky-100 text-sky-700"><span class="role-ico role-ico-sm">🌐</span></span>
             <div class="min-w-0 text-left"><p class="text-sm font-bold text-slate-800">บุคคลทั่วไป</p><p class="text-xs text-slate-500">ข้อมูลสุขภาพสาธารณะ</p></div>
+          </div>
+          <span class="role-cta role-ico role-ico-xs text-emerald-500" aria-hidden="true">›</span>
+        </button>
+        <button type="button" onclick="enterGuestAccess('info')" class="role-mobile-link flex w-full items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3.5 text-left shadow-sm transition hover:border-amber-400 hover:shadow-md sm:col-span-2">
+          <div class="flex items-center gap-3">
+            <span class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700"><span class="role-ico role-ico-sm">🏆</span></span>
+            <div class="min-w-0 text-left"><p class="text-sm font-bold text-slate-800">สารสนเทศ</p><p class="text-xs text-slate-500">GSHPS · ภาพรวมสุขภาพโรงเรียน</p></div>
           </div>
           <span class="role-cta role-ico role-ico-xs text-emerald-500" aria-hidden="true">›</span>
         </button>
@@ -11504,8 +11522,13 @@
   var medicineStockCache = [];
   var _visitRecordsMemCache = null;
   var _adminLiveCache = null;
+  var _adminChartsRenderedForCache = null;
   var _adminChartRenderTimer = null;
   var _dashRenderCoalesceTimer = null;
+  var _refreshLiveChartsTimer = null;
+  var _notifyReportTimer = null;
+  var _visLiveChartsTimer = null;
+  var ADMIN_LIVE_POLL_MS = 120000;
   function loadMedicineStock() {
     try { return JSON.parse(localStorage.getItem('sh-medicine-stock') || '[]'); } catch (e) { return []; }
   }
@@ -12092,7 +12115,7 @@
   }
   function refreshTeacherSchoolCalendar(callback) {
     var role = getCurrentRole();
-    if (role !== 'teacher' && role !== 'admin' && role !== 'student') {
+    if (role !== 'teacher' && role !== 'admin' && role !== 'student' && role !== 'nursing_student') {
       if (callback) callback();
       return;
     }
@@ -12488,9 +12511,10 @@
       return { label: row.label, pct: row.pct, count: count, total: base };
     });
   }
-  function countAdminUpcomingAppointments() {
+  function countAdminUpcomingAppointments(allApptsOpt) {
     if (typeof collectAllAppointments === 'function') {
-      return collectAllAppointments().filter(function(item) {
+      var all = allApptsOpt || collectAllAppointments();
+      return all.filter(function(item) {
         var appt = item && item.appt;
         if (!appt || !appt.date) return false;
         if (appt.done || appt.completed) return false;
@@ -12634,7 +12658,7 @@
     var gaugesTitle = document.getElementById('admin-chart-gauges-title');
     if (gaugesTitle) gaugesTitle.innerHTML = '<span>🎯</span>ความครอบคลุมมาตรฐานงานอนามัย ปีการศึกษา ' + ay;
   }
-  function computeAdminExtraStats() {
+  function computeAdminExtraStats(sharedOpt) {
     var chronicIds = {};
     (typeof dedupeChronicRecords === 'function'
       ? dedupeChronicRecords(loadChronicFromStorage())
@@ -12669,16 +12693,19 @@
       var st = getMedicineStockStatus(m);
       return st.label === 'ใกล้หมด' || st.label === 'สั่งด่วน';
     }).length;
+    var upcoming = sharedOpt && sharedOpt.appointmentsUpcoming != null
+      ? sharedOpt.appointmentsUpcoming
+      : countAdminUpcomingAppointments(sharedOpt && sharedOpt.allAppointments);
     return {
       chronicCount: Object.keys(chronicIds).length,
       emergencyYear: loadEmergencyRecords().filter(isRecordThisYear).length,
-      appointmentsUpcoming: countAdminUpcomingAppointments(),
+      appointmentsUpcoming: upcoming,
       medicineLow: medicineLow,
       nutritionRisk: nutritionRisk,
       mentalRisk: mentalRisk
     };
   }
-  function computeAdminAlerts() {
+  function computeAdminAlerts(sharedOpt) {
     var alerts = [];
     getActiveNurseAlerts().slice(0, 2).forEach(function(a) {
       var typeMap = { critical: 'danger', warning: 'warn', info: 'info', success: 'ok' };
@@ -12701,11 +12728,16 @@
         }).join(' และ ') + ' — ใกล้หมด'
       });
     }
-    var upcoming = countAdminUpcomingAppointments();
+    var upcoming = sharedOpt && sharedOpt.appointmentsUpcoming != null
+      ? sharedOpt.appointmentsUpcoming
+      : countAdminUpcomingAppointments(sharedOpt && sharedOpt.allAppointments);
     if (upcoming > 0) {
       alerts.push({ type: 'info', icon: '📅', text: 'มีใบนัดตรวจสุขภาพ ' + upcoming + ' ราย — รอพบตามนัด' });
     }
-    var nutCov = computeLiveCoverageItems().find(function(c) {
+    var coverageItems = sharedOpt && sharedOpt.coverageItems
+      ? sharedOpt.coverageItems
+      : computeLiveCoverageItems(sharedOpt && sharedOpt.hpv);
+    var nutCov = coverageItems.find(function(c) {
       return c.label.indexOf('ชั่งน้ำหนัก') !== -1 && c.label.indexOf('1') !== -1;
     });
     if (nutCov && nutCov.pct >= 100) {
@@ -12715,23 +12747,27 @@
     }
     return alerts.slice(0, 6);
   }
-  function computeAdminKpi() {
+  function computeAdminKpi(sharedOpt) {
     var kpis = [];
     var gs = (typeof getGshpsResult === 'function') ? getGshpsResult() : null;
     if (gs) {
       var level = gs.pct >= 90 ? 'ระดับดีเยี่ยม' : (gs.pct >= 80 ? 'ระดับดี' : 'อยู่ระหว่างพัฒนา');
       kpis.push({ label: 'คะแนน GSHPS', value: gs.pct + '%', sub: level });
     }
-    var cov = computeLiveCoverageItems();
+    var cov = sharedOpt && sharedOpt.coverageItems
+      ? sharedOpt.coverageItems
+      : computeLiveCoverageItems(sharedOpt && sharedOpt.hpv);
     var healthCov = cov.find(function(c) { return c.label.indexOf('ตรวจสุขภาพ') !== -1; });
     if (healthCov) {
       kpis.push({ label: 'ครอบคลุมตรวจสุขภาพ', value: healthCov.pct + '%', sub: healthCov.count + '/' + healthCov.total + ' คน' });
     }
-    var hpv = computeHpvCoverageStats();
+    var hpv = sharedOpt && sharedOpt.hpv ? sharedOpt.hpv : computeHpvCoverageStats();
     if (hpv.target || hpv.dose1) {
       kpis.push({ label: 'วัคซีน HPV', value: hpv.dose1Pct + '%', sub: hpv.dose1 + '/' + (hpv.target || '—') + ' คน' });
     }
-    var pendingRef = loadReferralRecords().filter(function(r) { return r.status === 'รอติดตาม'; }).length;
+    var pendingRef = sharedOpt && sharedOpt.pendingRef != null
+      ? sharedOpt.pendingRef
+      : loadReferralRecords().filter(function(r) { return r.status === 'รอติดตาม'; }).length;
     kpis.push({ label: 'ส่งต่อ รพ.', value: String(pendingRef), sub: 'รอติดตาม' });
     kpis.push({ label: 'เฝ้าระวังโรคติดต่อ', value: String(loadDiseaseSituation().filter(isActiveDiseaseSituation_).length), sub: 'สถานการณ์ปัจจุบัน' });
     kpis.push({ label: 'เหตุฉุกเฉิน', value: String(loadEmergencyRecords().filter(isRecordThisYear).length), sub: 'ปีการศึกษา ' + getCurrentAcademicYearBE() });
@@ -13081,6 +13117,7 @@
   }
   function invalidateAdminLiveCache() {
     _adminLiveCache = null;
+    _adminChartsRenderedForCache = null;
   }
   function invalidateVisitRecordsCache() {
     _visitRecordsMemCache = null;
@@ -13103,7 +13140,19 @@
     });
     var screenedN = Object.keys(screened).length;
     var pendingRef = loadReferralRecords().filter(function(r) { return r.status === 'รอติดตาม'; }).length;
-    var alerts = computeAdminAlerts();
+    /* คำนวณครั้งเดียวแล้วส่งต่อ — ลดงานซ้ำ HPV/coverage/ใบนัดในรอบเดียวกัน */
+    var hpv = computeHpvCoverageStats();
+    var coverageItems = computeLiveCoverageItems(hpv);
+    var allAppointments = typeof collectAllAppointments === 'function' ? collectAllAppointments() : null;
+    var appointmentsUpcoming = countAdminUpcomingAppointments(allAppointments);
+    var shared = {
+      hpv: hpv,
+      coverageItems: coverageItems,
+      allAppointments: allAppointments,
+      appointmentsUpcoming: appointmentsUpcoming,
+      pendingRef: pendingRef
+    };
+    var alerts = computeAdminAlerts(shared);
     var warningParts = alerts.slice(0, 2).map(function(a) { return a.text; });
     var result = {
       display: {
@@ -13113,11 +13162,11 @@
         screenedCount: screenedN,
         alertCount: getActiveNurseAlerts().length,
         warningText: warningParts.join(' · ') || dash.warningText || 'ไม่มีการแจ้งเตือนที่ต้องติดตาม',
-        coverage: computeLiveCoverageItems()
+        coverage: coverageItems
       },
-      extraStats: computeAdminExtraStats(),
+      extraStats: computeAdminExtraStats(shared),
       alerts: alerts,
-      kpi: computeAdminKpi(),
+      kpi: computeAdminKpi(shared),
       recentActivity: computeAdminRecentActivity(),
       charts: {
         health: computeAdminHealthProblems(),
@@ -13508,11 +13557,13 @@
     if (!staffRolesReady()) return;
     var role = getCurrentRole();
     if (!role || STAFF_ROLES.indexOf(role) === -1) return;
+    var cachedBefore = _adminLiveCache;
     if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
     const editable = canEditSchoolCalendar();
     const isExecDash = isExecDashboardRole(role);
     var live = null;
     var data = isExecDash ? (live = computeAdminLiveData(), live.display) : loadDashboard();
+    var reusedLiveCache = !!(cachedBefore && live && live === cachedBefore);
     visitCount = parseInt(data.todayVisit, 10) || 0;
     renderDashStatNum('dashStaffCount', data.staffCount, 'staffCount', editable && !isExecDash);
     renderDashStatNum('todayVisit', data.todayVisit, 'todayVisit', editable && !isExecDash);
@@ -13525,7 +13576,10 @@
     if (isExecDash) {
       updateAdminChartPeriodNotes();
       renderAdminDashboardExtras(live);
-      scheduleAdminDashboardCharts(live);
+      /* ไม่วาดกราฟทั้งชุดซ้ำถ้าใช้ cache เดิมและวาดไปแล้ว — ลดอาการหน้าค้างตอนอยู่แดชบอร์ดนาน ๆ */
+      if (!reusedLiveCache || _adminChartsRenderedForCache !== live) {
+        scheduleAdminDashboardCharts(live);
+      }
     } else {
       renderGradeChart();
       renderLiveCoverageChart();
@@ -14097,7 +14151,7 @@
     if (typeof isFullStaffRole !== 'function' || !isFullStaffRole()) return;
     var visits = loadVisitRecords();
     var d = loadDashboard();
-    d.todayVisit = visits.filter(function(r) {
+    var todayVisit = visits.filter(function(r) {
       return r.id && String(r.id).trim() && isVisitToday(r);
     }).length;
     var screened = {};
@@ -14107,12 +14161,30 @@
     loadNutritionRecords().filter(isRecordThisYear).forEach(function(r) {
       if (r.id) screened[String(r.id).trim()] = true;
     });
-    d.screenedCount = Object.keys(screened).length;
-    d.referralCount = loadReferralRecords().filter(function(r) { return r.status === 'รอติดตาม'; }).length;
+    var screenedCount = Object.keys(screened).length;
+    var referralCount = loadReferralRecords().filter(function(r) { return r.status === 'รอติดตาม'; }).length;
+    var staffCount = d.staffCount;
     var teacherN = (typeof getTeacherRegistryCount === 'function') ? getTeacherRegistryCount() : 0;
-    if (teacherN > 0) d.staffCount = teacherN;
+    if (teacherN > 0) staffCount = teacherN;
+    if (Number(d.todayVisit) === todayVisit &&
+        Number(d.screenedCount) === screenedCount &&
+        Number(d.referralCount) === referralCount &&
+        Number(d.staffCount) === staffCount) {
+      /* ไม่มีการเปลี่ยนแปลง — คง cache แดชบอร์ดไว้ ไม่ invalidate */
+      return;
+    }
+    d.todayVisit = todayVisit;
+    d.screenedCount = screenedCount;
+    d.referralCount = referralCount;
+    d.staffCount = staffCount;
     saveDashboard(d);
-    syncReferralDashboardCount();
+    var el = document.getElementById('referralCount');
+    if (el && staffRolesReady() && STAFF_ROLES.includes(getCurrentRole())) {
+      var canEditRef = canEditSchoolCalendar() && !isExecDashboardRole();
+      renderDashStatNum('referralCount', referralCount, 'referralCount', canEditRef);
+    } else if (el) {
+      el.textContent = referralCount.toLocaleString('th-TH');
+    }
     invalidateAdminLiveCache();
   }
   function maybeCreateReferralFromCare(record, source, silent) {
@@ -15055,9 +15127,9 @@
       missing: target ? Math.max(0, target - dose1) : 0
     };
   }
-  function computeLiveCoverageItems() {
+  function computeLiveCoverageItems(hpvOpt) {
     var total = getStudentRegistryCount() || 0;
-    var hpv = computeHpvCoverageStats();
+    var hpv = hpvOpt || computeHpvCoverageStats();
     var screeningAny = countUniqueIds(loadScreeningRecords().filter(isRecordThisYear));
     var nutritionCount = countUniqueIds(loadNutritionRecords().filter(isRecordThisYear));
     var visionCount = countUniqueScreeningType('vision');
@@ -15518,7 +15590,9 @@
       if (!isExecDashboardRole()) return;
       var dash = document.getElementById('section-dashboard');
       if (!dash || !dash.classList.contains('active')) return;
-      renderAdminDashboardCharts(live || computeAdminLiveData());
+      var data = live || computeAdminLiveData();
+      renderAdminDashboardCharts(data);
+      _adminChartsRenderedForCache = data;
     }, 48);
   }
   function renderAdminDashboardCharts(live) {
@@ -16131,19 +16205,34 @@
   function notifyReportDataChanged() {
     invalidateAdminLiveCache();
     /* ไม่เคลียร์ _visitRecordsMemCache — เคยทำให้รายการรักษาหายหลังบันทึก/รีเฟรชกราฟ */
-    refreshAllLiveCharts();
-    var diseasePanel = document.getElementById('section-disease');
-    if (diseasePanel && diseasePanel.classList.contains('active')) {
-      if (typeof renderDiseaseSituation === 'function') renderDiseaseSituation();
-      if (typeof renderDiseaseReports === 'function') renderDiseaseReports();
-    }
+    if (_notifyReportTimer) clearTimeout(_notifyReportTimer);
+    _notifyReportTimer = setTimeout(function() {
+      _notifyReportTimer = null;
+      refreshAllLiveChartsNow_();
+      var diseasePanel = document.getElementById('section-disease');
+      if (diseasePanel && diseasePanel.classList.contains('active')) {
+        if (typeof renderDiseaseSituation === 'function') renderDiseaseSituation();
+        if (typeof renderDiseaseReports === 'function') renderDiseaseReports();
+      }
+    }, 320);
   }
   function refreshAdminDashboard() {
     if (!isExecDashboardRole()) return;
     renderDashboardNow();
   }
   function refreshAllLiveCharts() {
-    renderMonthlyReportSummary();
+    if (_refreshLiveChartsTimer) clearTimeout(_refreshLiveChartsTimer);
+    _refreshLiveChartsTimer = setTimeout(function() {
+      _refreshLiveChartsTimer = null;
+      refreshAllLiveChartsNow_();
+    }, 280);
+  }
+  function refreshAllLiveChartsNow_() {
+    var reportsPanel = document.getElementById('section-report');
+    var reportsActive = reportsPanel && reportsPanel.classList.contains('active');
+    if (reportsActive) {
+      renderMonthlyReportSummary();
+    }
     var dashPanel = document.getElementById('section-dashboard');
     var dashActive = dashPanel && dashPanel.classList.contains('active');
     if (dashActive && typeof renderDashboardNow === 'function') {
@@ -16151,8 +16240,12 @@
     } else if (isExecDashboardRole()) {
       updateDashboardLayoutForRole();
     }
-    if (typeof renderVaccineHpvCoverageChart === 'function') renderVaccineHpvCoverageChart();
-    if (typeof renderGradeChart === 'function') renderGradeChart();
+    var vacPanel = document.getElementById('section-vaccine');
+    var vacActive = vacPanel && vacPanel.classList.contains('active');
+    if (vacActive) {
+      if (typeof renderVaccineHpvCoverageChart === 'function') renderVaccineHpvCoverageChart();
+      if (typeof renderGradeChart === 'function') renderGradeChart();
+    }
     var infoPanel = document.getElementById('section-gshps');
     if (infoPanel && infoPanel.classList.contains('active') && typeof renderInfoHub === 'function') {
       renderInfoHub();
@@ -16160,6 +16253,10 @@
     var refPanel = document.getElementById('section-referral');
     if (refPanel && refPanel.classList.contains('active') && typeof renderReferralRecords === 'function') {
       renderReferralRecords();
+    }
+    var apptPanel = document.getElementById('section-appointment');
+    if (apptPanel && apptPanel.classList.contains('active') && typeof renderAppointmentList === 'function') {
+      renderAppointmentList();
     }
   }
   function renderMonthlyReportSummary() {
@@ -16210,7 +16307,12 @@
     if (document.hidden) return;
     var dashPanel = document.getElementById('section-dashboard');
     if (dashPanel && dashPanel.classList.contains('active') && typeof refreshAllLiveCharts === 'function') {
-      refreshAllLiveCharts();
+      if (_visLiveChartsTimer) clearTimeout(_visLiveChartsTimer);
+      _visLiveChartsTimer = setTimeout(function() {
+        _visLiveChartsTimer = null;
+        /* ถ้า cache ยังใช้ได้ ไม่ต้องคำนวณใหม่ทั้งชุด — แค่ sync เบา ๆ ผ่าน renderDashboardNow */
+        refreshAllLiveCharts();
+      }, 450);
     }
     var now = Date.now();
     /* ลดความถี่รีเฟรชทั้งก้อนตอนสลับแท็บ — เหลือทุก 3 นาที */
@@ -16316,8 +16418,10 @@
       if (document.hidden) return;
       var dashPanel = document.getElementById('section-dashboard');
       if (!dashPanel || !dashPanel.classList.contains('active')) return;
+      /* มี cache อยู่แล้วและยังไม่ถูก invalidate = ข้อมูลยังตรง — ไม่ต้องวาดกราฟใหม่ */
+      if (_adminLiveCache) return;
       refreshAllLiveCharts();
-    }, 60000);
+    }, ADMIN_LIVE_POLL_MS);
   }
   try { startLiveChartPolling(); } catch (eChartPoll) { console.warn('[SH chart poll]', eChartPoll); }
 
@@ -19607,9 +19711,14 @@
   window.syncTeacherTreatmentHistoryNow = syncTeacherTreatmentHistoryNow;
   window.showTeacherBasic = showTeacherBasic;
   window.showTeacherHistory = showTeacherHistory;
-  function initWhenTeacherDataReady() {
+  function initWhenTeacherDataReady(attempt) {
+    attempt = attempt || 0;
     if (typeof TEACHER_BASIC === 'undefined') {
-      setTimeout(initWhenTeacherDataReady, 80);
+      if (attempt >= 750) {
+        console.warn('[SH] teacher-basic-data.js ไม่โหลดภายในเวลาที่กำหนด');
+        return;
+      }
+      setTimeout(function() { initWhenTeacherDataReady(attempt + 1); }, 80);
       return;
     }
     if (typeof applyTeacherProfilePatches === 'function') applyTeacherProfilePatches();
@@ -21015,9 +21124,15 @@
       }
     });
   }
-  function initWhenStudentDataReady(onReady) {
+  function initWhenStudentDataReady(onReady, attempt) {
+    attempt = attempt || 0;
     if (typeof STUDENT_BASIC === 'undefined') {
-      setTimeout(function() { initWhenStudentDataReady(onReady); }, 80);
+      if (attempt >= 750) {
+        console.warn('[SH] student-basic-data.js ไม่โหลดภายในเวลาที่กำหนด');
+        if (typeof onReady === 'function') onReady();
+        return;
+      }
+      setTimeout(function() { initWhenStudentDataReady(onReady, attempt + 1); }, 80);
       return;
     }
     if (typeof applyStudentProfilePatches === 'function') applyStudentProfilePatches();
@@ -21130,60 +21245,61 @@
     const pass = ((passEl && passEl.value) || '').trim();
     if (!user || !pass) {
       showStaffLoginError('กรุณากรอกชื่อผู้ใช้และรหัสผ่าน');
-      return;
+      return false;
     }
     const roleKey = resolvePendingStaffRole();
     if (!roleKey || !ROLES[roleKey]) {
       showStaffLoginError('ไม่พบบทบาทที่เลือก กรุณาปิดหน้าต่างแล้วเลือกบทบาทอีกครั้ง');
-      return;
+      return false;
     }
     loggedInTeacherId = '';
     staffMasterAccess = false;
     if (roleKey === 'nursing_student') {
       if (!isNursingStudentLogin(user, pass)) {
         showStaffLoginError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-        return;
+        return false;
       }
       clearStaffLoginError();
       dismissBlockingOverlays();
       enterApp(roleKey);
-      return;
+      return true;
     }
     if (isMasterStaffLogin(user, pass)) {
       staffMasterAccess = true;
       clearStaffLoginError();
       dismissBlockingOverlays();
       enterApp(roleKey);
-      return;
+      return true;
     }
     if (roleKey === 'nurse') {
       if (!isLegacyStaffLogin(user, pass)) {
         showStaffLoginError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-        return;
+        return false;
       }
     } else if (roleKey === 'teacher' || roleKey === 'admin') {
       var teacher = findTeacherByStaffLogin(user, pass);
       if (teacher) {
         if (roleKey === 'admin' && !isAdminTeacher(teacher)) {
           showStaffLoginError('บัญชีนี้ไม่ใช่ผู้บริหาร กรุณาเลือกเข้าสู่ระบบในฐานะครู');
-          return;
+          return false;
         }
         if (roleKey === 'teacher' && isAdminTeacher(teacher)) {
           showStaffLoginError('ผู้บริหารกรุณาเลือกเข้าสู่ระบบในฐานะผู้บริหารโรงเรียน');
-          return;
+          return false;
         }
         loggedInTeacherId = teacher.id || '';
       } else if (!isLegacyStaffLogin(user, pass)) {
         showStaffLoginError('อีเมลหรือเบอร์โทรไม่ถูกต้อง (หากยังไม่มีข้อมูลในระบบ ให้ใช้รหัสเดิม)');
-        return;
+        return false;
       }
     } else if (!isLegacyStaffLogin(user, pass)) {
       showStaffLoginError('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
-      return;
+      return false;
     }
     clearStaffLoginError();
     dismissBlockingOverlays();
     enterApp(roleKey);
+    return true;
   }
   function submitStudentLogin() {
     var userEl = document.getElementById('studentLoginUser');
@@ -21193,18 +21309,18 @@
     const pass = ((passEl && passEl.value) || '').trim();
     if (!user || !pass) {
       if (errEl) { errEl.style.display = ''; errEl.textContent = 'กรุณากรอกเลขประจำตัวและวันเดือนปีเกิด'; }
-      return;
+      return false;
     }
     if (isMasterStaffLogin(user, pass)) {
       staffMasterAccess = true;
       loggedInStudentId = '';
       closeStudentLogin();
       enterApp('student');
-      return;
+      return true;
     }
     if (typeof STUDENT_BASIC === 'undefined') {
       if (errEl) { errEl.style.display = ''; errEl.textContent = 'ไม่พบข้อมูลนักเรียน กรุณารีเฟรชหน้าเว็บ'; }
-      return;
+      return false;
     }
     if (typeof applyStudentProfilePatches === 'function') applyStudentProfilePatches();
     var loginUser = (typeof resolveStudentIdThroughProfileRemap === 'function')
@@ -21213,11 +21329,11 @@
     const student = lookupStudent(loginUser) || lookupStudent(user);
     if (!student) {
       if (errEl) { errEl.style.display = ''; errEl.textContent = 'ไม่พบเลขประจำตัวนักเรียนในระบบ'; }
-      return;
+      return false;
     }
     if (normalizeDob(pass) !== normalizeDob(student.dob || '')) {
       if (errEl) { errEl.style.display = ''; errEl.textContent = 'วันเดือนปีเกิดไม่ถูกต้อง'; }
-      return;
+      return false;
     }
     staffMasterAccess = false;
     loggedInStudentId = Object.keys(STUDENT_BASIC).find(k => STUDENT_BASIC[k] === student) ||
@@ -21225,6 +21341,7 @@
     closeStudentLogin();
     enterApp('student');
     restoreStudentSessionForms();
+    return true;
   }
 
   function getCurrentRole() {
@@ -21387,10 +21504,12 @@
     var studentCard = document.getElementById('vaccine-student-card');
     if (!section || !scheduleCard || !studentCard) return;
     if (role === 'teacher' || role === 'nursing_student') {
-      if (studentCard.compareDocumentPosition(scheduleCard) & Node.DOCUMENT_POSITION_FOLLOWING) {
+      /* ต้องการ student → schedule: เลื่อนเมื่อ schedule อยู่ก่อน student */
+      if (studentCard.compareDocumentPosition(scheduleCard) & Node.DOCUMENT_POSITION_PRECEDING) {
         section.insertBefore(studentCard, scheduleCard);
       }
-    } else if (scheduleCard.compareDocumentPosition(studentCard) & Node.DOCUMENT_POSITION_FOLLOWING) {
+    } else if (scheduleCard.compareDocumentPosition(studentCard) & Node.DOCUMENT_POSITION_PRECEDING) {
+      /* ต้องการ schedule → student */
       section.insertBefore(scheduleCard, studentCard);
     }
   }

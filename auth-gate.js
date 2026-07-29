@@ -79,13 +79,7 @@
 
   w.enterGuestAccess = function (mode) {
     if (w.__shMainReady && w._enterGuestAccessImpl) return w._enterGuestAccessImpl(mode);
-    var guestMode;
-    if (mode === 'public') guestMode = 'public';
-    else if (mode === 'info') guestMode = 'info';
-    else guestMode = 'knowledge';
-    try {
-      sessionStorage.setItem('sh-session', JSON.stringify({ kind: 'guest', guestMode: guestMode }));
-    } catch (e) {}
+    var guestMode = mode === 'public' ? 'public' : (mode === 'info' ? 'info' : 'knowledge');
     var screen = document.getElementById('role-screen');
     if (screen) screen.classList.add('role-screen-hidden');
     var badge = document.getElementById('roleBadge');
@@ -109,38 +103,63 @@
     w.__pendingShowSection = sid;
   };
 
+  /**
+   * run() ต้องคืนค่า:
+   *   true  = ล็อกอินสำเร็จ → ปิด modal / ซ่อน Welcome
+   *   false = รหัสผิดหรือกรอกไม่ครบ → คง modal + Welcome ไว้
+   *   'wait' = ยังไม่พร้อม (เช่น ข้อมูลนักเรียนยังไม่โหลด) → รอต่อ
+   */
   function whenMainReady(run, loadingMsg, btnSelector) {
-    if (w.__shMainReady && run()) return;
+    var btn = btnSelector ? document.querySelector(btnSelector) : null;
+    var btnText = btn ? btn.textContent : '';
+    function restoreBtn() {
+      if (btn) { btn.disabled = false; btn.textContent = btnText; }
+    }
+    function onLoginSuccess() {
+      restoreBtn();
+      closeModal('staffLoginModal');
+      closeModal('studentLoginModal');
+      var rs = document.getElementById('role-screen');
+      if (rs) rs.classList.add('role-screen-hidden');
+    }
+    function tryRun() {
+      try {
+        return run();
+      } catch (e) {
+        console.error('[SH auth-gate]', e);
+        restoreBtn();
+        alert('เข้าสู่ระบบไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองใหม่');
+        return 'error';
+      }
+    }
+    function handleResult(ok) {
+      if (ok === true) {
+        onLoginSuccess();
+        return 'done';
+      }
+      if (ok === false) {
+        restoreBtn();
+        return 'done';
+      }
+      if (ok === 'error') return 'done';
+      return 'wait';
+    }
+
     var waited = 0;
     var step = 120;
     var maxWait = 60000;
-    var btn = btnSelector ? document.querySelector(btnSelector) : null;
-    var btnText = btn ? btn.textContent : '';
     if (btn && loadingMsg) {
       btn.disabled = true;
       btn.textContent = loadingMsg;
     }
     (function tick() {
       if (w.__shMainReady) {
-        try {
-          if (run()) {
-            if (btn) { btn.disabled = false; btn.textContent = btnText; }
-            closeModal('staffLoginModal');
-            closeModal('studentLoginModal');
-            var rs = document.getElementById('role-screen');
-            if (rs) rs.classList.add('role-screen-hidden');
-            return;
-          }
-        } catch (e) {
-          console.error('[SH auth-gate]', e);
-          if (btn) { btn.disabled = false; btn.textContent = btnText; }
-          alert('เข้าสู่ระบบไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองใหม่');
-          return;
-        }
+        var status = handleResult(tryRun());
+        if (status === 'done') return;
       }
       waited += step;
       if (waited >= maxWait) {
-        if (btn) { btn.disabled = false; btn.textContent = btnText; }
+        restoreBtn();
         alert('ระบบกำลังโหลดข้อมูล กรุณารอสักครู่แล้วลองใหม่');
         return;
       }
@@ -155,22 +174,16 @@
 
   w.submitStaffLogin = function () {
     whenMainReady(function () {
-      if (w._submitStaffLoginImpl) {
-        w._submitStaffLoginImpl();
-        return true;
-      }
-      return false;
+      if (!w._submitStaffLoginImpl) return 'wait';
+      return w._submitStaffLoginImpl() ? true : false;
     }, 'กำลังโหลดระบบ...', '#staffLoginModal .student-login-submit');
   };
 
   w.submitStudentLogin = function () {
     whenMainReady(function () {
-      if (typeof w.STUDENT_BASIC === 'undefined') return false;
-      if (w._submitStudentLoginImpl) {
-        w._submitStudentLoginImpl();
-        return true;
-      }
-      return false;
+      if (typeof w.STUDENT_BASIC === 'undefined') return 'wait';
+      if (!w._submitStudentLoginImpl) return 'wait';
+      return w._submitStudentLoginImpl() ? true : false;
     }, 'กำลังโหลดข้อมูลนักเรียน...', '#studentLoginModal .student-login-submit');
   };
 

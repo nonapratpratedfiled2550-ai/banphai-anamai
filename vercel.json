@@ -14,6 +14,20 @@
       ]
     },
     {
+      "source": "/auth-gate.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" }
+      ]
+    },
+    {
+      "source": "/info-hub-restore.js",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate" },
+        { "key": "Content-Type", "value": "application/javascript; charset=utf-8" }
+      ]
+    },
+    {
       "source": "/student-basic-data.js",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=3600, must-revalidate" },
