@@ -2705,8 +2705,8 @@ function parseGvizVisitRows_(gvizData, studentId) {
   }
   var visits = [];
   var rows = table.rows;
-  /* โหลดทั้งชีต (staff bootstrap): parse แค่ ~500 แถวล่าสุดจากท้ายตาราง — กันค้างตอน JSON/แถวหมื่น */
-  var MAX_ALL_VISITS = 500;
+  /* โหลดทั้งชีต (staff bootstrap): parse แค่ ~180 แถวล่าสุดจากท้ายตาราง — กัน OOM */
+  var MAX_ALL_VISITS = 180;
   var scanNewestOnly = !studentId;
   for (var rowIndex = rows.length - 1; rowIndex >= 0; rowIndex--) {
     if (scanNewestOnly && visits.length >= MAX_ALL_VISITS) break;
