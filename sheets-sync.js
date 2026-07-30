@@ -3287,11 +3287,12 @@ function shouldBootstrapCloudData(force) {
   var lastAt = 0;
   try { lastAt = parseInt(localStorage.getItem('sh-cloud-bootstrap-at') || '0', 10) || 0; } catch (e) {}
   var age = Date.now() - lastAt;
-  /* ถ้ายังไม่มีข้อมูลในเครื่องเลย — โหลดทันที */
-  if (typeof localStorageNeedsSheetBootstrap === 'function' && localStorageNeedsSheetBootstrap()) return true;
+  var needs = typeof localStorageNeedsSheetBootstrap === 'function' && localStorageNeedsSheetBootstrap();
   /* force (เช่น กดรีเฟรช) อย่างน้อยห่าง 90 วินาที */
   if (force) return age >= 90000;
-  /* เปิดหน้าปกติ — รีโหลดทั้งชุดไม่บ่อยกว่า 3 นาที เพื่อลดอาการค้าง */
+  /* เครื่องว่าง: อนุญาตโหลดครั้งแรกทันที แต่ห้ามยิงซ้ำถี่กว่า 3 นาที — กัน OOM */
+  if (needs) return !lastAt || age >= 180000;
+  /* เปิดหน้าปกติ — รีโหลดทั้งชุดไม่บ่อยกว่า 3 นาที */
   return age >= 180000;
 }
 

@@ -4,56 +4,67 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 <title>ระบบอนามัยโรงเรียนบ้านไผ่ | School Health System</title>
-<!-- Tailwind CSS (หน้า Welcome มี CSS สำรองใน <style> ถ้า CDN ช้า/ล้ม) -->
-<script src="https://cdn.tailwindcss.com"></script>
+<!-- Tailwind Play CDN เฉพาะ localhost — บน Vercel กิน RAM + MutationObserver จนหน้าค้าง/Out of Memory -->
 <script>
-  tailwind.config = {
-    corePlugins: { preflight: false },
-    theme: {
-      extend: {
-        fontFamily: {
-          sans: ['"IBM Plex Sans Thai"', 'Sarabun', 'Inter', 'sans-serif'],
-        },
-        colors: {
-          brand: {
-            950: '#052e1c', 900: '#0a3d28', 800: '#0e5236',
-            700: '#1a8a5a', 600: '#34b984', 500: '#4ade80',
-            100: '#dcfce7', 50: '#f0fdf7',
+(function () {
+  var h = String((typeof location !== 'undefined' && location.hostname) || '').toLowerCase();
+  window.__SH_LOAD_TW = !h || h === 'localhost' || h === '127.0.0.1';
+  if (!window.__SH_LOAD_TW) return;
+  var s = document.createElement('script');
+  s.src = 'https://cdn.tailwindcss.com';
+  s.id = 'tailwind-cdn';
+  s.onload = function () {
+    if (!window.tailwind) return;
+    window.tailwind.config = {
+      corePlugins: { preflight: false },
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"IBM Plex Sans Thai"', 'Sarabun', 'Inter', 'sans-serif'],
           },
-        },
-        animation: {
-          'fade-up': 'shFadeUp .7s cubic-bezier(.34,1.4,.64,1) both',
-          'fade-up-delay-1': 'shFadeUp .7s .1s cubic-bezier(.34,1.4,.64,1) both',
-          'fade-up-delay-2': 'shFadeUp .7s .2s cubic-bezier(.34,1.4,.64,1) both',
-          'fade-up-delay-3': 'shFadeUp .7s .3s cubic-bezier(.34,1.4,.64,1) both',
-          'fade-up-delay-4': 'shFadeUp .7s .4s cubic-bezier(.34,1.4,.64,1) both',
-          'blob': 'shBlob 7s ease-in-out infinite',
-          'blob-2': 'shBlob 9s ease-in-out infinite reverse',
-          'pulse-glow': 'shPulseGlow 2.2s ease-in-out infinite',
-          'float-y': 'shFloatY 4.5s ease-in-out infinite',
-        },
-        keyframes: {
-          shFadeUp: {
-            from: { opacity: '0', transform: 'translateY(36px) scale(0.88)' },
-            to:   { opacity: '1', transform: 'translateY(0) scale(1)' },
+          colors: {
+            brand: {
+              950: '#052e1c', 900: '#0a3d28', 800: '#0e5236',
+              700: '#1a8a5a', 600: '#34b984', 500: '#4ade80',
+              100: '#dcfce7', 50: '#f0fdf7',
+            },
           },
-          shBlob: {
-            '0%,100%': { transform: 'translate(0,0) scale(1)' },
-            '33%':     { transform: 'translate(30px,-24px) scale(1.12)' },
-            '66%':     { transform: 'translate(-20px,16px) scale(0.95)' },
+          animation: {
+            'fade-up': 'shFadeUp .7s cubic-bezier(.34,1.4,.64,1) both',
+            'fade-up-delay-1': 'shFadeUp .7s .1s cubic-bezier(.34,1.4,.64,1) both',
+            'fade-up-delay-2': 'shFadeUp .7s .2s cubic-bezier(.34,1.4,.64,1) both',
+            'fade-up-delay-3': 'shFadeUp .7s .3s cubic-bezier(.34,1.4,.64,1) both',
+            'fade-up-delay-4': 'shFadeUp .7s .4s cubic-bezier(.34,1.4,.64,1) both',
+            'blob': 'shBlob 7s ease-in-out infinite',
+            'blob-2': 'shBlob 9s ease-in-out infinite reverse',
+            'pulse-glow': 'shPulseGlow 2.2s ease-in-out infinite',
+            'float-y': 'shFloatY 4.5s ease-in-out infinite',
           },
-          shPulseGlow: {
-            '0%,100%': { opacity: '0.55', transform: 'scale(1)' },
-            '50%':     { opacity: '1', transform: 'scale(1.08)' },
-          },
-          shFloatY: {
-            '0%,100%': { transform: 'translateY(0)' },
-            '50%':     { transform: 'translateY(-10px)' },
+          keyframes: {
+            shFadeUp: {
+              from: { opacity: '0', transform: 'translateY(36px) scale(0.88)' },
+              to:   { opacity: '1', transform: 'translateY(0) scale(1)' },
+            },
+            shBlob: {
+              '0%,100%': { transform: 'translate(0,0) scale(1)' },
+              '33%':     { transform: 'translate(30px,-24px) scale(1.12)' },
+              '66%':     { transform: 'translate(-20px,16px) scale(0.95)' },
+            },
+            shPulseGlow: {
+              '0%,100%': { opacity: '0.55', transform: 'scale(1)' },
+              '50%':     { opacity: '1', transform: 'scale(1.08)' },
+            },
+            shFloatY: {
+              '0%,100%': { transform: 'translateY(0)' },
+              '50%':     { transform: 'translateY(-10px)' },
+            },
           },
         },
       },
-    },
+    };
   };
+  document.head.appendChild(s);
+})();
 </script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Sarabun:wght@300;400;500;600;700&family=IBM+Plex+Sans+Thai:wght@300;400;500;600&display=swap');
@@ -7225,7 +7236,7 @@
 <script src="sheets-sync.js"></script>
 <script src="student-basic-data.js"></script>
 <script src="teacher-basic-data.js"></script>
-<script src="physical-screening-images.js"></script>
+<!-- physical-screening-images.js โหลดเมื่อเปิดหน้าคัดกรองเท่านั้น — กัน OOM ตอนเปิดเว็บ -->
 <script>
   // Date display
   const now = new Date();
@@ -8913,6 +8924,7 @@
     if (id === 'screening') {
       fillStudentScreeningForms();
       renderScreeningRecords();
+      if (typeof renderPhysChecklists === 'function') renderPhysChecklists();
       if (typeof isFullStaffRole === 'function' && isFullStaffRole()) {
         refreshAssessmentDataFromSheetForStaff();
       }
@@ -10167,15 +10179,52 @@
     el.innerHTML = PHYS_POSE_ITEMS.map(function(item) {
       var checkText = pubMode && item.checkPub ? item.checkPub : item.check;
       var imgs = (item.images || []).map(function(img) {
-        return '<div class="phys-pose-img-wrap"><img src="' + img.src + '" alt="' + img.alt + '" loading="lazy" referrerpolicy="no-referrer" onclick="window.open(this.src,\'_blank\')"><span>' + img.cap + '</span></div>';
+        var src = img.src || '';
+        if (img.file) src = physPoseSrc(img.file);
+        else if (src && src.indexOf('data:') !== 0 && src.indexOf('/') !== -1) {
+          var file = src.split('/').pop();
+          if (file) src = physPoseSrc(file);
+        }
+        return '<div class="phys-pose-img-wrap"><img src="' + src + '" alt="' + img.alt + '" loading="lazy" decoding="async" referrerpolicy="no-referrer" onclick="window.open(this.src,\'_blank\')"><span>' + img.cap + '</span></div>';
       }).join('');
       return '<li><div class="check-box" onclick="toggleCheck(this)"></div><div class="phys-pose-content"><div><strong>ท่า ' + item.poses + ':</strong> ' + item.title + ' — ' + checkText + '</div>' +
         (imgs ? '<div class="phys-pose-imgs">' + imgs + '</div>' : '') + '</div></li>';
     }).join('');
   }
+  var _physImgLoadState = '';
+  var _physImgWaiters = [];
+  function ensurePhysPoseImagesLoaded(done) {
+    if (typeof done === 'function') _physImgWaiters.push(done);
+    if (window.PHYS_POSE_IMG_DATA) {
+      var ready = _physImgWaiters.splice(0);
+      ready.forEach(function(fn) { try { fn(); } catch (e) {} });
+      return;
+    }
+    if (_physImgLoadState === 'loading') return;
+    _physImgLoadState = 'loading';
+    var s = document.createElement('script');
+    s.src = 'physical-screening-images.js';
+    s.async = true;
+    s.onload = function() {
+      _physImgLoadState = 'done';
+      var waiters = _physImgWaiters.splice(0);
+      waiters.forEach(function(fn) { try { fn(); } catch (e2) {} });
+    };
+    s.onerror = function() {
+      _physImgLoadState = 'error';
+      var waiters = _physImgWaiters.splice(0);
+      waiters.forEach(function(fn) { try { fn(); } catch (e3) {} });
+    };
+    document.head.appendChild(s);
+  }
   function renderPhysChecklists() {
+    /* วาดด้วย path ก่อน แล้วค่อยสลับเป็น data-URI เมื่อสคริปต์โหลด — ไม่บล็อก boot */
     renderPhysChecklist('phys-checklist', false);
     renderPhysChecklist('pub-phys-checklist', true);
+    ensurePhysPoseImagesLoaded(function() {
+      renderPhysChecklist('phys-checklist', false);
+      renderPhysChecklist('pub-phys-checklist', true);
+    });
   }
   function updatePubPhysicalResult() {
     var list = document.getElementById('pub-phys-checklist');
@@ -16958,6 +17007,7 @@
   window.showPublicPage = showPublicPage;
   function renderPublicHub() {
     initPublicScreening();
+    if (typeof renderPhysChecklists === 'function') renderPhysChecklists();
   }
 
   function visitIdMatch(a, b) {
@@ -17127,10 +17177,16 @@
   function freeSpaceForVisitStorage_() {
     /* ไม่ลบ sh-visit-backup ที่นี่ — กันข้อมูลเก่าหายถ้าเขียนหลักล้มเหลว */
   }
-  function writeVisitStoragePayload_(payload) {
+  var _visitBackupAt = 0;
+  function writeVisitStoragePayload_(payload, opts) {
+    opts = opts || {};
     localStorage.setItem('sh-visit', payload);
+    if (opts.skipBackup) return;
+    var now = Date.now();
+    if (!opts.forceBackup && _visitBackupAt && (now - _visitBackupAt) < 300000) return;
     try {
       localStorage.setItem('sh-visit-backup', payload);
+      _visitBackupAt = now;
     } catch (eBackup) {
       // backup เป็นทางเลือกเมื่อที่เก็บเกือบเต็ม
     }
@@ -17192,7 +17248,7 @@
       var rawLen = 0;
       try { rawLen = (localStorage.getItem('sh-visit') || '').length; } catch (eLen) {}
       if (repaired || rawLen > 700000 || records.length > VISIT_LOCAL_MAX_RECORDS) {
-        saveVisitRecords(records, { quiet: true });
+        saveVisitRecords(records, { quiet: true, skipBackup: true });
       }
       _visitRecordsRepairedThisSession = true;
     }
@@ -17201,7 +17257,7 @@
   }
   function saveVisitRecords(records, opts) {
     opts = opts || {};
-    if (typeof invalidateAdminLiveCache === 'function') invalidateAdminLiveCache();
+    if (!opts.quiet && typeof invalidateAdminLiveCache === 'function') invalidateAdminLiveCache();
     var limits = [VISIT_LOCAL_MAX_RECORDS, VISIT_LOCAL_HARD_MAX, VISIT_LOCAL_MIN_KEEP];
     var lastErr = null;
     var prevMain = null;
@@ -17219,7 +17275,10 @@
       }
       try {
         freeSpaceForVisitStorage_();
-        writeVisitStoragePayload_(payload);
+        writeVisitStoragePayload_(payload, {
+          skipBackup: !!opts.skipBackup || !!opts.quiet,
+          forceBackup: !opts.quiet && !opts.skipBackup
+        });
         _visitRecordsMemCache = list;
         return true;
       } catch (eWrite) {
@@ -17227,7 +17286,7 @@
         try {
           freeSpaceForVisitStorage_();
           try { localStorage.removeItem('sh-visit'); } catch (eRm) {}
-          writeVisitStoragePayload_(payload);
+          writeVisitStoragePayload_(payload, { skipBackup: true });
           _visitRecordsMemCache = list;
           return true;
         } catch (eRetry) {
@@ -17654,13 +17713,12 @@
     var hintEl = document.getElementById('visit-list-period-hint');
     if (hintEl) hintEl.textContent = VISIT_PERIOD_HINTS[period] || VISIT_PERIOD_HINTS.today;
     var all = loadVisitRecords();
-    /* ยุบรายการซ้ำตอนแสดง — ถ้าสั้นลงให้บันทึกเงียบๆ เพื่อล้างคู่ซ้ำในเครื่อง */
+    /* ยุบรายการซ้ำในหน่วยความจำเท่านั้น — ไม่เขียน localStorage ตอน render (กันวน/OOM) */
     if (typeof dedupeVisitLocalSheetPairs_ === 'function' && all.length > 1) {
       var deduped = dedupeVisitLocalSheetPairs_(all);
       if (deduped.length < all.length) {
         all = deduped;
         _visitRecordsMemCache = deduped;
-        try { saveVisitRecords(deduped, { quiet: true }); } catch (eDedupeSave) {}
       }
     }
     var records = filterVisitRecordsByPeriod(all, period)
@@ -17675,11 +17733,17 @@
         records = [highlighted].concat(records);
       }
     }
+    var listLimit = period === 'today' ? 120 : 80;
+    var shown = records.length > listLimit ? records.slice(0, listLimit) : records;
     if (!records.length) {
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-mid);padding:18px;">' +
         (emptyLabels[period] || emptyLabels.today) + '</td></tr>';
     } else {
-      tbody.innerHTML = records.map(function(r) { return buildVisitListRowHtml(r, period, highlightId); }).join('');
+      tbody.innerHTML = shown.map(function(r) { return buildVisitListRowHtml(r, period, highlightId); }).join('') +
+        (records.length > listLimit
+          ? '<tr><td colspan="7" style="text-align:center;color:var(--gray-mid);padding:10px;font-size:12px;">แสดง ' +
+            listLimit.toLocaleString('th-TH') + ' รายการล่าสุด จาก ' + records.length.toLocaleString('th-TH') + ' รายการ</td></tr>'
+          : '');
     }
     applyVisitColStaffVisibility();
     renderVisitHistory();
@@ -17991,10 +18055,12 @@
     _visitRecordsMemCache = merged;
     _visitRecordsRepairedThisSession = true;
   }
+  var CLOUD_MERGE_MAX_RECORDS = 800;
   function mergeRecordsIntoLocalStorage_(storageKey, incoming, getMergeKey) {
     if (!incoming || !incoming.length) return null;
     var local = [];
     try { local = JSON.parse(localStorage.getItem(storageKey) || '[]'); } catch (e) {}
+    if (!Array.isArray(local)) local = [];
     var index = {};
     local.forEach(function(r, i) {
       var k = getMergeKey(r);
@@ -18020,6 +18086,7 @@
       }
     });
     local.sort(function(a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
+    if (local.length > CLOUD_MERGE_MAX_RECORDS) local = local.slice(0, CLOUD_MERGE_MAX_RECORDS);
     try { localStorage.setItem(storageKey, JSON.stringify(local)); } catch (e) {}
     return local;
   }
@@ -18199,6 +18266,9 @@
     }
     return applied;
   }
+  function stampCloudBootstrapAt_() {
+    try { localStorage.setItem('sh-cloud-bootstrap-at', String(Date.now())); } catch (e) {}
+  }
   function bootstrapCloudDataFromSheet(opts, callback) {
     opts = opts || {};
     if (typeof callback !== 'function' && typeof opts === 'function') {
@@ -18209,7 +18279,8 @@
       if (callback) callback(false);
       return;
     }
-    if (_cloudBootstrapDone && !opts.force && typeof shouldBootstrapCloudData === 'function' && !shouldBootstrapCloudData(false)) {
+    /* ในเซสชันนี้ทำไปแล้ว และไม่ใช่ force — ไม่โหลดซ้ำทั้งชุด */
+    if (_cloudBootstrapDone && !opts.force) {
       if (callback) callback(false);
       return;
     }
@@ -18227,14 +18298,18 @@
     }
     fetchAllCloudDataFromSheet().then(function(bundle) {
       _cloudBootstrapRunning = false;
-      var applied = applyCloudDataBundle(bundle);
+      var applied = false;
+      try { applied = applyCloudDataBundle(bundle); } catch (eApply) { console.warn('[SH cloud]', eApply); }
       _cloudBootstrapDone = true;
+      stampCloudBootstrapAt_();
       if (applied && typeof showSheetToast_ === 'function' && opts.toast !== false) {
         showSheetToast_('โหลดข้อมูลจาก Google Sheet แล้ว');
       }
       if (callback) callback(applied);
     }).catch(function() {
       _cloudBootstrapRunning = false;
+      _cloudBootstrapDone = true;
+      stampCloudBootstrapAt_();
       if (typeof showSheetToast_ === 'function' && opts.toast !== false) {
         showSheetToast_('โหลดข้อมูลจาก Google Sheet ไม่สำเร็จ — ตรวจสอบการเผยแพร่ชีต', true);
       }
@@ -18450,7 +18525,6 @@
         if (dedupedAll.length < sourceRecords.length) {
           sourceRecords = dedupedAll;
           _visitRecordsMemCache = dedupedAll;
-          try { saveVisitRecords(dedupedAll, { quiet: true }); } catch (eDedupeRec) {}
         }
       }
     } else if (!scopeId) {
@@ -18480,7 +18554,13 @@
       tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--gray-mid);padding:18px;">' +
         (emptyLabels[period] || emptyLabels.today) + '</td></tr>';
     } else {
-      tbody.innerHTML = records.map(function(r) { return buildVisitListRowHtml(r, period, highlightId); }).join('');
+      var listLimit = period === 'today' ? 120 : 80;
+      var shown = records.length > listLimit ? records.slice(0, listLimit) : records;
+      tbody.innerHTML = shown.map(function(r) { return buildVisitListRowHtml(r, period, highlightId); }).join('') +
+        (records.length > listLimit
+          ? '<tr><td colspan="7" style="text-align:center;color:var(--gray-mid);padding:10px;font-size:12px;">แสดง ' +
+            listLimit.toLocaleString('th-TH') + ' รายการล่าสุด จาก ' + records.length.toLocaleString('th-TH') + ' รายการ</td></tr>'
+          : '');
     }
     applyVisitColStaffVisibility();
     renderVisitRecordHistoryPanel(scopeId);
@@ -21829,7 +21909,7 @@
     });
     initRoleScreenFx();
     initMentalForms();
-    renderPhysChecklists();
+    /* ไม่เรียก renderPhysChecklists ตอน boot — โหลดรูปเมื่อเข้าหน้าคัดกรองเท่านั้น */
     var hadSession = restoreAppSession();
     retryKnowledgeHubRender_(0);
     function finishInitialBoot() {
