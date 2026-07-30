@@ -4495,9 +4495,9 @@
   </div>
 </div>
 
-<!-- SH_FREEZE_FIX:2026-07-30d no-auto-charts-on-login -->
+<!-- SH_FREEZE_FIX:2026-07-30e student-registry-open -->
 <script>
-  window.__SH_FREEZE_FIX = '2026-07-30d';
+  window.__SH_FREEZE_FIX = '2026-07-30e';
 </script>
 <script src="auth-gate.js"></script>
 
@@ -9321,28 +9321,63 @@
     if (id === 'referral') renderReferralRecords();
     if (id === 'appointment') renderAppointmentList();
     if (id === 'student') {
-      function afterStudentRegistryReady_() {
-        renderGradeChart();
-        if (typeof initStudentRegistryTable === 'function') initStudentRegistryTable();
-        refreshStudentRegistryFromSheetForStaff();
-        if (typeof renderTeacherHomeroomRoster === 'function') renderTeacherHomeroomRoster('stu');
+      function paintStudentRegistryTable_() {
+        try {
+          if (typeof initStudentRegistryTable === 'function') initStudentRegistryTable();
+        } catch (eInit) { console.warn('[SH student table]', eInit); }
       }
-      if (typeof STUDENT_BASIC === 'undefined' && typeof ensureStudentBasicDataLoaded === 'function') {
-        ensureStudentBasicDataLoaded(function () {
+      function afterStudentFileParsed_() {
+        /* yield หลัง parse ไฟล์ 2.3MB — ห้ามทำ patches/index/ชีตซ้อนทันที (กันค้าง) */
+        setTimeout(function () {
           try {
-            if (typeof applyStudentProfilePatches === 'function') applyStudentProfilePatches();
-            if (typeof applyStudentDeletedIds_ === 'function') applyStudentDeletedIds_();
-            if (typeof ensureStudentIdIndex_ === 'function') ensureStudentIdIndex_();
-            if (typeof STUDENT_BASIC !== 'undefined' && STUDENT_BASIC) {
+            if (typeof STUDENT_BASIC !== 'undefined' && STUDENT_BASIC && _studentCountCache < 0) {
               _studentCountCache = Object.keys(STUDENT_BASIC).length;
               try { localStorage.setItem('sh-student-count', String(_studentCountCache)); } catch (eSc) {}
             }
             if (typeof updateStudentCounts === 'function') updateStudentCounts();
-          } catch (eStu) {}
-          afterStudentRegistryReady_();
+          } catch (eCnt) {}
+          /* โชว์ตารางก่อน — patches/index ทีหลัง */
+          paintStudentRegistryTable_();
+          setTimeout(function () {
+            try {
+              if (typeof applyStudentProfilePatches === 'function') applyStudentProfilePatches();
+            } catch (ePat) {}
+            setTimeout(function () {
+              try {
+                if (typeof applyStudentDeletedIds_ === 'function') applyStudentDeletedIds_();
+              } catch (eDel) {}
+              /* ไม่สร้าง index ทั้งก้อนตอนเปิดหน้า — lookup ใช้ key ตรงก่อน */
+              if (typeof filterStudentRegistry === 'function' && _studentRegistryLazy && _studentRegistryLazy.built) {
+                /* รีเฟรชเบา ๆ หลัง patch โดยไม่ดึงชีต */
+                try { filterStudentRegistry(); } catch (eFil) {}
+              }
+              setTimeout(function () {
+                if (typeof renderTeacherHomeroomRoster === 'function') renderTeacherHomeroomRoster('stu');
+              }, 400);
+              setTimeout(function () {
+                try { if (typeof renderGradeChart === 'function') renderGradeChart(); } catch (eGr) {}
+              }, 2500);
+              /* ดึงชีตทะเบียน — เลื่อนนานมาก หรือไม่ทำอัตโนมัติ (กดปุ่มซิงค์เอง) */
+              setTimeout(function () {
+                if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) return;
+                if (typeof refreshStudentRegistryFromSheetForStaff === 'function') {
+                  refreshStudentRegistryFromSheetForStaff();
+                }
+              }, 60000);
+            }, 100);
+          }, 200);
+        }, 80);
+      }
+      if (typeof STUDENT_BASIC === 'undefined' && typeof ensureStudentBasicDataLoaded === 'function') {
+        var tbodyWait = document.getElementById('student-registry-tbody') || document.querySelector('#section-student tbody');
+        if (tbodyWait && !tbodyWait.rows.length) {
+          tbodyWait.innerHTML = '<tr><td colspan="12" style="text-align:center;color:var(--gray-mid);padding:20px;">กำลังโหลดทะเบียนนักเรียน...</td></tr>';
+        }
+        ensureStudentBasicDataLoaded(function () {
+          afterStudentFileParsed_();
         });
       } else {
-        afterStudentRegistryReady_();
+        afterStudentFileParsed_();
       }
     }
     if (id === 'teacher') {
@@ -20661,40 +20696,34 @@
     return String(s == null || s === '' ? '—' : s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
   }
+  var _healthExtrasMemCache = null;
   function loadStudentHealthExtras() {
-    try { return JSON.parse(localStorage.getItem('sh-student-health') || '{}'); } catch (e) { return {}; }
+    if (_healthExtrasMemCache) return _healthExtrasMemCache;
+    try { _healthExtrasMemCache = JSON.parse(localStorage.getItem('sh-student-health') || '{}'); } catch (e) { _healthExtrasMemCache = {}; }
+    if (!_healthExtrasMemCache || typeof _healthExtrasMemCache !== 'object') _healthExtrasMemCache = {};
+    return _healthExtrasMemCache;
   }
   function saveStudentHealthExtras(map) {
-    try { localStorage.setItem('sh-student-health', JSON.stringify(map)); } catch (e) {}
+    _healthExtrasMemCache = map || {};
+    try { localStorage.setItem('sh-student-health', JSON.stringify(_healthExtrasMemCache)); } catch (e) {}
   }
   function canonicalStudentIdKey(id) {
     var k = String(id || '').trim();
     if (!k) return k;
-    if (typeof ensureStudentIdIndex_ === 'function') ensureStudentIdIndex_();
-    if (typeof _studentIdIndex !== 'undefined' && _studentIdIndex[k]) return _studentIdIndex[k];
+    if (typeof _studentIdIndex !== 'undefined' && _studentIdIndex && _studentIdIndex[k]) return _studentIdIndex[k];
+    try { if (typeof STUDENT_BASIC !== 'undefined' && STUDENT_BASIC[k]) return k; } catch (e1) {}
     var extras = loadStudentHealthExtras();
     if (extras[k]) return k;
-    var keys = Object.keys(extras);
-    for (var i = 0; i < keys.length; i++) {
-      if (visitIdMatch(keys[i], k)) return keys[i];
-    }
-    if (typeof lookupStudent === 'function') {
-      var student = lookupStudent(k);
-      if (student && student.id) return String(student.id);
-      if (typeof _studentIdIndex !== 'undefined' && _studentIdIndex[k]) return _studentIdIndex[k];
-    }
+    var num = parseInt(k, 10);
+    if (!isNaN(num) && extras[String(num)]) return String(num);
     return k;
   }
   function getStudentHealthExtra(id) {
     var extras = loadStudentHealthExtras();
-    var k = String(id).trim();
+    var k = String(id || '').trim();
     if (extras[k]) return extras[k];
     var num = parseInt(k, 10);
     if (!isNaN(num) && extras[String(num)]) return extras[String(num)];
-    var keys = Object.keys(extras);
-    for (var i = 0; i < keys.length; i++) {
-      if (visitIdMatch(keys[i], k)) return extras[keys[i]];
-    }
     return {};
   }
   function setStudentHealthExtra(id, data) {
@@ -20712,12 +20741,32 @@
       if (regEntry) syncStudentRegistryEntryQuiet(regEntry);
     }
   }
+  var _chronicLabelCache = null;
+  var _chronicLabelCacheAt = 0;
+  function invalidateChronicLabelCache_() {
+    _chronicLabelCache = null;
+    _chronicLabelCacheAt = 0;
+  }
   function getStudentChronicLabel(id) {
-    var records = [];
-    try { records = JSON.parse(localStorage.getItem('sh-chronic') || '[]'); } catch (e) {}
-    var rec = records.find(function(r) { return visitIdMatch(r.id, id); });
-    if (!rec) return '';
-    return rec.disease + (rec.note ? ' (' + rec.note + ')' : '');
+    if (!_chronicLabelCache || (Date.now() - _chronicLabelCacheAt > 60000)) {
+      var records = [];
+      try { records = JSON.parse(localStorage.getItem('sh-chronic') || '[]'); } catch (e) {}
+      _chronicLabelCache = Object.create(null);
+      if (Array.isArray(records)) {
+        records.forEach(function(r) {
+          if (!r || !r.id) return;
+          var key = String(r.id).trim();
+          var label = (r.disease || '') + (r.note ? ' (' + r.note + ')' : '');
+          if (label && !_chronicLabelCache[key]) _chronicLabelCache[key] = label;
+        });
+      }
+      _chronicLabelCacheAt = Date.now();
+    }
+    var k = String(id || '').trim();
+    if (_chronicLabelCache[k]) return _chronicLabelCache[k];
+    var num = parseInt(k, 10);
+    if (!isNaN(num) && _chronicLabelCache[String(num)]) return _chronicLabelCache[String(num)];
+    return '';
   }
   function getStudentRegistryHealth(id, oldChronic, oldDrug) {
     var extra = getStudentHealthExtra(id);
@@ -21100,7 +21149,9 @@
     renderAppointmentList();
     closeStudentAppointmentModal();
   }
+  var _studentClassMapMem = null;
   function getStudentRegistryClassMap(fillMissingFromDom) {
+    if (fillMissingFromDom === false && _studentClassMapMem) return _studentClassMapMem;
     var map = {};
     try { Object.assign(map, JSON.parse(localStorage.getItem('sh-student-registry-class') || '{}')); } catch (e) {}
     if (fillMissingFromDom !== false) {
@@ -21108,14 +21159,16 @@
         if (!tr.cells || !tr.cells[0]) return;
         var sid = tr.cells[0].textContent.trim();
         var cls = tr.cells[2] ? tr.cells[2].textContent.trim() : '';
-        var k = sid;
-        if (sid && cls && cls !== '—' && !map[sid] && !map[canonicalStudentIdKey(sid)]) map[sid] = cls;
+        if (sid && cls && cls !== '—' && !map[sid]) map[sid] = cls;
       });
+    } else {
+      _studentClassMapMem = map;
     }
     return map;
   }
   function saveStudentRegistryClassMap(map) {
-    try { localStorage.setItem('sh-student-registry-class', JSON.stringify(map || {})); } catch (e) {}
+    _studentClassMapMem = map || {};
+    try { localStorage.setItem('sh-student-registry-class', JSON.stringify(_studentClassMapMem)); } catch (e) {}
   }
   function collectStudentRegistryEntry(id) {
     id = String(id || '').trim();
@@ -21616,32 +21669,45 @@
     built: false,
     allIds: [],
     filteredIds: [],
-    pageSize: 100
+    pageSize: 100,
+    _sorted: false
   };
   function buildStudentRegistryIndex() {
     if (_studentRegistryLazy.allIds.length) return _studentRegistryLazy.allIds;
     if (typeof STUDENT_BASIC === 'undefined') return [];
-    _studentRegistryLazy.allIds = Object.keys(STUDENT_BASIC).sort(function(a, b) {
+    /* ไม่ sort ทั้ง 2,700+ ตอนเปิดหน้า — กันค้าง; เรียงทีหลังเมื่อค้นหา */
+    _studentRegistryLazy._sorted = false;
+    _studentRegistryLazy.allIds = Object.keys(STUDENT_BASIC);
+    return _studentRegistryLazy.allIds;
+  }
+  function ensureStudentRegistryIndexSorted_() {
+    if (_studentRegistryLazy._sorted) return;
+    if (!_studentRegistryLazy.allIds.length) buildStudentRegistryIndex();
+    _studentRegistryLazy.allIds.sort(function(a, b) {
       var na = parseInt(a, 10);
       var nb = parseInt(b, 10);
       if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
       return String(a).localeCompare(String(b), 'th');
     });
-    return _studentRegistryLazy.allIds;
+    _studentRegistryLazy._sorted = true;
   }
   function getStudentRegistryRowData(id) {
-    var student = (typeof lookupStudent === 'function') ? lookupStudent(id) : null;
+    var student = null;
+    try {
+      if (typeof STUDENT_BASIC !== 'undefined' && STUDENT_BASIC[id]) student = STUDENT_BASIC[id];
+      else if (typeof lookupStudent === 'function') student = lookupStudent(id);
+    } catch (eL) {}
     if (!student) return null;
     var classMap = getStudentRegistryClassMap(false);
-    var k = canonicalStudentIdKey(id);
-    var cls = classMap[k] || classMap[id] || student.classLevel || '';
+    var sid = String(id);
+    var cls = classMap[sid] || student.classLevel || '';
     return {
       id: id,
       name: student.fullName || '',
       cls: cls,
-      age: (typeof calcAgeFromDob === 'function' ? calcAgeFromDob(student.dob) : '') || student.age || '',
-      health: getStudentRegistryHealth(id),
-      gender: formatStudentGender(student.gender)
+      age: student.age || '',
+      health: typeof getStudentRegistryHealth === 'function' ? getStudentRegistryHealth(id) : {},
+      gender: typeof formatStudentGender === 'function' ? formatStudentGender(student.gender) : (student.gender || '')
     };
   }
   function updateStudentRegistryCounter() {
@@ -21682,6 +21748,9 @@
     if (!append) tbody.innerHTML = '';
     var end = Math.min(ids.length, start + _studentRegistryLazy.pageSize);
     var frag = document.createDocumentFragment();
+    /* โหลด classMap / chronic cache ครั้งเดียวต่อรอบเรนเดอร์ */
+    try { getStudentRegistryClassMap(false); } catch (eM) {}
+    try { getStudentChronicLabel('__warmup__'); } catch (eC) {}
     for (var i = start; i < end; i++) {
       var rowData = getStudentRegistryRowData(ids[i]);
       if (!rowData) continue;
@@ -21711,17 +21780,39 @@
       updateStudentCounts();
       return;
     }
-    _studentRegistryLazy.filteredIds = all.filter(function(id) {
-      var student = lookupStudent(id);
-      if (!student) return false;
-      var k = canonicalStudentIdKey(id);
-      var cls = classMap[k] || classMap[id] || student.classLevel || student.class || '';
-      if (scopeTeacher && homeKey && normalizeClassRoomKey(cls) !== homeKey) return false;
-      var text = (id + ' ' + (student.fullName || '') + ' ' + cls).toLowerCase();
-      return (!q || text.indexOf(q) !== -1) && (!lv || cls.indexOf(lv) === 0);
-    });
-    renderStudentRegistryRows(_studentRegistryLazy.filteredIds, false);
-    updateStudentCounts();
+    /* ไม่มีคำค้น/กรองชั้น — ห้ามวน lookup ทั้ง 2,700 คน (จุดค้างหลังโชว์ตาราง) */
+    if (!q && !lv && !scopeTeacher) {
+      _studentRegistryLazy.filteredIds = all;
+      renderStudentRegistryRows(_studentRegistryLazy.filteredIds, false);
+      updateStudentCounts();
+      return;
+    }
+    if (q || lv) ensureStudentRegistryIndexSorted_();
+    all = _studentRegistryLazy.allIds;
+    var out = [];
+    var i = 0;
+    var CHUNK = 250;
+    function stepFilter() {
+      var end = Math.min(i + CHUNK, all.length);
+      for (; i < end; i++) {
+        var id = all[i];
+        var student = STUDENT_BASIC[id];
+        if (!student) continue;
+        var k = typeof canonicalStudentIdKey === 'function' ? canonicalStudentIdKey(id) : String(id);
+        var cls = classMap[k] || classMap[id] || student.classLevel || student.class || '';
+        if (scopeTeacher && homeKey && normalizeClassRoomKey(cls) !== homeKey) continue;
+        var text = (id + ' ' + (student.fullName || '') + ' ' + cls).toLowerCase();
+        if ((!q || text.indexOf(q) !== -1) && (!lv || cls.indexOf(lv) === 0)) out.push(id);
+      }
+      if (i < all.length) {
+        setTimeout(stepFilter, 0);
+        return;
+      }
+      _studentRegistryLazy.filteredIds = out;
+      renderStudentRegistryRows(_studentRegistryLazy.filteredIds, false);
+      updateStudentCounts();
+    }
+    stepFilter();
   }
   function loadMoreStudentRegistry() {
     renderStudentRegistryRows(_studentRegistryLazy.filteredIds, true);
