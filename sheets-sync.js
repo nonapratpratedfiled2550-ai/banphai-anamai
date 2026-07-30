@@ -2704,19 +2704,25 @@ function parseGvizVisitRows_(gvizData, studentId) {
     idxProvider = 11;
   }
   var visits = [];
-  table.rows.forEach(function(row, rowIndex) {
+  var rows = table.rows;
+  /* โหลดทั้งชีต (staff bootstrap): parse แค่ ~500 แถวล่าสุดจากท้ายตาราง — กันค้างตอน JSON/แถวหมื่น */
+  var MAX_ALL_VISITS = 500;
+  var scanNewestOnly = !studentId;
+  for (var rowIndex = rows.length - 1; rowIndex >= 0; rowIndex--) {
+    if (scanNewestOnly && visits.length >= MAX_ALL_VISITS) break;
+    var row = rows[rowIndex];
     if (compactLayout) {
       var cells = [];
       for (var ci = 0; ci < (row.c || []).length; ci++) cells.push(gvizCell_(row, ci));
       var compact = parseCompactVisitRowFromCells_(cells, rowIndex);
-      if (!compact) return;
-      if (studentId && !sheetIdsMatch_(compact.id, studentId)) return;
+      if (!compact) continue;
+      if (studentId && !sheetIdsMatch_(compact.id, studentId)) continue;
       visits.push(compact);
-      return;
+      continue;
     }
     var id = idxId >= 0 ? gvizCell_(row, idxId) : '';
     id = String(id || '').trim();
-    if (!id || (studentId && !sheetIdsMatch_(id, studentId))) return;
+    if (!id || (studentId && !sheetIdsMatch_(id, studentId))) continue;
     var recordedAt = idxDate >= 0 ? gvizCell_(row, idxDate) : '';
     var savedAt = idxDate >= 0 ? parseGvizVisitDateTime_(row, idxDate) : 0;
     if (!savedAt) savedAt = resolveVisitSavedAt({ recordedAt: recordedAt });
@@ -2764,7 +2770,7 @@ function parseGvizVisitRows_(gvizData, studentId) {
         if (ridFromSheet) rec.recordId = ridFromSheet;
       }
     }
-  });
+  }
   visits.sort(function(a, b) { return (b.savedAt || 0) - (a.savedAt || 0); });
   return visits;
 }

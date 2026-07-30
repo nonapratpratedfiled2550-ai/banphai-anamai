@@ -8774,10 +8774,24 @@
   }
 
   // จำนวนนักเรียนจากทะเบียน (Excel)
+  var _studentCountCache = -1;
+  function invalidateStudentCountCache_() {
+    _studentCountCache = -1;
+  }
   function getStudentRegistryCount() {
     try {
-      if (typeof STUDENT_BASIC !== 'undefined' && STUDENT_BASIC) return Object.keys(STUDENT_BASIC).length;
+      if (typeof STUDENT_BASIC !== 'undefined' && STUDENT_BASIC) {
+        if (_studentCountCache < 0) {
+          _studentCountCache = Object.keys(STUDENT_BASIC).length;
+          try { localStorage.setItem('sh-student-count', String(_studentCountCache)); } catch (eSet) {}
+        }
+        return _studentCountCache;
+      }
     } catch (e) {}
+    try {
+      var cached = parseInt(localStorage.getItem('sh-student-count') || '0', 10);
+      if (cached > 0) return cached;
+    } catch (e2) {}
     const tbody = document.querySelector('#section-student tbody');
     return (tbody && tbody.rows) ? tbody.rows.length : 0;
   }
@@ -9216,7 +9230,17 @@
       }
     }
     if (id === 'login-creds' && typeof renderStudentLoginCredsTable === 'function') {
-      renderStudentLoginCredsTable();
+      if (typeof STUDENT_BASIC === 'undefined' && typeof ensureStudentBasicDataLoaded === 'function') {
+        ensureStudentBasicDataLoaded(function () {
+          try {
+            if (typeof applyStudentProfilePatches === 'function') applyStudentProfilePatches();
+            if (typeof ensureStudentIdIndex_ === 'function') ensureStudentIdIndex_();
+          } catch (eCred) {}
+          renderStudentLoginCredsTable();
+        });
+      } else {
+        renderStudentLoginCredsTable();
+      }
     }
     if (id === 'nutrition') {
       fillStudentNutritionForm();
@@ -9255,6 +9279,15 @@
           refreshStudentAppointmentFromSheet(loggedInStudentId);
         }
       } else {
+        /* เตรียมทะเบียนนักเรียนแบบเลื่อน — สำหรับค้นหา/เติมชื่อตอนบันทึก */
+        if (typeof STUDENT_BASIC === 'undefined' && typeof ensureStudentBasicDataLoaded === 'function') {
+          ensureStudentBasicDataLoaded(function () {
+            try {
+              if (typeof applyStudentProfilePatches === 'function') applyStudentProfilePatches();
+              if (typeof ensureStudentIdIndex_ === 'function') ensureStudentIdIndex_();
+            } catch (eVis) {}
+          });
+        }
         updateVisitCalendarLayout();
         renderSchoolCalendarBoard(loadDashboard(), canEditSchoolCalendar());
         refreshAllVisitRecordsFromSheetForStaff(function() {
@@ -9274,10 +9307,29 @@
     if (id === 'referral') renderReferralRecords();
     if (id === 'appointment') renderAppointmentList();
     if (id === 'student') {
-      renderGradeChart();
-      if (typeof initStudentRegistryTable === 'function') initStudentRegistryTable();
-      refreshStudentRegistryFromSheetForStaff();
-      if (typeof renderTeacherHomeroomRoster === 'function') renderTeacherHomeroomRoster('stu');
+      function afterStudentRegistryReady_() {
+        renderGradeChart();
+        if (typeof initStudentRegistryTable === 'function') initStudentRegistryTable();
+        refreshStudentRegistryFromSheetForStaff();
+        if (typeof renderTeacherHomeroomRoster === 'function') renderTeacherHomeroomRoster('stu');
+      }
+      if (typeof STUDENT_BASIC === 'undefined' && typeof ensureStudentBasicDataLoaded === 'function') {
+        ensureStudentBasicDataLoaded(function () {
+          try {
+            if (typeof applyStudentProfilePatches === 'function') applyStudentProfilePatches();
+            if (typeof applyStudentDeletedIds_ === 'function') applyStudentDeletedIds_();
+            if (typeof ensureStudentIdIndex_ === 'function') ensureStudentIdIndex_();
+            if (typeof STUDENT_BASIC !== 'undefined' && STUDENT_BASIC) {
+              _studentCountCache = Object.keys(STUDENT_BASIC).length;
+              try { localStorage.setItem('sh-student-count', String(_studentCountCache)); } catch (eSc) {}
+            }
+            if (typeof updateStudentCounts === 'function') updateStudentCounts();
+          } catch (eStu) {}
+          afterStudentRegistryReady_();
+        });
+      } else {
+        afterStudentRegistryReady_();
+      }
     }
     if (id === 'teacher') {
       if (typeof initTeacherRegistryTable === 'function') initTeacherRegistryTable();
@@ -13458,9 +13510,61 @@
     _visitRecordsMemCache = null;
   }
   var _visitRecordsRepairedThisSession = false;
-  function computeAdminLiveData() {
-    if (_adminLiveCache) return _adminLiveCache;
+  function buildAdminChartsBlock_() {
+    return {
+      health: computeAdminHealthProblems(),
+      healthSummary: computeAdminHealthSummary(),
+      healthTrend: computeAdminHealthTrend(),
+      gauges: computeAdminGauges(),
+      referralGrid: computeAdminReferralGrid(),
+      clinicGrouped: computeAdminClinicGrouped(),
+      vaccineRings: computeAdminVaccineRings(),
+      screening: computeAdminScreeningChart(),
+      nutrition: computeAdminNutritionChart(),
+      chronic: computeAdminChronicChart(),
+      mental: computeAdminMentalChart(),
+      diseaseWatch: computeAdminDiseaseWatch(),
+      emergencyMonthly: computeAdminEmergencyMonthly(),
+      gradeVisits: computeAdminGradeVisits(),
+      medicineStock: computeAdminMedicineStockChart(),
+      appointmentGrid: computeAdminAppointmentGrid()
+    };
+  }
+  function computeAdminLiveData(opts) {
+    opts = opts || {};
+    var wantCharts = !opts.skipCharts;
+    var wantLite = !!opts.lite;
+    if (_adminLiveCache && !wantLite) {
+      if (wantCharts && !_adminLiveCache.charts) {
+        _adminLiveCache.charts = buildAdminChartsBlock_();
+      }
+      return _adminLiveCache;
+    }
     var dash = loadDashboard();
+    /* โหมดเบาหลังล็อกอิน — ตัวเลขจาก cache + นับ visit อย่างเดียว ห้าม HPV/นัด/กราฟ */
+    if (wantLite) {
+      var visitsLite = loadVisitRecords();
+      var yearN = 0;
+      for (var vi = 0; vi < visitsLite.length; vi++) {
+        if (visitsLite[vi] && isRecordThisYear(visitsLite[vi])) yearN++;
+      }
+      return {
+        display: {
+          staffCount: (typeof getTeacherRegistryCount === 'function' ? getTeacherRegistryCount() : 0) || dash.staffCount || 0,
+          todayVisit: yearN || dash.todayVisit || 0,
+          referralCount: dash.referralCount || 0,
+          screenedCount: dash.screenedCount || 0,
+          alertCount: dash.alertCount || 0,
+          warningText: dash.warningText || 'ไม่มีการแจ้งเตือนที่ต้องติดตาม',
+          coverage: dash.coverage || []
+        },
+        extraStats: {},
+        alerts: [],
+        kpi: [],
+        recentActivity: [],
+        charts: null
+      };
+    }
     var visits = loadVisitRecords();
     /* การ์ดผู้บริหาร/พยาบาลป้ายว่า "ให้บริการห้องพยาบาล (ปีการศึกษานี้)" — ไม่ใช่แค่วันนี้ */
     var yearVisitCount = visits.filter(function(r) {
@@ -13503,25 +13607,10 @@
       alerts: alerts,
       kpi: computeAdminKpi(shared),
       recentActivity: computeAdminRecentActivity(),
-      charts: {
-        health: computeAdminHealthProblems(),
-        healthSummary: computeAdminHealthSummary(),
-        healthTrend: computeAdminHealthTrend(),
-        gauges: computeAdminGauges(),
-        referralGrid: computeAdminReferralGrid(),
-        clinicGrouped: computeAdminClinicGrouped(),
-        vaccineRings: computeAdminVaccineRings(),
-        screening: computeAdminScreeningChart(),
-        nutrition: computeAdminNutritionChart(),
-        chronic: computeAdminChronicChart(),
-        mental: computeAdminMentalChart(),
-        diseaseWatch: computeAdminDiseaseWatch(),
-        emergencyMonthly: computeAdminEmergencyMonthly(),
-        gradeVisits: computeAdminGradeVisits(),
-        medicineStock: computeAdminMedicineStockChart(),
-        appointmentGrid: computeAdminAppointmentGrid()
-      }
+      charts: null
     };
+    /* กราฟทั้งชุดคำนวณทีหลัง — กันค้างตอนเพิ่งล็อกอิน */
+    if (wantCharts) result.charts = buildAdminChartsBlock_();
     _adminLiveCache = result;
     return result;
   }
@@ -13892,13 +13981,64 @@
     if (!staffRolesReady()) return;
     var role = getCurrentRole();
     if (!role || STAFF_ROLES.indexOf(role) === -1) return;
-    var cachedBefore = _adminLiveCache;
-    if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
     const editable = canEditSchoolCalendar();
     const isExecDash = isExecDashboardRole(role);
+    /* ช่วงเงียบหลังล็อกอิน: โชว์ตัวเลขจาก cache เท่านั้น — ห้าม sync/compute/กราฟ (กันค้าง) */
+    if (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) {
+      var quietData = loadDashboard();
+      visitCount = parseInt(quietData.todayVisit, 10) || 0;
+      renderDashStatNum('dashStaffCount', quietData.staffCount, 'staffCount', editable && !isExecDash);
+      renderDashStatNum('todayVisit', quietData.todayVisit, 'todayVisit', editable && !isExecDash);
+      renderDashStatNum('referralCount', quietData.referralCount, 'referralCount', editable && !isExecDash);
+      renderDashStatNum('screenedCount', quietData.screenedCount, 'screenedCount', editable && !isExecDash);
+      renderDashStatNum('alertCount', quietData.alertCount || 0, 'alertCount', false);
+      try { renderSchoolCalendarBoard(quietData, editable); } catch (eCal) {}
+      updateDashboardLayoutForRole();
+      updateStudentCounts();
+      if (typeof schedulePostLoginFullDash_ === 'function') schedulePostLoginFullDash_();
+      return;
+    }
+    /* รอบแรกหลัง quiet: โหมดเบา — ยังไม่ sync/HPV/นัด/กราฟ */
+    if (_postLoginUseLiteOnce) {
+      _postLoginUseLiteOnce = false;
+      var liteLive = isExecDash ? computeAdminLiveData({ lite: true, skipCharts: true }) : null;
+      var liteData = liteLive ? liteLive.display : loadDashboard();
+      visitCount = parseInt(liteData.todayVisit, 10) || 0;
+      renderDashStatNum('dashStaffCount', liteData.staffCount, 'staffCount', editable && !isExecDash);
+      renderDashStatNum('todayVisit', liteData.todayVisit, 'todayVisit', editable && !isExecDash);
+      renderDashStatNum('referralCount', liteData.referralCount, 'referralCount', editable && !isExecDash);
+      renderDashStatNum('screenedCount', liteData.screenedCount, 'screenedCount', editable && !isExecDash);
+      renderDashStatNum('alertCount', liteData.alertCount || 0, 'alertCount', false);
+      try { renderSchoolCalendarBoard(loadDashboard(), editable); } catch (eCal2) {}
+      updateDashboardLayoutForRole();
+      updateStudentCounts();
+      /* กราฟ/ extras ทีหลัง เมื่อ cloud ว่าง และพ้นช่วงเลื่อนงานหนัก */
+      if (isExecDash) {
+        var waitFullDash_ = function () {
+          if (_softBootstrapPending || _cloudBootstrapRunning ||
+              (typeof isPostLoginHeavyDeferred_ === 'function' && isPostLoginHeavyDeferred_())) {
+            setTimeout(waitFullDash_, 1200);
+            return;
+          }
+          try {
+            invalidateAdminLiveCache();
+            var full = computeAdminLiveData({ skipCharts: true });
+            renderAdminDashboardExtras(full);
+            scheduleAdminDashboardCharts(full);
+          } catch (eFull) { console.warn('[SH dash full]', eFull); }
+        };
+        setTimeout(waitFullDash_, 900);
+      }
+      return;
+    }
+    var cachedBefore = _adminLiveCache;
+    if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
     var live = null;
-    var data = isExecDash ? (live = computeAdminLiveData(), live.display) : loadDashboard();
-    var reusedLiveCache = !!(cachedBefore && live && live === cachedBefore);
+    /* รอบปกติ: คำนวณตัวเลขอย่างเดียว ยังไม่สร้างกราฟทั้งชุด */
+    var data = isExecDash
+      ? (live = computeAdminLiveData({ skipCharts: true }), live.display)
+      : loadDashboard();
+    var reusedLiveCache = !!(cachedBefore && live && live === cachedBefore && live.charts);
     visitCount = parseInt(data.todayVisit, 10) || 0;
     renderDashStatNum('dashStaffCount', data.staffCount, 'staffCount', editable && !isExecDash);
     renderDashStatNum('todayVisit', data.todayVisit, 'todayVisit', editable && !isExecDash);
@@ -14484,6 +14624,7 @@
   }
   function syncDashboardStatsFromRecords() {
     if (typeof isFullStaffRole !== 'function' || !isFullStaffRole()) return;
+    if (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) return;
     var visits = loadVisitRecords();
     var d = loadDashboard();
     var todayVisit = visits.filter(function(r) {
@@ -15920,40 +16061,114 @@
   function scheduleAdminDashboardCharts(live) {
     if (!isExecDashboardRole()) return;
     if (_adminChartRenderTimer) clearTimeout(_adminChartRenderTimer);
+    /* หน่วงหลัง quiet / bootstrap — ห้ามคำนวณกราฟซ้อนงานหนัก */
+    var quietLeft = 0;
+    try {
+      if (typeof _postLoginQuietUntil === 'number') quietLeft = Math.max(0, _postLoginQuietUntil - Date.now());
+    } catch (eQ) {}
+    var chartDelay = Math.max(
+      quietLeft + 500,
+      (_softBootstrapPending || _cloudBootstrapRunning) ? 1200 : 400
+    );
     _adminChartRenderTimer = setTimeout(function() {
       _adminChartRenderTimer = null;
       if (!isExecDashboardRole()) return;
       var dash = document.getElementById('section-dashboard');
       if (!dash || !dash.classList.contains('active')) return;
-      var data = live || computeAdminLiveData();
-      renderAdminDashboardCharts(data);
-      _adminChartsRenderedForCache = data;
-    }, 48);
+      if (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) {
+        scheduleAdminDashboardCharts(live);
+        return;
+      }
+      if (_softBootstrapPending || _cloudBootstrapRunning ||
+          (typeof isPostLoginHeavyDeferred_ === 'function' && isPostLoginHeavyDeferred_())) {
+        scheduleAdminDashboardCharts(live);
+        return;
+      }
+      buildAndRenderAdminChartsChunked_();
+    }, chartDelay);
   }
-  function renderAdminDashboardCharts(live) {
+  var _adminChartBuildTimer = null;
+  function buildAndRenderAdminChartsChunked_() {
+    if (_adminChartBuildTimer) {
+      clearTimeout(_adminChartBuildTimer);
+      _adminChartBuildTimer = null;
+    }
+    var data = computeAdminLiveData({ skipCharts: true });
+    if (!data.charts) data.charts = {};
+    var jobs = [
+      function () { data.charts.healthSummary = computeAdminHealthSummary(); },
+      function () { data.charts.healthTrend = computeAdminHealthTrend(); },
+      function () { data.charts.health = computeAdminHealthProblems(); },
+      function () { data.charts.gauges = computeAdminGauges(); },
+      function () { data.charts.referralGrid = computeAdminReferralGrid(); },
+      function () { data.charts.clinicGrouped = computeAdminClinicGrouped(); },
+      function () { data.charts.vaccineRings = computeAdminVaccineRings(); },
+      function () { data.charts.screening = computeAdminScreeningChart(); },
+      function () { data.charts.nutrition = computeAdminNutritionChart(); },
+      function () { data.charts.chronic = computeAdminChronicChart(); },
+      function () { data.charts.mental = computeAdminMentalChart(); },
+      function () { data.charts.diseaseWatch = computeAdminDiseaseWatch(); },
+      function () { data.charts.emergencyMonthly = computeAdminEmergencyMonthly(); },
+      function () { data.charts.gradeVisits = computeAdminGradeVisits(); },
+      function () { data.charts.medicineStock = computeAdminMedicineStockChart(); },
+      function () { data.charts.appointmentGrid = computeAdminAppointmentGrid(); }
+    ];
+    var idx = 0;
+    function runOne() {
+      if (!isExecDashboardRole()) return;
+      var dash = document.getElementById('section-dashboard');
+      if (!dash || !dash.classList.contains('active')) return;
+      if (idx < jobs.length) {
+        try { jobs[idx](); } catch (eJob) { console.warn('[SH chart job]', eJob); }
+        idx += 1;
+        _adminChartBuildTimer = setTimeout(runOne, 0);
+        return;
+      }
+      _adminChartBuildTimer = null;
+      /* วาดกราฟหลักก่อน แล้วค่อยโมดูล — yield ระหว่างชุด */
+      try {
+        renderAdminDashboardChartsMain_(data);
+      } catch (eMain) { console.warn('[SH chart main]', eMain); }
+      _adminChartBuildTimer = setTimeout(function () {
+        _adminChartBuildTimer = null;
+        try {
+          renderAdminModuleCharts(data);
+        } catch (eMod) { console.warn('[SH chart mod]', eMod); }
+        _adminChartsRenderedForCache = data;
+      }, 0);
+    }
+    runOne();
+  }
+  function renderAdminDashboardChartsMain_(live) {
     if (!isExecDashboardRole()) return;
-    if (!live) live = computeAdminLiveData();
+    if (!live || !live.charts) return;
     updateAdminChartPeriodNotes();
     var c = live.charts;
     document.querySelectorAll('#dash-admin-charts [id$="-note"]').forEach(function(el) {
       el.removeAttribute('data-base-note');
     });
-    var summary = c.healthSummary.items.slice();
-    var screenedN = c.healthSummary.totalScreened || live.display.screenedCount || 0;
+    var summary = (c.healthSummary && c.healthSummary.items) ? c.healthSummary.items.slice() : [];
+    var screenedN = (c.healthSummary && c.healthSummary.totalScreened) || (live.display && live.display.screenedCount) || 0;
     renderAdminDonutLarge('admin-chart-health-summary', summary, screenedN.toLocaleString('th-TH'), 'มีบันทึกรักษา', 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-summary-note', c.healthSummary.isDemo, false);
-    renderAdminTrendChart('admin-chart-trend', c.healthTrend.trend, 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-trend-note', c.healthTrend.isDemo, false);
-    renderAdminExecHorizBars('admin-chart-health', c.health.items.slice(), 5, 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-health-note', c.health.isDemo, false);
-    renderAdminGauges('admin-chart-gauges', c.gauges.items.slice(), 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-gauges-note', c.gauges.isDemo, false);
-    renderAdminReferralGrid('admin-chart-referral', c.referralGrid.items.slice(), 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-referral-note', c.referralGrid.isDemo, false);
-    renderAdminClinicGrouped('admin-chart-clinic', c.clinicGrouped.items.slice(), 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-clinic-note', c.clinicGrouped.isDemo, false);
-    renderAdminVaccineRings('admin-chart-vaccine', c.vaccineRings.items.slice(), 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-vaccine-note', c.vaccineRings.isDemo, false);
+    setAdminChartDemoNote('admin-chart-summary-note', !!(c.healthSummary && c.healthSummary.isDemo), false);
+    renderAdminTrendChart('admin-chart-trend', (c.healthTrend && c.healthTrend.trend) || { labels: [], series: [] }, 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-trend-note', !!(c.healthTrend && c.healthTrend.isDemo), false);
+    renderAdminExecHorizBars('admin-chart-health', (c.health && c.health.items) ? c.health.items.slice() : [], 5, 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-health-note', !!(c.health && c.health.isDemo), false);
+    renderAdminGauges('admin-chart-gauges', (c.gauges && c.gauges.items) ? c.gauges.items.slice() : [], 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-gauges-note', !!(c.gauges && c.gauges.isDemo), false);
+    renderAdminReferralGrid('admin-chart-referral', (c.referralGrid && c.referralGrid.items) ? c.referralGrid.items.slice() : [], 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-referral-note', !!(c.referralGrid && c.referralGrid.isDemo), false);
+    renderAdminClinicGrouped('admin-chart-clinic', (c.clinicGrouped && c.clinicGrouped.items) ? c.clinicGrouped.items.slice() : [], 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-clinic-note', !!(c.clinicGrouped && c.clinicGrouped.isDemo), false);
+    renderAdminVaccineRings('admin-chart-vaccine', (c.vaccineRings && c.vaccineRings.items) ? c.vaccineRings.items.slice() : [], 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-vaccine-note', !!(c.vaccineRings && c.vaccineRings.isDemo), false);
+  }
+  function renderAdminDashboardCharts(live) {
+    if (!isExecDashboardRole()) return;
+    if (!live) live = computeAdminLiveData();
+    if (!live.charts) live.charts = buildAdminChartsBlock_();
+    renderAdminDashboardChartsMain_(live);
     renderAdminModuleCharts(live);
   }
   function renderAdminModuleCharts(live) {
@@ -15961,28 +16176,34 @@
       invalidateAdminLiveCache();
       live = computeAdminLiveData();
     }
-    var c = live.charts;
-    renderAdminColumnBars('admin-chart-screening', c.screening.items.slice(), 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-screening-note', c.screening.isDemo, false);
-    renderAdminDonut('admin-chart-nutrition', c.nutrition.items.slice(), 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-nutrition-note', c.nutrition.isDemo, false);
-    renderAdminExecHorizBars('admin-chart-chronic', c.chronic.items.slice(), 5, 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-chronic-note', c.chronic.isDemo, false);
-    renderAdminReferralGrid('admin-chart-appointment', c.appointmentGrid.items.slice(), 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-appointment-note', c.appointmentGrid.isDemo, false);
-    renderAdminDonut('admin-chart-mental', c.mental.items.slice(), 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-mental-note', c.mental.isDemo, false);
-    renderAdminExecHorizBars('admin-chart-disease', c.diseaseWatch.items.slice(), 4, 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-disease-note', c.diseaseWatch.isDemo, false);
-    renderAdminColumnBars('admin-chart-emergency', c.emergencyMonthly.items.slice(), 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-emergency-note', c.emergencyMonthly.isDemo, false);
-    var gradeItems = getGradeRegistryCountsByLevel() || c.gradeVisits.items || [];
+    var c = live.charts || {};
+    function itemsOf_(block) {
+      return (block && block.items) ? block.items.slice() : [];
+    }
+    function demoOf_(block) {
+      return !!(block && block.isDemo);
+    }
+    renderAdminColumnBars('admin-chart-screening', itemsOf_(c.screening), 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-screening-note', demoOf_(c.screening), false);
+    renderAdminDonut('admin-chart-nutrition', itemsOf_(c.nutrition), 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-nutrition-note', demoOf_(c.nutrition), false);
+    renderAdminExecHorizBars('admin-chart-chronic', itemsOf_(c.chronic), 5, 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-chronic-note', demoOf_(c.chronic), false);
+    renderAdminReferralGrid('admin-chart-appointment', itemsOf_(c.appointmentGrid), 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-appointment-note', demoOf_(c.appointmentGrid), false);
+    renderAdminDonut('admin-chart-mental', itemsOf_(c.mental), 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-mental-note', demoOf_(c.mental), false);
+    renderAdminExecHorizBars('admin-chart-disease', itemsOf_(c.diseaseWatch), 4, 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-disease-note', demoOf_(c.diseaseWatch), false);
+    renderAdminColumnBars('admin-chart-emergency', itemsOf_(c.emergencyMonthly), 'ยังไม่มีข้อมูล');
+    setAdminChartDemoNote('admin-chart-emergency-note', demoOf_(c.emergencyMonthly), false);
+    var gradeItems = getGradeRegistryCountsByLevel() || itemsOf_(c.gradeVisits) || [];
     renderAdminColumnBars('admin-chart-student', gradeItems, 'ยังไม่มีข้อมูลทะเบียนนักเรียน');
     setAdminChartDemoNote('admin-chart-student-note', !gradeItems.length, false);
-    renderAdminExecHorizBars('admin-chart-medicine', c.medicineStock.items.map(function(it) {
+    renderAdminExecHorizBars('admin-chart-medicine', itemsOf_(c.medicineStock).map(function(it) {
       return { label: it.label, count: it.count, color: it.color, unit: it.unit || '%' };
     }), 5, 'ยังไม่มีข้อมูล');
-    setAdminChartDemoNote('admin-chart-medicine-note', c.medicineStock.isDemo, false);
+    setAdminChartDemoNote('admin-chart-medicine-note', demoOf_(c.medicineStock), false);
   }
   function loadNutritionRecords() {
     try { return JSON.parse(localStorage.getItem('sh-nutrition') || '[]'); } catch (e) { return []; }
@@ -17493,11 +17714,52 @@
     if (!records.length && backup.length) {
       records = backup.slice();
     }
-    /* ซ่อม/enrich ทั้งก้อนแค่ครั้งแรกของเซสชัน — ลดค้างตอนเปิดรายการซ้ำ */
+    _visitRecordsMemCache = records;
+    /* ซ่อมทั้งก้อนห้ามทำตอนอ่านครั้งแรกหลังล็อกอิน — เลื่อนไป idle (กันค้าง) */
     if (!_visitRecordsRepairedThisSession) {
-      var repaired = false;
-      var orphanIdx = 0;
-      records.forEach(function(r) {
+      scheduleIdleVisitRepair_();
+    }
+    return records;
+  }
+  var _visitRepairIdleTimer = null;
+  function scheduleIdleVisitRepair_() {
+    if (_visitRecordsRepairedThisSession) return;
+    if (_visitRepairIdleTimer) return;
+    var kick = function () {
+      _visitRepairIdleTimer = null;
+      if (_visitRecordsRepairedThisSession) return;
+      if (_softBootstrapPending || _cloudBootstrapRunning ||
+          (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) ||
+          _postLoginDashPending) {
+        _visitRepairIdleTimer = setTimeout(kick, 1800);
+        return;
+      }
+      repairVisitRecordsThisSession_();
+    };
+    if (typeof requestIdleCallback === 'function') {
+      _visitRepairIdleTimer = setTimeout(function () {
+        requestIdleCallback(function () { kick(); }, { timeout: 6000 });
+      }, 2500);
+    } else {
+      _visitRepairIdleTimer = setTimeout(kick, 3500);
+    }
+  }
+  function repairVisitRecordsThisSession_() {
+    if (_visitRecordsRepairedThisSession) return;
+    var records = _visitRecordsMemCache;
+    if (!records) {
+      try { records = JSON.parse(localStorage.getItem('sh-visit') || '[]'); } catch (e) { records = []; }
+      if (!Array.isArray(records)) records = [];
+    }
+    var repaired = false;
+    var orphanIdx = 0;
+    var i = 0;
+    var CHUNK = 40;
+    function step() {
+      var end = Math.min(i + CHUNK, records.length);
+      for (; i < end; i++) {
+        var r = records[i];
+        if (!r) continue;
         var before = r.savedAt;
         var beforeRecorded = r.recordedAt;
         var beforeId = r.recordId;
@@ -17522,8 +17784,11 @@
           normalizeVisitRecord(r, 0);
         }
         if (r.savedAt !== before || r.recordedAt !== beforeRecorded || r.recordId !== beforeId) repaired = true;
-        enrichVisitFromStudentRegistry(r);
-      });
+      }
+      if (i < records.length) {
+        setTimeout(step, 0);
+        return;
+      }
       if (pruneEmptyVisitTodayRecords(records)) repaired = true;
       if (dedupeVisitRecordsByStudentDay(records)) repaired = true;
       if (typeof dedupeVisitLocalSheetPairs_ === 'function') {
@@ -17531,15 +17796,16 @@
         records = dedupeVisitLocalSheetPairs_(records);
         if (records.length !== beforeDedupe) repaired = true;
       }
-      var rawLen = 0;
-      try { rawLen = (localStorage.getItem('sh-visit') || '').length; } catch (eLen) {}
-      if (repaired || rawLen > 700000 || records.length > VISIT_LOCAL_MAX_RECORDS) {
-        saveVisitRecords(records, { quiet: true, skipBackup: true });
-      }
+      _visitRecordsMemCache = records;
       _visitRecordsRepairedThisSession = true;
+      if (repaired) {
+        /* เขียน storage ทีหลัง — ห้าม stringify ทันทีหลังซ่อม */
+        setTimeout(function () {
+          saveVisitRecords(records, { quiet: true, skipBackup: true });
+        }, 800);
+      }
     }
-    _visitRecordsMemCache = records;
-    return records;
+    step();
   }
   function saveVisitRecords(records, opts) {
     opts = opts || {};
@@ -18298,6 +18564,17 @@
   function replaceVisitRecordsFromSheetAll(sheetVisits) {
     /* ห้ามทับด้วยอาร์เรย์ว่าง — การดึงชีทล้มเหลวเคยทำให้รายการรักษาในเครื่องหายหมด */
     if (!Array.isArray(sheetVisits) || !sheetVisits.length) return;
+    var incoming = sheetVisits;
+    /* ตัดชีตก่อนทำงานหนัก — ไม่ enrich ทั้งหมื่นแถวบน main thread */
+    if (incoming.length > VISIT_SHEET_MERGE_MAX) {
+      incoming = incoming.slice();
+      incoming.sort(function(a, b) {
+        var tb = Number(b && b.savedAt) || 0;
+        var ta = Number(a && a.savedAt) || 0;
+        return tb - ta;
+      });
+      incoming = incoming.slice(0, VISIT_SHEET_MERGE_MAX);
+    }
     var local = [];
     try { local = JSON.parse(localStorage.getItem('sh-visit') || '[]'); } catch (e) {}
     if (_visitRecordsMemCache && _visitRecordsMemCache.length) {
@@ -18306,19 +18583,18 @@
     var keys = {};
     var merged = [];
     var sheetPrepared = [];
-    sheetVisits.forEach(function(r) {
+    incoming.forEach(function(r) {
       if (typeof applySheetVisitTimestamp_ === 'function') {
         applySheetVisitTimestamp_(r, r.sheetRow ? r.sheetRow - 2 : sheetPrepared.length);
       } else if (typeof assignSheetVisitTodayTime_ === 'function') {
         assignSheetVisitTodayTime_(r, r.sheetRow ? r.sheetRow - 2 : sheetPrepared.length);
       }
-      enrichVisitFromStudentRegistry(r);
+      /* ไม่ enrich จากทะเบียนตอน merge — ชื่อ/ชั้นเติมตอนแสดงผล */
       sheetPrepared.push(r);
     });
     /* ใส่รายการในเครื่องทั้งหมดก่อน — ไม่ทิ้งรายการเก่าจากชีตที่รอบดึงนี้ยังไม่ครบ */
     local.forEach(function(r) {
       if (!r) return;
-      enrichVisitFromStudentRegistry(r);
       if (visitHasMergeKey_(keys, r)) return;
       markVisitMergeKeys_(keys, r);
       merged.push(r);
@@ -18337,10 +18613,21 @@
     if (merged.length > VISIT_SHEET_MERGE_MAX) {
       merged = pruneVisitRecordsForStorage_(merged, VISIT_SHEET_MERGE_MAX);
     }
-    saveVisitRecords(merged, { quiet: true });
+    /* อัปเดตหน่วยความจำทันที — เลื่อน JSON.stringify/localStorage ไปทีหลังตอน bootstrap (กันค้าง) */
     _visitRecordsMemCache = merged;
     _visitRecordsRepairedThisSession = true;
+    if (_softBootstrapPending || _cloudBootstrapRunning ||
+        (typeof _postLoginDashPending !== 'undefined' && _postLoginDashPending)) {
+      if (_deferredVisitSaveTimer) clearTimeout(_deferredVisitSaveTimer);
+      _deferredVisitSaveTimer = setTimeout(function () {
+        _deferredVisitSaveTimer = null;
+        saveVisitRecords(merged, { quiet: true, skipBackup: true });
+      }, 2200);
+    } else {
+      saveVisitRecords(merged, { quiet: true, skipBackup: true });
+    }
   }
+  var _deferredVisitSaveTimer = null;
   var CLOUD_MERGE_MAX_RECORDS = 800;
   function mergeRecordsIntoLocalStorage_(storageKey, incoming, getMergeKey) {
     if (!incoming || !incoming.length) return null;
@@ -18376,77 +18663,132 @@
     try { localStorage.setItem(storageKey, JSON.stringify(local)); } catch (e) {}
     return local;
   }
-  function applyAssessmentDataFromSheet(data) {
+  function applyAssessmentDataFromSheet(data, opts) {
     if (!data) return;
+    opts = opts || {};
+    var quietUi = !!opts.quiet || !!_cloudBootstrapRunning || !!_softBootstrapPending;
     if (data.nutrition && data.nutrition.length) {
       var nut = mergeRecordsIntoLocalStorage_('sh-nutrition', data.nutrition, function(r) {
         return 'nut-' + String(r.id || '').trim();
       });
-      if (nut && typeof renderNutritionFollowup === 'function') renderNutritionFollowup(nut);
+      if (!quietUi && nut && typeof renderNutritionFollowup === 'function') renderNutritionFollowup(nut);
     }
     if (data.screening && data.screening.length) {
       mergeRecordsIntoLocalStorage_('sh-screening', data.screening, function(r) {
         return String(r.recordId || ('scr-' + String(r.id || '').trim() + '-' + String(r.type || '') + '-' + String(r.savedAt || 0)));
       });
-      if (typeof renderScreeningRecords === 'function') renderScreeningRecords();
+      if (!quietUi && typeof renderScreeningRecords === 'function') renderScreeningRecords();
     }
     if (data.chronic && data.chronic.length) {
       chronicRecordsCache = mergeRecordsIntoLocalStorage_('sh-chronic', data.chronic, function(r) {
         return 'chr-' + String(r.id || '').trim();
       }) || chronicRecordsCache;
-      if (typeof filterChronicRecords === 'function') filterChronicRecords();
-      else if (typeof renderChronicRecords === 'function') renderChronicRecords(chronicRecordsCache);
+      if (!quietUi) {
+        if (typeof filterChronicRecords === 'function') filterChronicRecords();
+        else if (typeof renderChronicRecords === 'function') renderChronicRecords(chronicRecordsCache);
+      }
     }
     if (data.diseaseStudent && data.diseaseStudent.length) {
       mergeRecordsIntoLocalStorage_('sh-disease-reports', data.diseaseStudent, function(r) {
         return 'dis-' + String(r.id || '').trim() + '-' + String(r.savedAt || 0) + '-' + String(r.disease || '');
       });
-      if (typeof renderDiseaseReports === 'function') renderDiseaseReports();
+      if (!quietUi && typeof renderDiseaseReports === 'function') renderDiseaseReports();
     }
     if (data.diseaseStaff && data.diseaseStaff.length) {
       mergeRecordsIntoLocalStorage_('sh-disease-reports', data.diseaseStaff, function(r) {
         return 'dis-staff-' + String(r.savedAt || 0) + '-' + String(r.disease || '') + '-' + String(r.room || '');
       });
-      if (typeof syncDiseaseSituationFromStaffReports === 'function') syncDiseaseSituationFromStaffReports();
+      if (!quietUi && typeof syncDiseaseSituationFromStaffReports === 'function') syncDiseaseSituationFromStaffReports();
     }
-    if (typeof renderDiseaseSituation === 'function') renderDiseaseSituation();
+    if (!quietUi && typeof renderDiseaseSituation === 'function') renderDiseaseSituation();
     if (data.mental && data.mental.length) {
       mergeRecordsIntoLocalStorage_('sh-mental', data.mental, function(r) {
         return String(r.recordId || ('mh-' + String(r.id || '').trim() + '-' + String(r.type || '') + '-' + String(r.savedAt || 0)));
       });
-      if (typeof renderMentalRecords === 'function') renderMentalRecords();
+      if (!quietUi && typeof renderMentalRecords === 'function') renderMentalRecords();
     }
   }
   var _cloudBootstrapRunning = false;
   var _cloudBootstrapDone = false;
+  var _softBootstrapPending = false;
+  var _postLoginQuietUntil = 0;
+  var _postLoginFullDashTimer = null;
+  var _postLoginDashPending = false;
+  var _postLoginUseLiteOnce = false;
+  var _postLoginDeferHeavyUntil = 0;
+  function beginPostLoginQuiet_(ms) {
+    _postLoginQuietUntil = Date.now() + (ms || 10000);
+  }
+  function isPostLoginQuiet_() {
+    return Date.now() < _postLoginQuietUntil;
+  }
+  function isPostLoginHeavyDeferred_() {
+    return Date.now() < _postLoginDeferHeavyUntil;
+  }
+  function schedulePostLoginFullDash_() {
+    _postLoginDashPending = true;
+    if (_postLoginFullDashTimer) clearTimeout(_postLoginFullDashTimer);
+    var wait = Math.max(0, _postLoginQuietUntil - Date.now()) + 280;
+    _postLoginFullDashTimer = setTimeout(function () {
+      _postLoginFullDashTimer = null;
+      /* ถ้าระหว่างรอ cloud ยังรันอยู่ — เลื่อนอีกครั้ง กันซ้อนงานหนัก */
+      if (_cloudBootstrapRunning) {
+        schedulePostLoginFullDash_();
+        return;
+      }
+      _postLoginQuietUntil = 0;
+      _postLoginUseLiteOnce = true;
+      var role = typeof getCurrentRole === 'function' ? getCurrentRole() : '';
+      if (!role) {
+        _postLoginDashPending = false;
+        return;
+      }
+      var dash = document.getElementById('section-dashboard');
+      if (!dash || !dash.classList.contains('active')) {
+        _postLoginDashPending = false;
+        return;
+      }
+      try {
+        if (typeof isExecDashboardRole === 'function' && isExecDashboardRole(role)) {
+          if (typeof renderDashboardNow === 'function') renderDashboardNow();
+        } else if (typeof renderDashboard === 'function') {
+          renderDashboard();
+        }
+      } catch (eDash) { console.warn('[SH post-login dash]', eDash); }
+      _postLoginDashPending = false;
+    }, wait);
+  }
   var _cloudUiRefreshTimer = null;
   function refreshUIAfterCloudBootstrap() {
     clearTimeout(_cloudUiRefreshTimer);
     _cloudUiRefreshTimer = setTimeout(function() {
       refreshUIAfterCloudBootstrapNow_();
-    }, 100);
+    }, 450);
   }
   function refreshUIAfterCloudBootstrapNow_() {
+    /* รวมรีเฟรชแดชบอร์ดเหลือครั้งเดียวผ่าน schedulePostLoginFullDash_ */
+    if (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) {
+      if (typeof updateStudentCounts === 'function') updateStudentCounts();
+      schedulePostLoginFullDash_();
+      return;
+    }
+    if (typeof updateStudentCounts === 'function') updateStudentCounts();
+    var activePanel = document.querySelector('.section-panel.active');
+    var activeId = activePanel && activePanel.id ? activePanel.id.replace(/^section-/, '') : '';
+    if (activeId === 'dashboard') {
+      /* ห้าม renderDashboardNow ซ้ำ — รวมเข้าคิวเดียว */
+      schedulePostLoginFullDash_();
+      return;
+    }
     try {
       if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
       if (typeof syncReferralDashboardCount === 'function') syncReferralDashboardCount();
     } catch (e) {}
     invalidateAdminLiveCache();
-    /* ไม่เคลียร์ visit cache — ข้อมูลถูก merge/บันทึกแล้วใน replaceVisitRecordsFromSheetAll */
-    if (typeof updateStudentCounts === 'function') updateStudentCounts();
     if (typeof syncAllSchoolCalendarViews === 'function' && typeof loadDashboard === 'function') {
       syncAllSchoolCalendarViews(loadDashboard());
     }
-    var activePanel = document.querySelector('.section-panel.active');
-    var activeId = activePanel && activePanel.id ? activePanel.id.replace(/^section-/, '') : '';
-    if (activeId === 'dashboard') {
-      if (typeof isExecDashboardRole === 'function' && isExecDashboardRole()) {
-        if (typeof renderDashboardNow === 'function') renderDashboardNow();
-      } else if (typeof renderDashboard === 'function') {
-        renderDashboard();
-        if (typeof refreshAllLiveCharts === 'function') refreshAllLiveCharts();
-      }
-    } else if (activeId === 'visit') {
+    if (activeId === 'visit') {
       if (typeof isFullStaffRole === 'function' && isFullStaffRole()) {
         if (typeof renderVisitToday === 'function') renderVisitToday();
         if (typeof updateVisitCalendarLayout === 'function') updateVisitCalendarLayout();
@@ -18488,69 +18830,131 @@
     if (typeof renderNurseAlerts === 'function') renderNurseAlerts();
   }
   window.refreshUIAfterCloudBootstrap = refreshUIAfterCloudBootstrap;
-  function applyCloudDataBundle(bundle) {
-    if (!bundle) return false;
+  function applyCloudDataBundle(bundle, done) {
+    if (!bundle) {
+      if (typeof done === 'function') done(false);
+      return false;
+    }
     var applied = false;
-    if (bundle.visits && bundle.visits.length) {
-      if (typeof _suppressVisitSheetRefreshUntil === 'number' && Date.now() < _suppressVisitSheetRefreshUntil) {
-        /* หลังบันทึกใหม่ — อย่าดึงชีทมาทับจนเกิดรายการซ้ำ */
-      } else {
-        replaceVisitRecordsFromSheetAll(bundle.visits);
-        applied = true;
+    var steps = [
+      function () {
+        if (bundle.visits && bundle.visits.length) {
+          if (typeof _suppressVisitSheetRefreshUntil === 'number' && Date.now() < _suppressVisitSheetRefreshUntil) {
+            /* หลังบันทึกใหม่ — อย่าดึงชีทมาทับจนเกิดรายการซ้ำ */
+          } else {
+            replaceVisitRecordsFromSheetAll(bundle.visits);
+            applied = true;
+          }
+        }
+      },
+      function () {
+        if (bundle.assessment && bundle.assessment.nutrition && bundle.assessment.nutrition.length) {
+          applyAssessmentDataFromSheet({ nutrition: bundle.assessment.nutrition }, { quiet: true });
+          applied = true;
+        }
+      },
+      function () {
+        if (bundle.assessment && bundle.assessment.screening && bundle.assessment.screening.length) {
+          applyAssessmentDataFromSheet({ screening: bundle.assessment.screening }, { quiet: true });
+          applied = true;
+        }
+      },
+      function () {
+        if (bundle.assessment && bundle.assessment.chronic && bundle.assessment.chronic.length) {
+          applyAssessmentDataFromSheet({ chronic: bundle.assessment.chronic }, { quiet: true });
+          applied = true;
+        }
+      },
+      function () {
+        if (!bundle.assessment) return;
+        var piecemeal = {};
+        if (bundle.assessment.diseaseStudent && bundle.assessment.diseaseStudent.length) {
+          piecemeal.diseaseStudent = bundle.assessment.diseaseStudent;
+        }
+        if (bundle.assessment.diseaseStaff && bundle.assessment.diseaseStaff.length) {
+          piecemeal.diseaseStaff = bundle.assessment.diseaseStaff;
+        }
+        if (bundle.assessment.mental && bundle.assessment.mental.length) {
+          piecemeal.mental = bundle.assessment.mental;
+        }
+        if (Object.keys(piecemeal).length) {
+          applyAssessmentDataFromSheet(piecemeal, { quiet: true });
+          applied = true;
+        }
+      },
+      function () {
+        if (bundle.calendar && bundle.calendar.length) {
+          mergeCalendarFromSheet(bundle.calendar);
+          applied = true;
+        }
+      },
+      function () {
+        if (bundle.vaccine && bundle.vaccine.length) {
+          mergeRecordsIntoLocalStorage_('sh-vaccine', bundle.vaccine, function(r) {
+            return String(r.recordId || ('vac-' + String(r.id || '').trim() + '-' + String(r.vaccine || '')));
+          });
+          applied = true;
+        }
+        if (bundle.emergency && bundle.emergency.length) {
+          mergeRecordsIntoLocalStorage_('sh-emergency', bundle.emergency, function(r) {
+            return 'emg-' + String(r.savedAt || 0) + '-' + String(r.name || '');
+          });
+          applied = true;
+        }
+      },
+      function () {
+        if (bundle.referral && bundle.referral.length) {
+          mergeRecordsIntoLocalStorage_('sh-referral', bundle.referral, function(r) {
+            return String(r.uid || r.sourceKey || ('ref-' + String(r.savedAt || 0)));
+          });
+          applied = true;
+        }
+        if (bundle.environment && bundle.environment.length) {
+          mergeRecordsIntoLocalStorage_('sh-environment', bundle.environment, function(r) {
+            return 'env-' + String(r.savedAt || 0);
+          });
+          applied = true;
+        }
+        if (bundle.medicine && bundle.medicine.length) {
+          try { localStorage.setItem('sh-medicine-stock', JSON.stringify(bundle.medicine)); } catch (e) {}
+          medicineStockCache = bundle.medicine;
+          applied = true;
+        }
+      },
+      function () {
+        if (bundle.studentRegistry && bundle.studentRegistry.length) {
+          applyStudentRegistryFromSheet(bundle.studentRegistry);
+          applied = true;
+        }
+        if (bundle.teacherRegistry && bundle.teacherRegistry.length) {
+          applyTeacherRegistryFromSheet(bundle.teacherRegistry);
+          applied = true;
+        }
+      },
+      function () {
+        if (applied) {
+          try { localStorage.setItem('sh-cloud-bootstrap-at', String(Date.now())); } catch (e) {}
+          /* ไม่เรียก refreshUI ที่นี่ — ให้ caller เรียกหลัง yield หนึ่งรอบ */
+        }
+        if (typeof done === 'function') done(applied);
       }
+    ];
+    if (typeof done !== 'function') {
+      /* sync fallback สำหรับโค้ดเก่าที่ยังไม่ส่ง callback */
+      for (var si = 0; si < steps.length; si++) {
+        try { steps[si](); } catch (eStep) { console.warn('[SH cloud step]', eStep); }
+      }
+      return applied;
     }
-    if (bundle.assessment) {
-      applyAssessmentDataFromSheet(bundle.assessment);
-      if (bundle.assessment.nutrition && bundle.assessment.nutrition.length) applied = true;
+    var idx = 0;
+    function runStep() {
+      if (idx >= steps.length) return;
+      try { steps[idx](); } catch (eStep2) { console.warn('[SH cloud step]', eStep2); }
+      idx += 1;
+      if (idx < steps.length) setTimeout(runStep, 0);
     }
-    if (bundle.calendar && bundle.calendar.length) {
-      mergeCalendarFromSheet(bundle.calendar);
-      applied = true;
-    }
-    if (bundle.studentRegistry && bundle.studentRegistry.length) {
-      applyStudentRegistryFromSheet(bundle.studentRegistry);
-      applied = true;
-    }
-    if (bundle.teacherRegistry && bundle.teacherRegistry.length) {
-      applyTeacherRegistryFromSheet(bundle.teacherRegistry);
-      applied = true;
-    }
-    if (bundle.vaccine && bundle.vaccine.length) {
-      mergeRecordsIntoLocalStorage_('sh-vaccine', bundle.vaccine, function(r) {
-        return String(r.recordId || ('vac-' + String(r.id || '').trim() + '-' + String(r.vaccine || '')));
-      });
-      applied = true;
-    }
-    if (bundle.emergency && bundle.emergency.length) {
-      mergeRecordsIntoLocalStorage_('sh-emergency', bundle.emergency, function(r) {
-        return 'emg-' + String(r.savedAt || 0) + '-' + String(r.name || '');
-      });
-      applied = true;
-    }
-    if (bundle.referral && bundle.referral.length) {
-      mergeRecordsIntoLocalStorage_('sh-referral', bundle.referral, function(r) {
-        return String(r.uid || r.sourceKey || ('ref-' + String(r.savedAt || 0)));
-      });
-      applied = true;
-    }
-    if (bundle.environment && bundle.environment.length) {
-      mergeRecordsIntoLocalStorage_('sh-environment', bundle.environment, function(r) {
-        return 'env-' + String(r.savedAt || 0);
-      });
-      applied = true;
-    }
-    if (bundle.medicine && bundle.medicine.length) {
-      try { localStorage.setItem('sh-medicine-stock', JSON.stringify(bundle.medicine)); } catch (e) {}
-      medicineStockCache = bundle.medicine;
-      applied = true;
-    }
-    if (applied) {
-      try { localStorage.setItem('sh-cloud-bootstrap-at', String(Date.now())); } catch (e) {}
-      if (typeof applyStudentProfilePatches === 'function') applyStudentProfilePatches();
-      if (typeof applyTeacherProfilePatches === 'function') applyTeacherProfilePatches();
-      refreshUIAfterCloudBootstrap();
-    }
-    return applied;
+    runStep();
+    return true;
   }
   function stampCloudBootstrapAt_() {
     try { localStorage.setItem('sh-cloud-bootstrap-at', String(Date.now())); } catch (e) {}
@@ -18583,15 +18987,15 @@
       showSheetToast_('กำลังโหลดข้อมูลจาก Google Sheet...');
     }
     fetchAllCloudDataFromSheet().then(function(bundle) {
-      _cloudBootstrapRunning = false;
-      var applied = false;
-      try { applied = applyCloudDataBundle(bundle); } catch (eApply) { console.warn('[SH cloud]', eApply); }
-      _cloudBootstrapDone = true;
-      stampCloudBootstrapAt_();
-      if (applied && typeof showSheetToast_ === 'function' && opts.toast !== false) {
-        showSheetToast_('โหลดข้อมูลจาก Google Sheet แล้ว');
-      }
-      if (callback) callback(applied);
+      applyCloudDataBundle(bundle, function(applied) {
+        _cloudBootstrapRunning = false;
+        _cloudBootstrapDone = true;
+        stampCloudBootstrapAt_();
+        if (applied && typeof showSheetToast_ === 'function' && opts.toast !== false) {
+          showSheetToast_('โหลดข้อมูลจาก Google Sheet แล้ว');
+        }
+        if (callback) callback(!!applied);
+      });
     }).catch(function() {
       _cloudBootstrapRunning = false;
       _cloudBootstrapDone = true;
@@ -18609,6 +19013,10 @@
       if (callback) callback();
       return;
     }
+    if (_cloudBootstrapRunning || _softBootstrapPending) {
+      if (callback) callback();
+      return;
+    }
     if (typeof fetchAllAssessmentDataFromSheet !== 'function') {
       if (callback) callback();
       return;
@@ -18620,7 +19028,11 @@
     assessmentSheetRefreshPending = true;
     fetchAllAssessmentDataFromSheet().then(function(data) {
       assessmentSheetRefreshPending = false;
-      applyAssessmentDataFromSheet(data);
+      if (_cloudBootstrapRunning || _softBootstrapPending) {
+        if (callback) callback();
+        return;
+      }
+      applyAssessmentDataFromSheet(data, { quiet: true });
       if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
       if (typeof refreshAllLiveCharts === 'function') refreshAllLiveCharts();
       if (callback) callback();
@@ -18632,6 +19044,11 @@
   var visitSheetRefreshPending = false;
   function refreshAllVisitRecordsFromSheetForStaff(callback) {
     if (typeof isFullStaffRole === 'function' && !isFullStaffRole()) {
+      if (callback) callback();
+      return;
+    }
+    /* กำลัง soft/cloud bootstrap อยู่ — ห้ามดึงชีตรักษาซ้ำซ้อน */
+    if (_cloudBootstrapRunning || _softBootstrapPending) {
       if (callback) callback();
       return;
     }
@@ -18651,6 +19068,10 @@
     visitSheetRefreshPending = true;
     fetchAllVisitRecordsFromSheet().then(function(sheetVisits) {
       visitSheetRefreshPending = false;
+      if (_cloudBootstrapRunning || _softBootstrapPending) {
+        if (callback) callback();
+        return;
+      }
       if (typeof _suppressVisitSheetRefreshUntil === 'number' && Date.now() < _suppressVisitSheetRefreshUntil) {
         if (typeof renderVisitToday === 'function') renderVisitToday();
         if (callback) callback();
@@ -18661,9 +19082,7 @@
       }
       if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
       if (typeof renderVisitToday === 'function') renderVisitToday();
-      if (typeof renderVisitHistory === 'function') renderVisitHistory();
-      if (typeof renderDashboard === 'function') renderDashboard();
-      if (typeof refreshAllLiveCharts === 'function') refreshAllLiveCharts();
+      /* ไม่เรียก renderDashboard + refreshAllLiveCharts ซ้อน — ให้ caller ตัดสินใจ */
       if (callback) callback();
     }).catch(function() {
       visitSheetRefreshPending = false;
@@ -21473,6 +21892,7 @@
     _studentIdIndex = Object.create(null);
     _studentLookupMiss = Object.create(null);
     _studentIdIndexBuilt = false;
+    if (typeof invalidateStudentCountCache_ === 'function') invalidateStudentCountCache_();
   }
   function ensureStudentIdIndex_() {
     if (_studentIdIndexBuilt || typeof STUDENT_BASIC === 'undefined') return;
@@ -21825,15 +22245,16 @@
     if (typeof renderTeacherHomeroomRoster === 'function') renderTeacherHomeroomRoster();
   }
   function scheduleDeferredStaffSheetSync(role) {
-    if (_cloudBootstrapDone && Date.now() - parseInt(localStorage.getItem('sh-cloud-bootstrap-at') || '0', 10) < 120000) {
-      renderVisitToday();
+    /* soft bootstrap หลังล็อกอินจะดึงชีตทั้งชุดอยู่แล้ว — ห้ามยิงซ้ำ */
+    if (_softBootstrapPending || _cloudBootstrapRunning) return;
+    if (_cloudBootstrapDone && Date.now() - parseInt(localStorage.getItem('sh-cloud-bootstrap-at') || '0', 10) < 180000) {
       return;
     }
     if (typeof isFullStaffRole === 'function' && isFullStaffRole(role)) {
-      var baseDelay = isExecDashboardRole(role) ? 500 : 250;
-      /* แยกโหลดชีตเป็นช่วง ๆ แทนการยิงพร้อมกัน 5 เส้น — ลดอาการค้างตอนเข้าสู่ระบบ */
+      var baseDelay = isExecDashboardRole(role) ? 800 : 400;
       setTimeout(function() {
         if (getCurrentRole() !== role) return;
+        if (_softBootstrapPending || _cloudBootstrapRunning) return;
         refreshAllVisitRecordsFromSheetForStaff(function() {
           invalidateAdminLiveCache();
           if (isExecDashboardRole()) {
@@ -21844,6 +22265,7 @@
       }, baseDelay);
       setTimeout(function() {
         if (getCurrentRole() !== role) return;
+        if (_softBootstrapPending || _cloudBootstrapRunning) return;
         if (role === 'nurse' || role === 'admin' || role === 'teacher') {
           refreshCalendarFromSheet();
         }
@@ -21854,13 +22276,13 @@
             if (dash && dash.classList.contains('active')) renderDashboardNow();
           }
         });
-      }, baseDelay + 1600);
+      }, baseDelay + 2200);
       setTimeout(function() {
         if (getCurrentRole() !== role) return;
+        if (_softBootstrapPending || _cloudBootstrapRunning) return;
         refreshStudentRegistryFromSheetForStaff();
         refreshTeacherRegistryFromSheetForStaff();
-        /* ไม่ auto-upload ทะเบียนทั้งชุดตอนล็อกอิน — กดปุ่มซิงค์เมื่อต้องการ */
-      }, baseDelay + 3200);
+      }, baseDelay + 4000);
       return;
     }
     renderVisitToday();
@@ -21885,9 +22307,20 @@
   function scheduleRoleHeavyRefresh(role) {
     clearTimeout(_roleHeavyRefreshTimer);
     _pendingHeavyRole = role;
+    var wait = 48;
+    if (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) {
+      wait = Math.max(48, (_postLoginQuietUntil - Date.now()) + 300);
+    } else if (_softBootstrapPending || _cloudBootstrapRunning) {
+      wait = 900;
+    }
     _roleHeavyRefreshTimer = setTimeout(function() {
+      if (_softBootstrapPending || _cloudBootstrapRunning ||
+          (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_())) {
+        scheduleRoleHeavyRefresh(_pendingHeavyRole);
+        return;
+      }
       runRoleHeavyRefresh(_pendingHeavyRole);
-    }, 48);
+    }, wait);
   }
   function runRoleHeavyRefresh(role) {
     if (getCurrentRole() !== role) return;
@@ -21910,8 +22343,13 @@
       renderVaccineHpvCoverageChart();
     }
     if (activeId === 'dashboard') {
-      if (isExecDashboardRole(role)) renderDashboardNow();
-      else {
+      /* หลังล็อกอินมีคิวแดชบอร์ดอยู่แล้ว — ห้าม render ซ้ำจนค้าง */
+      if (_postLoginDashPending || _softBootstrapPending || _cloudBootstrapRunning ||
+          (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_())) {
+        if (typeof schedulePostLoginFullDash_ === 'function') schedulePostLoginFullDash_();
+      } else if (isExecDashboardRole(role)) {
+        renderDashboardNow();
+      } else {
         renderDashboard();
         refreshAllLiveCharts();
       }
@@ -21925,7 +22363,9 @@
     if ((role === 'teacher' || role === 'nursing_student' || role === 'admin' || role === 'student' || staffMasterAccess) && activeId === 'school-calendar') {
       refreshTeacherSchoolCalendar();
     }
-    scheduleDeferredStaffSheetSync(role);
+    if (!_softBootstrapPending && !_cloudBootstrapRunning) {
+      scheduleDeferredStaffSheetSync(role);
+    }
     if (typeof renderNurseAlerts === 'function') renderNurseAlerts();
   }
   function applyRolePermissions(roleKey) {
@@ -22077,35 +22517,129 @@
     saveAppSession();
   }
   function softBootstrapAfterLogin_() {
-    /* หน่วงสั้นๆ ให้ UI หลังล็อกอินเรนเดอร์ก่อน แล้วค่อย parse ไฟล์ใหญ่ / ดึงชีต */
-    setTimeout(function () {
-      if (typeof ensureRegistryDataLoaded === 'function') {
-        ensureRegistryDataLoaded(function () {
-          if (typeof bootstrapCloudDataFromSheet !== 'function') {
-            if (typeof scheduleRoleHeavyRefresh === 'function') scheduleRoleHeavyRefresh(getCurrentRole());
-            return;
-          }
-          bootstrapCloudDataFromSheet({ toast: false }, function (applied) {
-            if (applied && typeof refreshUIAfterCloudBootstrap === 'function') {
-              refreshUIAfterCloudBootstrap();
-            } else if (typeof scheduleRoleHeavyRefresh === 'function') {
-              var role = getCurrentRole();
-              if (role) scheduleRoleHeavyRefresh(role);
-            }
-          });
-        });
-      } else if (typeof bootstrapCloudDataFromSheet === 'function') {
-        bootstrapCloudDataFromSheet({ toast: false }, function (applied) {
-          if (applied && typeof refreshUIAfterCloudBootstrap === 'function') refreshUIAfterCloudBootstrap();
-        });
+    /* กันเรียกซ้ำจาก enterApp + session restore */
+    if (_softBootstrapPending) return;
+    _softBootstrapPending = true;
+    var roleNow = typeof getCurrentRole === 'function' ? getCurrentRole() : '';
+    var needStudentFast = !!(roleNow === 'student' || (typeof isLimitedUserRole === 'function' && isLimitedUserRole(roleNow)));
+    /*
+     * Staff: ไม่ parse student-basic-data.js (~2.3MB) ตอนล็อกอิน — โหลดทีหลัง/ตอนเปิดทะเบียน
+     * นักเรียน: ต้องมีทะเบียนเร็วสำหรับฟอร์ม
+     */
+    var quietMs = needStudentFast ? 450 : 1600;
+    if (!needStudentFast && typeof beginPostLoginQuiet_ === 'function') {
+      beginPostLoginQuiet_(Math.max(quietMs + 3500, 5500));
+    }
+    /* ทะเบียนครูเบา (~70KB) — โหลดได้ทันที */
+    if (typeof ensureTeacherBasicDataLoaded === 'function') {
+      ensureTeacherBasicDataLoaded(function () {
+        try {
+          if (typeof initWhenTeacherDataReady === 'function') initWhenTeacherDataReady();
+        } catch (eT) {}
+      });
+    }
+    function stampStudentCountAndIndex_() {
+      try {
+        if (typeof applyStudentProfilePatches === 'function') applyStudentProfilePatches();
+        if (typeof applyStudentDeletedIds_ === 'function') applyStudentDeletedIds_();
+        if (typeof ensureStudentIdIndex_ === 'function') ensureStudentIdIndex_();
+        if (typeof STUDENT_BASIC !== 'undefined' && STUDENT_BASIC) {
+          var n = Object.keys(STUDENT_BASIC).length;
+          _studentCountCache = n;
+          try { localStorage.setItem('sh-student-count', String(n)); } catch (eSet) {}
+        }
+        if (typeof updateStudentCounts === 'function') updateStudentCounts();
+      } catch (eStamp) {}
+    }
+    function scheduleDeferredStudentRegistryLoad_() {
+      try {
+        if (typeof STUDENT_BASIC !== 'undefined') return;
+      } catch (e0) {}
+      if (_softBootstrapPending || _cloudBootstrapRunning ||
+          (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_())) {
+        setTimeout(scheduleDeferredStudentRegistryLoad_, 2500);
+        return;
       }
-    }, 120);
+      var kick = function () {
+        if (typeof ensureStudentBasicDataLoaded !== 'function') return;
+        ensureStudentBasicDataLoaded(function () {
+          stampStudentCountAndIndex_();
+        });
+      };
+      if (typeof requestIdleCallback === 'function') {
+        requestIdleCallback(kick, { timeout: 8000 });
+      } else {
+        setTimeout(kick, 500);
+      }
+    }
+    function afterCloudDone_(applied) {
+      _softBootstrapPending = false;
+      _postLoginDeferHeavyUntil = 0;
+      /* รวมรีเฟรชเหลือคิวเดียว — ห้ามเรียก refresh + fullDash ซ้อน */
+      if (typeof schedulePostLoginFullDash_ === 'function') {
+        schedulePostLoginFullDash_();
+      } else if (applied && typeof refreshUIAfterCloudBootstrap === 'function') {
+        refreshUIAfterCloudBootstrap();
+      }
+      /* Staff: โหลดไฟล์นักเรียนทีหลังมาก — ไม่ซ้อนกับแดชบอร์ด/คลาวด์ */
+      if (!needStudentFast) {
+        setTimeout(scheduleDeferredStudentRegistryLoad_, 18000);
+      }
+    }
+    function startCloudAfterYield_() {
+      setTimeout(function () {
+        if (typeof bootstrapCloudDataFromSheet !== 'function') {
+          afterCloudDone_(false);
+          return;
+        }
+        bootstrapCloudDataFromSheet({ toast: false }, afterCloudDone_);
+      }, needStudentFast ? 120 : 280);
+    }
+    function loadStudentThenCloud_() {
+      if (typeof ensureStudentBasicDataLoaded === 'function') {
+        ensureStudentBasicDataLoaded(function () {
+          stampStudentCountAndIndex_();
+          setTimeout(startCloudAfterYield_, 0);
+        });
+      } else {
+        startCloudAfterYield_();
+      }
+    }
+    setTimeout(function () {
+      if (needStudentFast) {
+        loadStudentThenCloud_();
+        return;
+      }
+      /*
+       * Staff: เข้าแดชบอร์ดก่อนด้วยข้อมูลในเครื่อง — ดึงชีตทีหลัง ~12 วินาที
+       * (จุดค้างเดิมคือ cloud parse/merge ซ้อนกับแดชบอร์ดเต็มรอบทันทีหลัง quiet)
+       */
+      _softBootstrapPending = false;
+      _postLoginDeferHeavyUntil = Date.now() + 16000;
+      if (typeof schedulePostLoginFullDash_ === 'function') {
+        schedulePostLoginFullDash_();
+      }
+      setTimeout(function () {
+        if (_cloudBootstrapDone || _cloudBootstrapRunning) return;
+        _softBootstrapPending = true;
+        if (typeof requestIdleCallback === 'function') {
+          requestIdleCallback(function () { startCloudAfterYield_(); }, { timeout: 2500 });
+        } else {
+          startCloudAfterYield_();
+        }
+      }, 12000);
+    }, quietMs);
   }
   function enterApp(roleKey) {
     guestMode = '';
     const r = ROLES[roleKey];
     if (!r) return;
     currentRole = roleKey;
+    /* เปิดช่วงเงียบก่อนโชว์แดชบอร์ด — กันงานหนักซ้อนทันที */
+    if (typeof isLimitedUserRole === 'function' && !isLimitedUserRole(roleKey) &&
+        typeof beginPostLoginQuiet_ === 'function') {
+      beginPostLoginQuiet_(5500);
+    }
     dismissBlockingOverlays();
     closeMobileNav();
     updateRoleBadge();
@@ -22275,16 +22809,20 @@
       initWhenTeacherDataReady();
     }
     /*
-     * Welcome: โหลดเฉพาะทะเบียนครู (~70KB) — ไม่โหลดนักเรียน 2.3MB จนกว่าจะล็อกอิน/มี session
-     * มี session: โหลดทั้งคู่ทันที
+     * Welcome: โหลดเฉพาะทะเบียนครู (~70KB)
+     * มี session: enterApp → softBootstrapAfterLogin_ ดูแลแล้ว — ห้ามโหลด 2.3MB + cloud ซ้ำทันที (เคยทำให้ค้าง)
      */
-    var needFullRegistry = !!(hadSession || getCurrentRole());
+    var sessionAlreadyBooting = !!(hadSession && getCurrentRole());
     function kickRegistryLoad_() {
-      if (needFullRegistry) {
-        if (typeof ensureRegistryDataLoaded === 'function') {
-          ensureRegistryDataLoaded(continueAfterRegistryReady_);
-        } else {
-          continueAfterRegistryReady_();
+      if (sessionAlreadyBooting) {
+        /* softBootstrap กำลังทำงาน — แค่ปิด overlay / boot เบา ๆ */
+        setTimeout(function () {
+          try { finishInitialBoot(); } catch (eFin) {}
+        }, 0);
+        if (typeof ensureTeacherBasicDataLoaded === 'function') {
+          ensureTeacherBasicDataLoaded(function () {
+            try { initWhenTeacherDataReady(); } catch (eT2) {}
+          });
         }
         return;
       }
@@ -22295,9 +22833,9 @@
       } else {
         initWhenTeacherDataReady();
       }
-      /* ไม่เรียก initWhenStudentDataReady บน Welcome — จะไปวนรอ 60 วินาทีเปล่า */
+      /* ไม่เรียก initWhenStudentDataReady / ensureRegistry บน Welcome — กันค้าง */
     }
-    if (needFullRegistry) {
+    if (sessionAlreadyBooting) {
       kickRegistryLoad_();
     } else {
       setTimeout(function () {
