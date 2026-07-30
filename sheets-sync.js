@@ -3280,9 +3280,8 @@ function localStorageNeedsSheetBootstrap() {
     try {
       var raw = localStorage.getItem(keys[i]);
       if (!raw || raw === '[]' || raw === '{}') continue;
-      var parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length) return false;
-      if (parsed && typeof parsed === 'object' && Object.keys(parsed).length) return false;
+      /* มีสตริงข้อมูลแล้ว = ไม่ต้อง bootstrap ทั้งชุด — ห้าม JSON.parse ตอนเช็ก (กันค้าง) */
+      if (raw.length > 2) return false;
     } catch (e) {}
   }
   return true;
@@ -3296,10 +3295,14 @@ function shouldBootstrapCloudData(force) {
   var needs = typeof localStorageNeedsSheetBootstrap === 'function' && localStorageNeedsSheetBootstrap();
   /* force (เช่น กดรีเฟรช) อย่างน้อยห่าง 90 วินาที */
   if (force) return age >= 90000;
-  /* เครื่องว่าง: อนุญาตโหลดครั้งแรกทันที แต่ห้ามยิงซ้ำถี่กว่า 3 นาที — กัน OOM */
-  if (needs) return !lastAt || age >= 180000;
-  /* เปิดหน้าปกติ — รีโหลดทั้งชุดไม่บ่อยกว่า 3 นาที */
-  return age >= 180000;
+  /*
+   * มีข้อมูลในเครื่องแล้ว — ห้ามดึงชีตทั้งชุดอัตโนมัติหลังล็อกอิน
+   * (เคยทำให้ Page Unresponsive ทุกครั้งที่อายุ bootstrap ≥ 3 นาที)
+   * ซิงค์รายหน้ายังทำตอนเปิดเมนูบันทึกรักษา/คัดกรอง ตามเดิม
+   */
+  if (!needs) return false;
+  /* เครื่องว่างจริง — อนุญาตโหลดครั้งแรก แต่ไม่ซ้ำถี่กว่า 3 นาที */
+  return !lastAt || age >= 180000;
 }
 
 function parseGvizVaccineRows_(gvizData) {
