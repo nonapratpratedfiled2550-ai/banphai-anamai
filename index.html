@@ -4495,9 +4495,9 @@
   </div>
 </div>
 
-<!-- SH_FREEZE_FIX:2026-07-30e student-registry-open -->
+<!-- SH_FREEZE_FIX:2026-07-30f weekly-charts -->
 <script>
-  window.__SH_FREEZE_FIX = '2026-07-30e';
+  window.__SH_FREEZE_FIX = '2026-07-30f';
 </script>
 <script src="auth-gate.js"></script>
 
@@ -9262,13 +9262,16 @@
     }
     if (id === 'dashboard') {
       renderDashboard();
-      /* กลับมาแดชบอร์ดหลังพ้นช่วงเงียบ — โหลดกราฟแบบเบาได้ */
+      /* กลับมาแดชบอร์ด — ใช้ snapshot รายสัปดาห์หรือโหลดกราฟครั้งเดียว */
       if (typeof isExecDashboardRole === 'function' && isExecDashboardRole() &&
-          typeof isPostLoginSheetSyncSilent_ === 'function' && !isPostLoginSheetSyncSilent_() &&
-          !_adminChartsRenderedForCache && typeof runDeferredAdminChartsAfterLogin_ === 'function') {
+          !_adminChartsSettled && !_adminChartsRenderedForCache &&
+          typeof runDeferredAdminChartsAfterLogin_ === 'function') {
         setTimeout(function () {
-          try { runDeferredAdminChartsAfterLogin_(); } catch (eCh) {}
-        }, 600);
+          try {
+            _deferredAdminChartsArmed = false;
+            runDeferredAdminChartsAfterLogin_();
+          } catch (eCh) {}
+        }, 400);
       }
     }
     if (id === 'school-calendar') {
@@ -11959,12 +11962,71 @@
   var _visitRecordsMemCache = null;
   var _adminLiveCache = null;
   var _adminChartsRenderedForCache = null;
+  var _adminChartsSettled = false;
   var _adminChartRenderTimer = null;
   var _dashRenderCoalesceTimer = null;
   var _refreshLiveChartsTimer = null;
   var _notifyReportTimer = null;
   var _visLiveChartsTimer = null;
-  var ADMIN_LIVE_POLL_MS = 120000;
+  /* กราฟแดชบอร์ดอัปเดตรายสัปดาห์ — ไม่ poll ทุก 2 นาที (เคยทำให้ค้างหลังโหลดเสร็จ) */
+  var ADMIN_LIVE_POLL_MS = 7 * 24 * 60 * 60 * 1000;
+  var ADMIN_CHARTS_WEEKLY_MS = ADMIN_LIVE_POLL_MS;
+  var ADMIN_CHARTS_WEEKLY_KEY = 'sh-admin-charts-weekly';
+  function loadAdminChartsWeeklySnapshot_() {
+    try {
+      var raw = localStorage.getItem(ADMIN_CHARTS_WEEKLY_KEY);
+      if (!raw) return null;
+      var obj = JSON.parse(raw);
+      if (!obj || !obj.at || !obj.charts) return null;
+      if (Date.now() - Number(obj.at) > ADMIN_CHARTS_WEEKLY_MS) return null;
+      return obj;
+    } catch (eSnap) { return null; }
+  }
+  function saveAdminChartsWeeklySnapshot_(live) {
+    if (!live || !live.charts) return;
+    try {
+      localStorage.setItem(ADMIN_CHARTS_WEEKLY_KEY, JSON.stringify({
+        at: Date.now(),
+        display: live.display || null,
+        extraStats: live.extraStats || null,
+        kpi: live.kpi || null,
+        recentActivity: Array.isArray(live.recentActivity) ? live.recentActivity.slice(0, 12) : [],
+        charts: live.charts
+      }));
+    } catch (eSave) {}
+  }
+  function applyAdminChartsWeeklySnapshot_() {
+    var snap = loadAdminChartsWeeklySnapshot_();
+    if (!snap) return null;
+    var live = {
+      display: snap.display || {},
+      extraStats: snap.extraStats || {},
+      alerts: [],
+      kpi: snap.kpi || [],
+      recentActivity: snap.recentActivity || [],
+      charts: snap.charts
+    };
+    _adminLiveCache = live;
+    return live;
+  }
+  function isAdminChartsWeeklyFresh_() {
+    return !!loadAdminChartsWeeklySnapshot_();
+  }
+  function shouldSkipAutoChartRefresh_() {
+    if (_adminChartsSettled) return true;
+    if (_adminChartsRenderedForCache) return true;
+    if (isAdminChartsWeeklyFresh_()) return true;
+    return false;
+  }
+  function markAdminChartsSettled_(live) {
+    if (live) {
+      _adminLiveCache = live;
+      _adminChartsRenderedForCache = live;
+      try { saveAdminChartsWeeklySnapshot_(live); } catch (eMk) {}
+    }
+    _adminChartsSettled = true;
+    _visitReadCapForCharts = 0;
+  }
   function loadMedicineStock() {
     try { return JSON.parse(localStorage.getItem('sh-medicine-stock') || '[]'); } catch (e) { return []; }
   }
@@ -13551,9 +13613,21 @@
     ];
     return { items: items, isDemo: !stats.upcoming && !stats.done && !stats.overdue && !stats.cancelled };
   }
-  function invalidateAdminLiveCache() {
+  function invalidateAdminLiveCache(opts) {
+    opts = opts || {};
+    /* อัปเดตกราฟรายสัปดาห์: ถ้า snapshot ยังสดและวาดแล้ว — อย่าเคลียร์ (กันค้างจาก recompute) */
+    if (!opts.force && !opts.clearWeekly && _adminChartsSettled &&
+        _adminLiveCache && _adminLiveCache.charts && isAdminChartsWeeklyFresh_()) {
+      return;
+    }
     _adminLiveCache = null;
     _adminChartsRenderedForCache = null;
+    if (opts.force || opts.clearWeekly) {
+      _adminChartsSettled = false;
+    }
+    if (opts.clearWeekly) {
+      try { localStorage.removeItem(ADMIN_CHARTS_WEEKLY_KEY); } catch (eClr) {}
+    }
   }
   function invalidateVisitRecordsCache() {
     _visitRecordsMemCache = null;
@@ -14061,6 +14135,21 @@
       }
       return;
     }
+    /* กราฟวาดแล้ว / snapshot รายสัปดาห์ — โชว์จาก cache อย่างเดียว ห้าม compute ซ้ำ (จุดค้าง) */
+    if (isExecDash && _adminChartsSettled && _adminLiveCache && _adminLiveCache.charts) {
+      var settled = _adminLiveCache;
+      var sData = settled.display || loadDashboard();
+      visitCount = parseInt(sData.todayVisit, 10) || 0;
+      renderDashStatNum('dashStaffCount', sData.staffCount, 'staffCount', editable && !isExecDash);
+      renderDashStatNum('todayVisit', sData.todayVisit, 'todayVisit', editable && !isExecDash);
+      renderDashStatNum('referralCount', sData.referralCount, 'referralCount', editable && !isExecDash);
+      renderDashStatNum('screenedCount', sData.screenedCount, 'screenedCount', editable && !isExecDash);
+      renderDashStatNum('alertCount', sData.alertCount || getActiveNurseAlerts().length, 'alertCount', false);
+      try { updateDashboardLayoutForRole(); } catch (eLayS) {}
+      try { renderAdminDashboardExtras(settled); } catch (eExS) {}
+      try { updateStudentCounts(); } catch (eCntS) {}
+      return;
+    }
     var cachedBefore = _adminLiveCache;
     if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
     var live = null;
@@ -14081,8 +14170,10 @@
     if (isExecDash) {
       updateAdminChartPeriodNotes();
       renderAdminDashboardExtras(live);
-      /* ไม่วาดกราฟทั้งชุดซ้ำถ้าใช้ cache เดิมและวาดไปแล้ว — ลดอาการหน้าค้างตอนอยู่แดชบอร์ดนาน ๆ */
-      if (!reusedLiveCache || _adminChartsRenderedForCache !== live) {
+      /* ไม่วาดกราฟทั้งชุดซ้ำถ้า settled / รายสัปดาห์ยังสด / ใช้ cache เดิม */
+      if (_adminChartsSettled || (typeof shouldSkipAutoChartRefresh_ === 'function' && shouldSkipAutoChartRefresh_() && _adminChartsRenderedForCache)) {
+        /* keep */
+      } else if (!reusedLiveCache || _adminChartsRenderedForCache !== live) {
         scheduleAdminDashboardCharts(live);
       }
     } else {
@@ -16094,8 +16185,18 @@
   }
   function scheduleAdminDashboardCharts(live) {
     if (!isExecDashboardRole()) return;
+    if (_adminChartsSettled || (typeof shouldSkipAutoChartRefresh_ === 'function' && shouldSkipAutoChartRefresh_() && _adminChartsRenderedForCache)) {
+      return;
+    }
     /* ช่วงหลังล็อกอิน — ห้ามเริ่มสร้างกราฟจนกว่า silence จะหมด (กันค้าง) */
     if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
+      /* มี snapshot รายสัปดาห์ — อนุญาตให้ deferred โชว์เร็วได้ */
+      if (typeof loadAdminChartsWeeklySnapshot_ === 'function' && loadAdminChartsWeeklySnapshot_()) {
+        if (typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
+          scheduleDeferredAdminChartsAfterLogin_();
+        }
+        return;
+      }
       if (typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
         scheduleDeferredAdminChartsAfterLogin_();
       }
@@ -16140,10 +16241,12 @@
     if (_deferredAdminChartsArmed) return;
     _deferredAdminChartsArmed = true;
     if (_deferredAdminChartsTimer) clearTimeout(_deferredAdminChartsTimer);
-    /* หลัง silence 120s หมดแล้ว + บัฟเฟอร์ — ค่อยคำนวณกราฟ */
+    /* มี snapshot รายสัปดาห์ → โชว์เร็ว; ไม่มี → รอหลัง silence แล้วค่อยคำนวณ */
     var waitMs = 150000;
     try {
-      if (typeof _postLoginNoAutoSheetSyncUntil === 'number') {
+      if (typeof loadAdminChartsWeeklySnapshot_ === 'function' && loadAdminChartsWeeklySnapshot_()) {
+        waitMs = 900;
+      } else if (typeof _postLoginNoAutoSheetSyncUntil === 'number') {
         waitMs = Math.max(150000, (_postLoginNoAutoSheetSyncUntil - Date.now()) + 15000);
       }
     } catch (eW) {}
@@ -16160,11 +16263,36 @@
     }
     var dash = document.getElementById('section-dashboard');
     if (!dash || !dash.classList.contains('active')) return;
+    if (_adminChartsSettled && _adminChartsRenderedForCache) return;
     if (_softBootstrapPending || _cloudBootstrapRunning) {
       _deferredAdminChartsTimer = setTimeout(runDeferredAdminChartsAfterLogin_, 5000);
       return;
     }
-    /* หมดช่วงเงียบซิงค์แล้วถึงจะวาดกราฟ */
+    /* ใช้ snapshot รายสัปดาห์ก่อน — ไม่ต้องคำนวณใหม่ / ไม่ต้องรอ silence */
+    var snapLive = typeof applyAdminChartsWeeklySnapshot_ === 'function' ? applyAdminChartsWeeklySnapshot_() : null;
+    if (snapLive && snapLive.charts) {
+      try {
+        try { renderSchoolCalendarBoard(loadDashboard(), canEditSchoolCalendar()); } catch (eCal0) {}
+        if (snapLive.display) {
+          var editable0 = canEditSchoolCalendar();
+          renderDashStatNum('dashStaffCount', snapLive.display.staffCount, 'staffCount', editable0 && !isExecDashboardRole());
+          renderDashStatNum('todayVisit', snapLive.display.todayVisit, 'todayVisit', editable0 && !isExecDashboardRole());
+          renderDashStatNum('referralCount', snapLive.display.referralCount, 'referralCount', editable0 && !isExecDashboardRole());
+          renderDashStatNum('screenedCount', snapLive.display.screenedCount, 'screenedCount', editable0 && !isExecDashboardRole());
+          renderDashStatNum('alertCount', snapLive.display.alertCount || 0, 'alertCount', false);
+        }
+        renderAdminDashboardExtras(snapLive);
+        renderAdminDashboardChartsMain_(snapLive);
+        setTimeout(function () {
+          try { renderAdminModuleCharts(snapLive); } catch (eMod0) {}
+          markAdminChartsSettled_(snapLive);
+        }, 60);
+      } catch (eSnap) {
+        console.warn('[SH weekly charts]', eSnap);
+      }
+      return;
+    }
+    /* ไม่มี snapshot — รอหมดช่วงเงียบซิงค์แล้วค่อยคำนวณ */
     if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
       _deferredAdminChartsTimer = setTimeout(runDeferredAdminChartsAfterLogin_, 5000);
       return;
@@ -16173,7 +16301,7 @@
       try {
         try { renderSchoolCalendarBoard(loadDashboard(), canEditSchoolCalendar()); } catch (eCal) {}
         _visitReadCapForCharts = 100;
-        invalidateAdminLiveCache();
+        invalidateAdminLiveCache({ force: true });
         var full = computeAdminLiveData({ skipCharts: true });
         renderAdminDashboardExtras(full);
         /* เรียก build ตรง ๆ — ข้าม schedule ที่อาจติด silence อีก */
@@ -16236,8 +16364,7 @@
         try {
           renderAdminModuleCharts(data);
         } catch (eMod) { console.warn('[SH chart mod]', eMod); }
-        _adminChartsRenderedForCache = data;
-        _visitReadCapForCharts = 0;
+        markAdminChartsSettled_(data);
       }, 80);
     }
     runOne();
@@ -16862,12 +16989,24 @@
     }
   }
   function notifyReportDataChanged() {
-    invalidateAdminLiveCache();
+    /* ไม่เคลียร์ snapshot รายสัปดาห์ — กราฟแดชบอร์ดไม่อัปเดตทุกครั้งที่บันทึก */
+    if (!_adminChartsSettled) {
+      try { invalidateAdminLiveCache({ force: true }); } catch (eInv) { invalidateAdminLiveCache(); }
+    }
     /* ไม่เคลียร์ _visitRecordsMemCache — เคยทำให้รายการรักษาหายหลังบันทึก/รีเฟรชกราฟ */
     if (_notifyReportTimer) clearTimeout(_notifyReportTimer);
     _notifyReportTimer = setTimeout(function() {
       _notifyReportTimer = null;
-      refreshAllLiveChartsNow_();
+      var reportsPanel = document.getElementById('section-report');
+      if (reportsPanel && reportsPanel.classList.contains('active')) {
+        try { renderMonthlyReportSummary(); } catch (eRep) {}
+      }
+      /* แดชบอร์ด: ข้าม refresh กราฟถ้า settled / รายสัปดาห์ยังสด */
+      if (typeof shouldSkipAutoChartRefresh_ === 'function' && shouldSkipAutoChartRefresh_()) {
+        /* no-op charts */
+      } else {
+        refreshAllLiveChartsNow_();
+      }
       var diseasePanel = document.getElementById('section-disease');
       if (diseasePanel && diseasePanel.classList.contains('active')) {
         if (typeof renderDiseaseSituation === 'function') renderDiseaseSituation();
@@ -16880,6 +17019,7 @@
     renderDashboardNow();
   }
   function refreshAllLiveCharts() {
+    if (typeof shouldSkipAutoChartRefresh_ === 'function' && shouldSkipAutoChartRefresh_()) return;
     if (_refreshLiveChartsTimer) clearTimeout(_refreshLiveChartsTimer);
     _refreshLiveChartsTimer = setTimeout(function() {
       _refreshLiveChartsTimer = null;
@@ -16894,8 +17034,13 @@
     }
     var dashPanel = document.getElementById('section-dashboard');
     var dashActive = dashPanel && dashPanel.classList.contains('active');
-    if (dashActive && typeof renderDashboardNow === 'function') {
-      renderDashboardNow();
+    if (dashActive) {
+      /* กราฟอัปเดตรายสัปดาห์ — วาดแล้วไม่คำนวณซ้ำ (จุดค้างหลังโหลดเสร็จ) */
+      if (typeof shouldSkipAutoChartRefresh_ === 'function' && shouldSkipAutoChartRefresh_()) {
+        /* keep painted charts */
+      } else if (typeof renderDashboardNow === 'function') {
+        renderDashboardNow();
+      }
     } else if (isExecDashboardRole()) {
       updateDashboardLayoutForRole();
     }
@@ -16954,7 +17099,12 @@
       }
     }
     var reportKeys = ['sh-visit', 'sh-emergency', 'sh-nutrition', 'sh-vaccine', 'sh-chronic', 'sh-disease-reports', 'sh-screening', 'sh-mental', 'sh-dashboard', 'sh-referral', 'sh-nurse-alerts'];
-    if (reportKeys.indexOf(e.key) !== -1) refreshAllLiveCharts();
+    if (reportKeys.indexOf(e.key) !== -1) {
+      /* ไม่รีเฟรชกราฟแดชบอร์ดจาก storage ข้ามแท็บเมื่อยังอยู่ในรอบรายสัปดาห์ */
+      if (!(typeof shouldSkipAutoChartRefresh_ === 'function' && shouldSkipAutoChartRefresh_())) {
+        refreshAllLiveCharts();
+      }
+    }
     if (e.key === 'sh-nurse-alerts' && typeof renderNurseAlerts === 'function') renderNurseAlerts();
     if (e.key === 'sh-dashboard' && typeof syncAllSchoolCalendarViews === 'function') {
       syncAllSchoolCalendarViews(loadDashboard());
@@ -16966,12 +17116,16 @@
     if (document.hidden) return;
     var dashPanel = document.getElementById('section-dashboard');
     if (dashPanel && dashPanel.classList.contains('active') && typeof refreshAllLiveCharts === 'function') {
-      if (_visLiveChartsTimer) clearTimeout(_visLiveChartsTimer);
-      _visLiveChartsTimer = setTimeout(function() {
-        _visLiveChartsTimer = null;
-        /* ถ้า cache ยังใช้ได้ ไม่ต้องคำนวณใหม่ทั้งชุด — แค่ sync เบา ๆ ผ่าน renderDashboardNow */
-        refreshAllLiveCharts();
-      }, 450);
+      /* กราฟรายสัปดาห์ — ห้ามรีคำนวณทุกครั้งที่กลับมาแท็บ (จุดค้าง) */
+      if (typeof shouldSkipAutoChartRefresh_ === 'function' && shouldSkipAutoChartRefresh_()) {
+        /* skip */
+      } else {
+        if (_visLiveChartsTimer) clearTimeout(_visLiveChartsTimer);
+        _visLiveChartsTimer = setTimeout(function() {
+          _visLiveChartsTimer = null;
+          refreshAllLiveCharts();
+        }, 450);
+      }
     }
     var now = Date.now();
     /* ลดความถี่รีเฟรชทั้งก้อนตอนสลับแท็บ — เหลือทุก 3 นาที */
@@ -17072,15 +17226,12 @@
 
   var _liveChartTimer = null;
   function startLiveChartPolling() {
-    if (_liveChartTimer) return;
-    _liveChartTimer = setInterval(function() {
-      if (document.hidden) return;
-      var dashPanel = document.getElementById('section-dashboard');
-      if (!dashPanel || !dashPanel.classList.contains('active')) return;
-      /* มี cache อยู่แล้วและยังไม่ถูก invalidate = ข้อมูลยังตรง — ไม่ต้องวาดกราฟใหม่ */
-      if (_adminLiveCache) return;
-      refreshAllLiveCharts();
-    }, ADMIN_LIVE_POLL_MS);
+    /* ปิด poll กราฟอัตโนมัติ — อัปเดตรายสัปดาห์จาก snapshot แทน (กันค้างหลังโหลดเสร็จ) */
+    if (_liveChartTimer) {
+      try { clearInterval(_liveChartTimer); } catch (eClr) {}
+      _liveChartTimer = null;
+    }
+    return;
   }
   try { startLiveChartPolling(); } catch (eChartPoll) { console.warn('[SH chart poll]', eChartPoll); }
 
