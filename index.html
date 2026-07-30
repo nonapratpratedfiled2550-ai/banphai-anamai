@@ -7474,8 +7474,54 @@
 </div>
 
 <script src="sheets-sync.js"></script>
-<script src="student-basic-data.js"></script>
-<script src="teacher-basic-data.js"></script>
+<!-- student/teacher-basic-data.js โหลดแบบเลื่อน (ไฟล์ใหญ่ ~2.3MB) — กันหน้า Welcome ค้าง/OOM -->
+<script>
+(function (w) {
+  function makeLoader_(src, globalName) {
+    var state = '';
+    var waiters = [];
+    function flush_(ok) {
+      state = ok ? 'done' : 'error';
+      var q = waiters.splice(0);
+      for (var i = 0; i < q.length; i++) {
+        try { q[i](ok); } catch (e) {}
+      }
+    }
+    function isReady_() {
+      return typeof w[globalName] !== 'undefined';
+    }
+    return function (done) {
+      if (typeof done === 'function') waiters.push(done);
+      if (isReady_()) { flush_(true); return; }
+      if (state === 'loading') return;
+      if (state === 'done' || state === 'error') { flush_(state === 'done'); return; }
+      state = 'loading';
+      var s = document.createElement('script');
+      s.src = src;
+      s.async = true;
+      s.onload = function () { flush_(true); };
+      s.onerror = function () { flush_(false); };
+      document.head.appendChild(s);
+    };
+  }
+  w.ensureStudentBasicDataLoaded = makeLoader_('student-basic-data.js', 'STUDENT_BASIC');
+  w.ensureTeacherBasicDataLoaded = makeLoader_('teacher-basic-data.js', 'TEACHER_BASIC');
+  w.ensureRegistryDataLoaded = function (done) {
+    var left = 2;
+    var okAll = true;
+    function one(ok) {
+      if (!ok) okAll = false;
+      left -= 1;
+      if (left > 0) return;
+      if (typeof done === 'function') {
+        try { done(okAll); } catch (e) {}
+      }
+    }
+    w.ensureStudentBasicDataLoaded(one);
+    w.ensureTeacherBasicDataLoaded(one);
+  };
+})(window);
+</script>
 <!-- physical-screening-images.js โหลดเมื่อเปิดหน้าคัดกรองเท่านั้น — กัน OOM ตอนเปิดเว็บ -->
 <script>
   // Date display
@@ -21366,10 +21412,8 @@
     try { updateStudentCounts(); } catch (e) { console.warn('[SH boot]', e); }
     try { initReferralRecords(); } catch (e) { console.warn('[SH boot]', e); }
     var role = getCurrentRole();
-    if (!role) {
-      try { renderDashboard(); refreshAllLiveCharts(); } catch (e) { console.warn('[SH boot]', e); }
-      return;
-    }
+    /* หน้า Welcome (ยังไม่ล็อกอิน) — ห้ามคำนวณแดชบอร์ด/กราฟ ทั้งชุด กันค้าง */
+    if (!role) return;
     var activePanel = document.querySelector('.section-panel.active');
     var activeId = activePanel && activePanel.id ? activePanel.id.replace(/^section-/, '') : '';
     if (activeId === 'dashboard') {
@@ -21467,6 +21511,7 @@
     if (typeof onReady === 'function') onReady();
   }
   function openStudentLogin() {
+    if (typeof ensureStudentBasicDataLoaded === 'function') ensureStudentBasicDataLoaded(function () {});
     const modal = document.getElementById('studentLoginModal');
     const errEl = document.getElementById('studentLoginError');
     const userEl = document.getElementById('studentLoginUser');
@@ -21509,6 +21554,8 @@
     if (!ROLES[roleKey] || roleKey === 'student') return;
     pendingStaffRole = roleKey;
     window.__pendingStaffRoleEarly = roleKey;
+    /* โหลดเฉพาะทะเบียนครู — ห้ามโหลดนักเรียน 2.3MB ตอนเปิด modal (กันค้าง) */
+    if (typeof ensureTeacherBasicDataLoaded === 'function') ensureTeacherBasicDataLoaded(function () {});
     const modal = document.getElementById('staffLoginModal');
     const errEl = document.getElementById('staffLoginError');
     const userEl = document.getElementById('staffLoginUser');
@@ -22029,6 +22076,31 @@
     }
     saveAppSession();
   }
+  function softBootstrapAfterLogin_() {
+    /* หน่วงสั้นๆ ให้ UI หลังล็อกอินเรนเดอร์ก่อน แล้วค่อย parse ไฟล์ใหญ่ / ดึงชีต */
+    setTimeout(function () {
+      if (typeof ensureRegistryDataLoaded === 'function') {
+        ensureRegistryDataLoaded(function () {
+          if (typeof bootstrapCloudDataFromSheet !== 'function') {
+            if (typeof scheduleRoleHeavyRefresh === 'function') scheduleRoleHeavyRefresh(getCurrentRole());
+            return;
+          }
+          bootstrapCloudDataFromSheet({ toast: false }, function (applied) {
+            if (applied && typeof refreshUIAfterCloudBootstrap === 'function') {
+              refreshUIAfterCloudBootstrap();
+            } else if (typeof scheduleRoleHeavyRefresh === 'function') {
+              var role = getCurrentRole();
+              if (role) scheduleRoleHeavyRefresh(role);
+            }
+          });
+        });
+      } else if (typeof bootstrapCloudDataFromSheet === 'function') {
+        bootstrapCloudDataFromSheet({ toast: false }, function (applied) {
+          if (applied && typeof refreshUIAfterCloudBootstrap === 'function') refreshUIAfterCloudBootstrap();
+        });
+      }
+    }, 120);
+  }
   function enterApp(roleKey) {
     guestMode = '';
     const r = ROLES[roleKey];
@@ -22059,6 +22131,8 @@
       }
     }
     saveAppSession();
+    /* โหลดทะเบียน + ซิงค์ชีตหลังเข้าแอป — ไม่ทำตอน Welcome */
+    try { softBootstrapAfterLogin_(); } catch (eBoot) { console.warn('[SH login boot]', eBoot); }
   }
   function changeRole() {
     closeMobileNav();
@@ -22152,6 +22226,10 @@
     /* ไม่เรียก renderPhysChecklists ตอน boot — โหลดรูปเมื่อเข้าหน้าคัดกรองเท่านั้น */
     var hadSession = restoreAppSession();
     retryKnowledgeHubRender_(0);
+    /* แสดง Welcome ทันที — ไม่รอไฟล์นักเรียน 2.3MB / cloud bootstrap */
+    if (!hadSession && !getCurrentRole()) {
+      showWelcomeScreen();
+    }
     function finishInitialBoot() {
       safeBootData();
       if (!hadSession && !getCurrentRole()) {
@@ -22161,35 +22239,84 @@
       }
       retryKnowledgeHubRender_(0);
     }
-    initWhenStudentDataReady(function() {
-      if (loggedInStudentId && typeof resolveStudentIdThroughProfileRemap === 'function') {
-        loggedInStudentId = resolveStudentIdThroughProfileRemap(loggedInStudentId);
-        if (typeof updateRoleBadge === 'function') updateRoleBadge();
-        if (typeof restoreStudentSessionForms === 'function') restoreStudentSessionForms();
-        if (typeof saveAppSession === 'function') saveAppSession();
-      }
-      if (!hadSession && !getCurrentRole()) {
-        showWelcomeScreen();
-      }
-      function afterCloud(applied) {
-        if (getCurrentRole() || hadSession) {
-          finishInitialBoot();
-          if (applied) {
-            refreshUIAfterCloudBootstrap();
-          } else {
-            var role = getCurrentRole();
-            if (role) scheduleRoleHeavyRefresh(role);
-          }
+    function continueAfterRegistryReady_() {
+      initWhenStudentDataReady(function() {
+        if (loggedInStudentId && typeof resolveStudentIdThroughProfileRemap === 'function') {
+          loggedInStudentId = resolveStudentIdThroughProfileRemap(loggedInStudentId);
+          if (typeof updateRoleBadge === 'function') updateRoleBadge();
+          if (typeof restoreStudentSessionForms === 'function') restoreStudentSessionForms();
+          if (typeof saveAppSession === 'function') saveAppSession();
         }
-        retryKnowledgeHubRender_(0);
+        if (!hadSession && !getCurrentRole()) {
+          showWelcomeScreen();
+        }
+        function afterCloud(applied) {
+          if (getCurrentRole() || hadSession) {
+            finishInitialBoot();
+            if (applied) {
+              refreshUIAfterCloudBootstrap();
+            } else {
+              var role = getCurrentRole();
+              if (role) scheduleRoleHeavyRefresh(role);
+            }
+          }
+          retryKnowledgeHubRender_(0);
+        }
+        /* หน้า Welcome ที่ยังไม่ล็อกอิน — ห้ามดึงชีตทั้งชุด (OOM) */
+        var needCloud = !!(getCurrentRole() || hadSession);
+        if (needCloud && typeof bootstrapCloudDataFromSheet === 'function') {
+          bootstrapCloudDataFromSheet({ toast: false }, afterCloud);
+        } else if (needCloud) {
+          afterCloud(false);
+        } else {
+          retryKnowledgeHubRender_(0);
+        }
+      });
+      initWhenTeacherDataReady();
+    }
+    /*
+     * Welcome: โหลดเฉพาะทะเบียนครู (~70KB) — ไม่โหลดนักเรียน 2.3MB จนกว่าจะล็อกอิน/มี session
+     * มี session: โหลดทั้งคู่ทันที
+     */
+    var needFullRegistry = !!(hadSession || getCurrentRole());
+    function kickRegistryLoad_() {
+      if (needFullRegistry) {
+        if (typeof ensureRegistryDataLoaded === 'function') {
+          ensureRegistryDataLoaded(continueAfterRegistryReady_);
+        } else {
+          continueAfterRegistryReady_();
+        }
+        return;
       }
-      if (typeof bootstrapCloudDataFromSheet === 'function') {
-        bootstrapCloudDataFromSheet({ toast: false }, afterCloud);
-      } else if (getCurrentRole() || hadSession) {
-        afterCloud(false);
+      if (typeof ensureTeacherBasicDataLoaded === 'function') {
+        ensureTeacherBasicDataLoaded(function () {
+          initWhenTeacherDataReady();
+        });
+      } else {
+        initWhenTeacherDataReady();
       }
-    });
-    initWhenTeacherDataReady();
+      /* ไม่เรียก initWhenStudentDataReady บน Welcome — จะไปวนรอ 60 วินาทีเปล่า */
+    }
+    if (needFullRegistry) {
+      kickRegistryLoad_();
+    } else {
+      setTimeout(function () {
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(kickRegistryLoad_);
+        else kickRegistryLoad_();
+      }, 400);
+    }
+    document.addEventListener('click', function shKickRegistryOnLoginClick_(e) {
+      var t = e.target;
+      if (!t || !t.closest) return;
+      if (t.closest('#role-screen .role-motion-card, #studentLoginModal, #staffLoginModal, #role-screen .role-mobile-link')) {
+        if (typeof ensureTeacherBasicDataLoaded === 'function') ensureTeacherBasicDataLoaded(function () {});
+        /* คลิกบัตรนักเรียน หรืออยู่ใน modal นักเรียน — โหลดไฟล์ใหญ่ */
+        if (t.closest('#studentLoginModal') ||
+            (t.closest && t.closest('.role-card--student, [onclick*="openStudentLogin"]'))) {
+          if (typeof ensureStudentBasicDataLoaded === 'function') ensureStudentBasicDataLoaded(function () {});
+        }
+      }
+    }, true);
   }
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', runInitialUiBoot_);

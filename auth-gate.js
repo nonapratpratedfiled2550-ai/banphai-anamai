@@ -25,6 +25,7 @@
     if (w.__shMainReady && w._openStaffLoginImpl) return w._openStaffLoginImpl(roleKey);
     if (!ROLES[roleKey] || roleKey === 'student') return;
     w.__pendingStaffRoleEarly = roleKey;
+    if (typeof w.ensureTeacherBasicDataLoaded === 'function') w.ensureTeacherBasicDataLoaded(function () {});
     var sub = document.getElementById('staffLoginSub');
     var err = document.getElementById('staffLoginError');
     var u = document.getElementById('staffLoginUser');
@@ -39,6 +40,7 @@
 
   w.openStudentLogin = function () {
     if (w.__shMainReady && w._openStudentLoginImpl) return w._openStudentLoginImpl();
+    if (typeof w.ensureStudentBasicDataLoaded === 'function') w.ensureStudentBasicDataLoaded(function () {});
     var err = document.getElementById('studentLoginError');
     var u = document.getElementById('studentLoginUser');
     var p = document.getElementById('studentLoginPass');
@@ -175,13 +177,22 @@
   w.submitStaffLogin = function () {
     whenMainReady(function () {
       if (!w._submitStaffLoginImpl) return 'wait';
+      var role = String(w.__pendingStaffRoleEarly || '').trim();
+      if (role === 'teacher' || role === 'admin') {
+        if (typeof w.ensureTeacherBasicDataLoaded === 'function') w.ensureTeacherBasicDataLoaded(function () {});
+        if (typeof TEACHER_BASIC === 'undefined' && typeof w.TEACHER_BASIC === 'undefined') return 'wait';
+      } else if (typeof w.ensureTeacherBasicDataLoaded === 'function') {
+        w.ensureTeacherBasicDataLoaded(function () {});
+      }
+      /* ไม่โหลด student-basic-data.js ตอนล็อกอินเจ้าหน้าที่ — โหลดหลังเข้าแอป */
       return w._submitStaffLoginImpl() ? true : false;
     }, 'กำลังโหลดระบบ...', '#staffLoginModal .student-login-submit');
   };
 
   w.submitStudentLogin = function () {
     whenMainReady(function () {
-      if (typeof w.STUDENT_BASIC === 'undefined') return 'wait';
+      if (typeof w.ensureStudentBasicDataLoaded === 'function') w.ensureStudentBasicDataLoaded(function () {});
+      if (typeof STUDENT_BASIC === 'undefined' && typeof w.STUDENT_BASIC === 'undefined') return 'wait';
       if (!w._submitStudentLoginImpl) return 'wait';
       return w._submitStudentLoginImpl() ? true : false;
     }, 'กำลังโหลดข้อมูลนักเรียน...', '#studentLoginModal .student-login-submit');

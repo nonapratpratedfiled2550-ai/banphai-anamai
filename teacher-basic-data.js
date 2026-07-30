@@ -1,4 +1,4 @@
-const TEACHER_BASIC = {
+var TEACHER_BASIC = window.TEACHER_BASIC = {
   "101": {
     "id": "101",
     "prefix": "นาง",
