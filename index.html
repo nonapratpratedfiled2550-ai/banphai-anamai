@@ -4495,6 +4495,10 @@
   </div>
 </div>
 
+<!-- SH_FREEZE_FIX:2026-07-30d no-auto-charts-on-login -->
+<script>
+  window.__SH_FREEZE_FIX = '2026-07-30d';
+</script>
 <script src="auth-gate.js"></script>
 
 <!-- TOP BAR -->
@@ -9256,7 +9260,17 @@
         refreshAssessmentDataFromSheetForStaff();
       }
     }
-    if (id === 'dashboard') renderDashboard();
+    if (id === 'dashboard') {
+      renderDashboard();
+      /* กลับมาแดชบอร์ดหลังพ้นช่วงเงียบ — โหลดกราฟแบบเบาได้ */
+      if (typeof isExecDashboardRole === 'function' && isExecDashboardRole() &&
+          typeof isPostLoginSheetSyncSilent_ === 'function' && !isPostLoginSheetSyncSilent_() &&
+          !_adminChartsRenderedForCache && typeof runDeferredAdminChartsAfterLogin_ === 'function') {
+        setTimeout(function () {
+          try { runDeferredAdminChartsAfterLogin_(); } catch (eCh) {}
+        }, 600);
+      }
+    }
     if (id === 'school-calendar') {
       if (isLimitedUserRole(role)) {
         if (typeof refreshTeacherSchoolCalendar === 'function') {
@@ -13993,7 +14007,7 @@
       if (typeof schedulePostLoginFullDash_ === 'function') schedulePostLoginFullDash_();
       return;
     }
-    /* รอบแรกหลัง quiet: โหมดเบา — ยังไม่ sync/HPV/นัด/กราฟ/parse visit */
+    /* รอบแรกหลัง quiet: โหมดเบา — ตัวเลขจาก cache อย่างเดียว ห้ามคำนวณกราฟ/parse visit (จุดค้างหลังกราฟขึ้น) */
     if (_postLoginUseLiteOnce) {
       _postLoginUseLiteOnce = false;
       var liteLive = isExecDash ? computeAdminLiveData({ lite: true, skipCharts: true }) : null;
@@ -14006,23 +14020,9 @@
       renderDashStatNum('alertCount', liteData.alertCount || 0, 'alertCount', false);
       try { updateDashboardLayoutForRole(); } catch (eLay2) {}
       try { updateStudentCounts(); } catch (eCnt2) {}
-      /* กราฟ/ extras/ปฏิทิน ทีหลัง เมื่อพ้นช่วงเลื่อนงานหนัก */
-      if (isExecDash) {
-        var waitFullDash_ = function () {
-          if (_softBootstrapPending || _cloudBootstrapRunning ||
-              (typeof isPostLoginHeavyDeferred_ === 'function' && isPostLoginHeavyDeferred_())) {
-            setTimeout(waitFullDash_, 1500);
-            return;
-          }
-          try {
-            try { renderSchoolCalendarBoard(loadDashboard(), editable); } catch (eCal3) {}
-            invalidateAdminLiveCache();
-            var full = computeAdminLiveData({ skipCharts: true });
-            renderAdminDashboardExtras(full);
-            scheduleAdminDashboardCharts(full);
-          } catch (eFull) { console.warn('[SH dash full]', eFull); }
-        };
-        setTimeout(waitFullDash_, 2000);
+      /* ไม่เรียก waitFullDash_/computeAdminLiveData/กราฟที่นี่ — เลื่อนไป idle ช้ามาก */
+      if (isExecDash && typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
+        scheduleDeferredAdminChartsAfterLogin_();
       }
       return;
     }
@@ -16059,6 +16059,13 @@
   }
   function scheduleAdminDashboardCharts(live) {
     if (!isExecDashboardRole()) return;
+    /* ช่วงหลังล็อกอิน — ห้ามเริ่มสร้างกราฟจนกว่า silence จะหมด (กันค้าง) */
+    if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
+      if (typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
+        scheduleDeferredAdminChartsAfterLogin_();
+      }
+      return;
+    }
     if (_adminChartRenderTimer) clearTimeout(_adminChartRenderTimer);
     /* หน่วงหลัง quiet / bootstrap — ห้ามคำนวณกราฟซ้อนงานหนัก */
     var quietLeft = 0;
@@ -16078,6 +16085,10 @@
         scheduleAdminDashboardCharts(live);
         return;
       }
+      if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
+        scheduleDeferredAdminChartsAfterLogin_();
+        return;
+      }
       if (_softBootstrapPending || _cloudBootstrapRunning ||
           (typeof isPostLoginHeavyDeferred_ === 'function' && isPostLoginHeavyDeferred_())) {
         scheduleAdminDashboardCharts(live);
@@ -16087,11 +16098,68 @@
     }, chartDelay);
   }
   var _adminChartBuildTimer = null;
+  var _visitReadCapForCharts = 0;
+  var _deferredAdminChartsTimer = null;
+  var _deferredAdminChartsArmed = false;
+  function scheduleDeferredAdminChartsAfterLogin_() {
+    if (_deferredAdminChartsArmed) return;
+    _deferredAdminChartsArmed = true;
+    if (_deferredAdminChartsTimer) clearTimeout(_deferredAdminChartsTimer);
+    /* หลัง silence 120s หมดแล้ว + บัฟเฟอร์ — ค่อยคำนวณกราฟ */
+    var waitMs = 150000;
+    try {
+      if (typeof _postLoginNoAutoSheetSyncUntil === 'number') {
+        waitMs = Math.max(150000, (_postLoginNoAutoSheetSyncUntil - Date.now()) + 15000);
+      }
+    } catch (eW) {}
+    _deferredAdminChartsTimer = setTimeout(function () {
+      _deferredAdminChartsTimer = null;
+      runDeferredAdminChartsAfterLogin_();
+    }, waitMs);
+  }
+  function runDeferredAdminChartsAfterLogin_() {
+    if (!isExecDashboardRole()) return;
+    if (document.hidden) {
+      _deferredAdminChartsTimer = setTimeout(runDeferredAdminChartsAfterLogin_, 8000);
+      return;
+    }
+    var dash = document.getElementById('section-dashboard');
+    if (!dash || !dash.classList.contains('active')) return;
+    if (_softBootstrapPending || _cloudBootstrapRunning) {
+      _deferredAdminChartsTimer = setTimeout(runDeferredAdminChartsAfterLogin_, 5000);
+      return;
+    }
+    /* หมดช่วงเงียบซิงค์แล้วถึงจะวาดกราฟ */
+    if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
+      _deferredAdminChartsTimer = setTimeout(runDeferredAdminChartsAfterLogin_, 5000);
+      return;
+    }
+    var kick = function () {
+      try {
+        try { renderSchoolCalendarBoard(loadDashboard(), canEditSchoolCalendar()); } catch (eCal) {}
+        _visitReadCapForCharts = 100;
+        invalidateAdminLiveCache();
+        var full = computeAdminLiveData({ skipCharts: true });
+        renderAdminDashboardExtras(full);
+        /* เรียก build ตรง ๆ — ข้าม schedule ที่อาจติด silence อีก */
+        buildAndRenderAdminChartsChunked_();
+      } catch (eRun) {
+        console.warn('[SH deferred charts]', eRun);
+        _visitReadCapForCharts = 0;
+      }
+    };
+    if (typeof requestIdleCallback === 'function') {
+      requestIdleCallback(function () { kick(); }, { timeout: 20000 });
+    } else {
+      setTimeout(kick, 800);
+    }
+  }
   function buildAndRenderAdminChartsChunked_() {
     if (_adminChartBuildTimer) {
       clearTimeout(_adminChartBuildTimer);
       _adminChartBuildTimer = null;
     }
+    if (_visitReadCapForCharts <= 0) _visitReadCapForCharts = 120;
     var data = computeAdminLiveData({ skipCharts: true });
     if (!data.charts) data.charts = {};
     var jobs = [
@@ -16120,11 +16188,11 @@
       if (idx < jobs.length) {
         try { jobs[idx](); } catch (eJob) { console.warn('[SH chart job]', eJob); }
         idx += 1;
-        _adminChartBuildTimer = setTimeout(runOne, 0);
+        /* หน่วง 40ms ต่อชิ้น — ห้าม setTimeout(0) ถี่จน main thread แน่น */
+        _adminChartBuildTimer = setTimeout(runOne, 40);
         return;
       }
       _adminChartBuildTimer = null;
-      /* วาดกราฟหลักก่อน แล้วค่อยโมดูล — yield ระหว่างชุด */
       try {
         renderAdminDashboardChartsMain_(data);
       } catch (eMain) { console.warn('[SH chart main]', eMain); }
@@ -16134,7 +16202,8 @@
           renderAdminModuleCharts(data);
         } catch (eMod) { console.warn('[SH chart mod]', eMod); }
         _adminChartsRenderedForCache = data;
-      }, 0);
+        _visitReadCapForCharts = 0;
+      }, 80);
     }
     runOne();
   }
@@ -17702,10 +17771,16 @@
     try { localStorage.setItem('sh-visit', prevMain); } catch (eRestore) {}
   }
   function loadVisitRecords() {
-    if (_visitRecordsMemCache) return _visitRecordsMemCache;
+    if (_visitRecordsMemCache) {
+      if (_visitReadCapForCharts > 0 && _visitRecordsMemCache.length > _visitReadCapForCharts) {
+        return _visitRecordsMemCache.slice(0, _visitReadCapForCharts);
+      }
+      return _visitRecordsMemCache;
+    }
     /* ช่วงหลังล็อกอิน — ห้าม JSON.parse sh-visit (อาจใหญ่จนค้าง) */
     if ((typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) ||
         (typeof isPostLoginHeavyDeferred_ === 'function' && isPostLoginHeavyDeferred_()) ||
+        (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) ||
         _postLoginDashPending || _softBootstrapPending || _cloudBootstrapRunning) {
       scheduleIdleVisitRepair_();
       return [];
@@ -17720,10 +17795,16 @@
     if (!records.length && backup.length) {
       records = backup.slice();
     }
+    if (records.length > VISIT_LOCAL_MAX_RECORDS) {
+      records = records.slice(0, VISIT_LOCAL_MAX_RECORDS);
+    }
     _visitRecordsMemCache = records;
     /* ซ่อมทั้งก้อนห้ามทำตอนอ่านครั้งแรกหลังล็อกอิน — เลื่อนไป idle (กันค้าง) */
     if (!_visitRecordsRepairedThisSession) {
       scheduleIdleVisitRepair_();
+    }
+    if (_visitReadCapForCharts > 0 && records.length > _visitReadCapForCharts) {
+      return records.slice(0, _visitReadCapForCharts);
     }
     return records;
   }
@@ -17736,18 +17817,27 @@
       if (_visitRecordsRepairedThisSession) return;
       if (_softBootstrapPending || _cloudBootstrapRunning ||
           (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) ||
-          _postLoginDashPending) {
-        _visitRepairIdleTimer = setTimeout(kick, 1800);
+          _postLoginDashPending ||
+          (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) ||
+          (typeof isPostLoginHeavyDeferred_ === 'function' && isPostLoginHeavyDeferred_())) {
+        _visitRepairIdleTimer = setTimeout(kick, 4000);
+        return;
+      }
+      /* รอให้กราฟวาดจบก่อน — ห้าม JSON.parse ซ้อนตอนเพิ่งโชว์กราฟ */
+      if (_adminChartBuildTimer) {
+        _visitRepairIdleTimer = setTimeout(kick, 3000);
         return;
       }
       repairVisitRecordsThisSession_();
     };
+    /* เริ่มช้ามากหลังล็อกอิน — ไม่แข่งกับแดชบอร์ด/กราฟ */
+    var initialDelay = (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) ? 25000 : 8000;
     if (typeof requestIdleCallback === 'function') {
       _visitRepairIdleTimer = setTimeout(function () {
-        requestIdleCallback(function () { kick(); }, { timeout: 6000 });
-      }, 2500);
+        requestIdleCallback(function () { kick(); }, { timeout: 12000 });
+      }, initialDelay);
     } else {
-      _visitRepairIdleTimer = setTimeout(kick, 3500);
+      _visitRepairIdleTimer = setTimeout(kick, initialDelay + 2000);
     }
   }
   function repairVisitRecordsThisSession_() {
@@ -19033,6 +19123,14 @@
       if (callback) callback();
       return;
     }
+    /* อยู่แดชบอร์ดช่วงหลังล็อกอิน — ห้ามดึง assessment ทั้งชุดจนค้างหลังกราฟ */
+    if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
+      var dashA = document.getElementById('section-dashboard');
+      if (dashA && dashA.classList.contains('active')) {
+        if (callback) callback();
+        return;
+      }
+    }
     if (typeof fetchAllAssessmentDataFromSheet !== 'function') {
       if (callback) callback();
       return;
@@ -19049,8 +19147,11 @@
         return;
       }
       applyAssessmentDataFromSheet(data, { quiet: true });
-      if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
-      if (typeof refreshAllLiveCharts === 'function') refreshAllLiveCharts();
+      /* อย่า refreshAllLiveCharts ทันทีบนแดชบอร์ด — หนักและทำให้ค้างหลังกราฟขึ้น */
+      var dashB = document.getElementById('section-dashboard');
+      if (!(dashB && dashB.classList.contains('active'))) {
+        if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
+      }
       if (callback) callback();
     }).catch(function() {
       assessmentSheetRefreshPending = false;
@@ -19067,6 +19168,16 @@
     if (_cloudBootstrapRunning || _softBootstrapPending) {
       if (callback) callback();
       return;
+    }
+    /* อยู่แดชบอร์ดช่วงหลังล็อกอิน — ห้ามดึงชีตรักษาทั้งก้อน (เปิดเมนู visit ค่อยซิงค์) */
+    if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
+      var dashV = document.getElementById('section-dashboard');
+      var visitV = document.getElementById('section-visit');
+      if (dashV && dashV.classList.contains('active') &&
+          !(visitV && visitV.classList.contains('active'))) {
+        if (callback) callback();
+        return;
+      }
     }
     if (typeof fetchAllVisitRecordsFromSheet !== 'function') {
       if (callback) callback();
@@ -22260,42 +22371,57 @@
     renderVaccineSchedule();
     if (typeof renderTeacherHomeroomRoster === 'function') renderTeacherHomeroomRoster();
   }
+  var _postLoginNoAutoSheetSyncUntil = 0;
+  function beginPostLoginSheetSyncSilence_(ms) {
+    _postLoginNoAutoSheetSyncUntil = Date.now() + (ms || 120000);
+  }
+  function isPostLoginSheetSyncSilent_() {
+    return Date.now() < _postLoginNoAutoSheetSyncUntil;
+  }
   function scheduleDeferredStaffSheetSync(role) {
+    /* หลังล็อกอิน ~2 นาที: ห้ามยิง visit/assessment/registry ซ้อน — จุดค้างหลังกราฟขึ้น ~5 วิ */
+    if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
+      return;
+    }
     /* soft bootstrap หลังล็อกอินจะดึงชีตทั้งชุดอยู่แล้ว — ห้ามยิงซ้ำ */
     if (_softBootstrapPending || _cloudBootstrapRunning) return;
-    if (_cloudBootstrapDone && Date.now() - parseInt(localStorage.getItem('sh-cloud-bootstrap-at') || '0', 10) < 180000) {
-      return;
+    if (_cloudBootstrapDone) {
+      var bootAt = 0;
+      try { bootAt = parseInt(localStorage.getItem('sh-cloud-bootstrap-at') || '0', 10) || 0; } catch (eBoot) {}
+      if (bootAt && Date.now() - bootAt < 180000) return;
     }
     if (typeof isFullStaffRole === 'function' && isFullStaffRole(role)) {
       var baseDelay = isExecDashboardRole(role) ? 800 : 400;
       setTimeout(function() {
         if (getCurrentRole() !== role) return;
         if (_softBootstrapPending || _cloudBootstrapRunning) return;
+        if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) return;
+        /* อยู่แดชบอร์ด — ห้ามดึงชีตรักษาทั้งก้อน (เปิดเมนู visit ค่อยซิงค์) */
+        var dash = document.getElementById('section-dashboard');
+        if (dash && dash.classList.contains('active')) return;
         refreshAllVisitRecordsFromSheetForStaff(function() {
           invalidateAdminLiveCache();
-          if (isExecDashboardRole()) {
-            var dash = document.getElementById('section-dashboard');
-            if (dash && dash.classList.contains('active')) renderDashboardNow();
-          }
         });
       }, baseDelay);
       setTimeout(function() {
         if (getCurrentRole() !== role) return;
         if (_softBootstrapPending || _cloudBootstrapRunning) return;
+        if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) return;
+        var dash2 = document.getElementById('section-dashboard');
+        if (dash2 && dash2.classList.contains('active')) return;
         if (role === 'nurse' || role === 'admin' || role === 'teacher') {
           refreshCalendarFromSheet();
         }
         refreshAssessmentDataFromSheetForStaff(function() {
           invalidateAdminLiveCache();
-          if (isExecDashboardRole()) {
-            var dash = document.getElementById('section-dashboard');
-            if (dash && dash.classList.contains('active')) renderDashboardNow();
-          }
         });
       }, baseDelay + 2200);
       setTimeout(function() {
         if (getCurrentRole() !== role) return;
         if (_softBootstrapPending || _cloudBootstrapRunning) return;
+        if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) return;
+        var dash3 = document.getElementById('section-dashboard');
+        if (dash3 && dash3.classList.contains('active')) return;
         refreshStudentRegistryFromSheetForStaff();
         refreshTeacherRegistryFromSheetForStaff();
       }, baseDelay + 4000);
@@ -22359,10 +22485,12 @@
       renderVaccineHpvCoverageChart();
     }
     if (activeId === 'dashboard') {
-      /* หลังล็อกอินมีคิวแดชบอร์ดอยู่แล้ว — ห้าม render ซ้ำจนค้าง */
-      if (_postLoginDashPending || _softBootstrapPending || _cloudBootstrapRunning ||
-          (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_())) {
-        if (typeof schedulePostLoginFullDash_ === 'function') schedulePostLoginFullDash_();
+      /* หลังล็อกอิน: คิวแดชบอร์ด/กราฟจัดการเองแล้ว — ห้าม render ซ้ำจนค้างหลังกราฟขึ้น */
+      if ((typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) ||
+          _postLoginDashPending || _softBootstrapPending || _cloudBootstrapRunning ||
+          (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) ||
+          (typeof isPostLoginHeavyDeferred_ === 'function' && isPostLoginHeavyDeferred_())) {
+        /* no-op */
       } else if (isExecDashboardRole(role)) {
         renderDashboardNow();
       } else {
@@ -22651,33 +22779,24 @@
         return;
       }
       /*
-       * Staff: เข้าแดชบอร์ดจากข้อมูลในเครื่องเท่านั้น
-       * ดึงชีตทั้งชุดอัตโนมัติเฉพาะเมื่อเครื่องว่างจริง (shouldBootstrapCloudData)
-       * — จุดค้างเดิมคือรีโหลดชีตทุก ≥3 นาทีแม้มีข้อมูลแล้ว
+       * Staff: เข้าแดชบอร์ดจาก cache อย่างเดียว — ห้ามดึงชีต/กราฟ/ไฟล์นักเรียนอัตโนมัติ
+       * (จุดค้าง: กราฟขึ้นแล้ว ~5 วิ ค้าง จาก compute+ซิงค์ซ้อน)
        */
       _softBootstrapPending = false;
-      _postLoginDeferHeavyUntil = Date.now() + 12000;
+      _postLoginDeferHeavyUntil = Date.now() + 180000;
+      if (typeof beginPostLoginSheetSyncSilence_ === 'function') {
+        beginPostLoginSheetSyncSilence_(180000);
+      }
       if (typeof schedulePostLoginFullDash_ === 'function') {
         schedulePostLoginFullDash_();
       }
-      var needCloudNow = false;
+      /* ไม่ bootstrap คลาวด์อัตโนมัติ — ซิงค์ตอนเปิดเมนูบันทึกรักษา/คัดกรอง */
+      _cloudBootstrapDone = true;
       try {
-        needCloudNow = typeof shouldBootstrapCloudData === 'function' && shouldBootstrapCloudData(false);
-      } catch (eNeed) { needCloudNow = false; }
-      if (!needCloudNow) {
-        /* มีข้อมูลในเครื่อง — ไม่ bootstrap; โหลดทะเบียนนักเรียนทีหลังมาก */
-        setTimeout(scheduleDeferredStudentRegistryLoad_, 20000);
-        return;
-      }
-      setTimeout(function () {
-        if (_cloudBootstrapDone || _cloudBootstrapRunning) return;
-        _softBootstrapPending = true;
-        if (typeof requestIdleCallback === 'function') {
-          requestIdleCallback(function () { startCloudAfterYield_(); }, { timeout: 2500 });
-        } else {
-          startCloudAfterYield_();
-        }
-      }, 10000);
+        if (typeof stampCloudBootstrapAt_ === 'function') stampCloudBootstrapAt_();
+        else localStorage.setItem('sh-cloud-bootstrap-at', String(Date.now()));
+      } catch (eStamp) {}
+      /* ไม่โหลด student-basic-data.js อัตโนมัติ — โหลดตอนเปิดทะเบียนเท่านั้น */
     }, quietMs);
   }
   function enterApp(roleKey) {
@@ -22689,6 +22808,9 @@
     if (typeof isLimitedUserRole === 'function' && !isLimitedUserRole(roleKey) &&
         typeof beginPostLoginQuiet_ === 'function') {
       beginPostLoginQuiet_(7000);
+      if (typeof beginPostLoginSheetSyncSilence_ === 'function') {
+        beginPostLoginSheetSyncSilence_(180000);
+      }
     }
     dismissBlockingOverlays();
     closeMobileNav();
