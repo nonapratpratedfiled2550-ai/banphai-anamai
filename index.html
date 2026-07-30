@@ -4495,9 +4495,9 @@
   </div>
 </div>
 
-<!-- SH_FREEZE_FIX:2026-07-30h freeze-after-paint -->
+<!-- SH_FREEZE_FIX:2026-07-30i dead-code-cleanup -->
 <script>
-  window.__SH_FREEZE_FIX = '2026-07-30h';
+  window.__SH_FREEZE_FIX = '2026-07-30i';
   /* ตัด RAM ตอนเปิดเว็บ: ลบ backup + ล้าง sh-visit ถ้าใหญ่เกิน (กัน Out of Memory ตอน parse) */
   (function pruneHeavyVisitStorageOnBoot_() {
     try { localStorage.removeItem('sh-visit-backup'); } catch (eB) {}
@@ -12002,14 +12002,11 @@
   var _adminLiveCache = null;
   var _adminChartsRenderedForCache = null;
   var _adminChartsSettled = false;
-  var _adminChartRenderTimer = null;
   var _dashRenderCoalesceTimer = null;
   var _refreshLiveChartsTimer = null;
   var _notifyReportTimer = null;
   var _visLiveChartsTimer = null;
-  /* กราฟแดชบอร์ดอัปเดตรายสัปดาห์ — ไม่ poll ทุก 2 นาที (เคยทำให้ค้างหลังโหลดเสร็จ) */
-  var ADMIN_LIVE_POLL_MS = 7 * 24 * 60 * 60 * 1000;
-  var ADMIN_CHARTS_WEEKLY_MS = ADMIN_LIVE_POLL_MS;
+  var ADMIN_CHARTS_WEEKLY_MS = 7 * 24 * 60 * 60 * 1000;
   var ADMIN_CHARTS_WEEKLY_KEY = 'sh-admin-charts-weekly';
   function loadAdminChartsWeeklySnapshot_() {
     try {
@@ -13689,38 +13686,13 @@
     _visitRecordsMemCache = null;
   }
   var _visitRecordsRepairedThisSession = false;
-  function buildAdminChartsBlock_() {
-    return {
-      health: computeAdminHealthProblems(),
-      healthSummary: computeAdminHealthSummary(),
-      healthTrend: computeAdminHealthTrend(),
-      gauges: computeAdminGauges(),
-      referralGrid: computeAdminReferralGrid(),
-      clinicGrouped: computeAdminClinicGrouped(),
-      vaccineRings: computeAdminVaccineRings(),
-      screening: computeAdminScreeningChart(),
-      nutrition: computeAdminNutritionChart(),
-      chronic: computeAdminChronicChart(),
-      mental: computeAdminMentalChart(),
-      diseaseWatch: computeAdminDiseaseWatch(),
-      emergencyMonthly: computeAdminEmergencyMonthly(),
-      gradeVisits: computeAdminGradeVisits(),
-      medicineStock: computeAdminMedicineStockChart(),
-      appointmentGrid: computeAdminAppointmentGrid()
-    };
-  }
   function computeAdminLiveData(opts) {
     opts = opts || {};
-    var wantCharts = !opts.skipCharts;
     var wantLite = !!opts.lite;
     if (_adminLiveCache && !wantLite) {
-      if (wantCharts && !_adminLiveCache.charts) {
-        _adminLiveCache.charts = buildAdminChartsBlock_();
-      }
       return _adminLiveCache;
     }
     var dash = loadDashboard();
-    /* โหมดเบาหลังล็อกอิน — ใช้ cache แดชบอร์ดอย่างเดียว ห้าม JSON.parse visit/HPV/นัด */
     if (wantLite) {
       return {
         display: {
@@ -13783,13 +13755,9 @@
       recentActivity: computeAdminRecentActivity(),
       charts: null
     };
-    /* กราฟทั้งชุดคำนวณทีหลัง — กันค้างตอนเพิ่งล็อกอิน */
-    if (wantCharts) result.charts = buildAdminChartsBlock_();
+    /* ไม่สร้าง charts จาก records — ใช้ weekly snapshot เท่านั้น */
     _adminLiveCache = result;
     return result;
-  }
-  function getAdminDashboardDisplayData() {
-    return computeAdminLiveData().display;
   }
   function loadDashboard() {
     let data = {};
@@ -14185,7 +14153,7 @@
       if (typeof schedulePostLoginFullDash_ === 'function') schedulePostLoginFullDash_();
       return;
     }
-    /* รอบแรกหลัง quiet: โหมดเบา — ตัวเลขจาก cache อย่างเดียว ห้ามคำนวณกราฟ/parse visit (จุดค้างหลังกราฟขึ้น) */
+    /* รอบแรกหลัง quiet: โหมดเบา — ตัวเลขจาก cache อย่างเดียว */
     if (_postLoginUseLiteOnce) {
       _postLoginUseLiteOnce = false;
       var liteLive = isExecDash ? computeAdminLiveData({ lite: true, skipCharts: true }) : null;
@@ -14198,28 +14166,12 @@
       renderDashStatNum('alertCount', liteData.alertCount || 0, 'alertCount', false);
       try { updateDashboardLayoutForRole(); } catch (eLay2) {}
       try { updateStudentCounts(); } catch (eCnt2) {}
-      /* ไม่เรียก waitFullDash_/computeAdminLiveData/กราฟที่นี่ — เลื่อนไป idle ช้ามาก */
       if (isExecDash && typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
         scheduleDeferredAdminChartsAfterLogin_();
       }
       return;
     }
-    /* กราฟวาดแล้ว / snapshot รายสัปดาห์ — โชว์จาก cache อย่างเดียว ห้าม compute ซ้ำ (จุดค้าง) */
-    if (isExecDash && _adminChartsSettled && _adminLiveCache && _adminLiveCache.charts) {
-      var settled = _adminLiveCache;
-      var sData = settled.display || loadDashboard();
-      visitCount = parseInt(sData.todayVisit, 10) || 0;
-      renderDashStatNum('dashStaffCount', sData.staffCount, 'staffCount', editable && !isExecDash);
-      renderDashStatNum('todayVisit', sData.todayVisit, 'todayVisit', editable && !isExecDash);
-      renderDashStatNum('referralCount', sData.referralCount, 'referralCount', editable && !isExecDash);
-      renderDashStatNum('screenedCount', sData.screenedCount, 'screenedCount', editable && !isExecDash);
-      renderDashStatNum('alertCount', sData.alertCount || getActiveNurseAlerts().length, 'alertCount', false);
-      try { updateDashboardLayoutForRole(); } catch (eLayS) {}
-      try { renderAdminDashboardExtras(settled); } catch (eExS) {}
-      try { updateStudentCounts(); } catch (eCntS) {}
-      return;
-    }
-    /* ห้าม computeAdminLiveData เต็มบนแดชบอร์ด — ใช้ lite / snapshot เท่านั้น */
+    /* ผู้บริหาร/พยาบาล: lite หรือ snapshot เท่านั้น — ห้าม computeAdminLiveData เต็ม */
     if (isExecDash) {
       var snapEarly = typeof applyAdminChartsWeeklySnapshot_ === 'function' ? applyAdminChartsWeeklySnapshot_() : null;
       if (snapEarly && snapEarly.charts) {
@@ -14250,36 +14202,20 @@
       }
       return;
     }
-    var cachedBefore = _adminLiveCache;
+    /* บทบาทอื่น: แดชบอร์ดปกติ */
     if (typeof syncDashboardStatsFromRecords === 'function') syncDashboardStatsFromRecords();
-    var live = null;
-    /* รอบปกติ: คำนวณตัวเลขอย่างเดียว ยังไม่สร้างกราฟทั้งชุด */
-    var data = isExecDash
-      ? (live = computeAdminLiveData({ skipCharts: true }), live.display)
-      : loadDashboard();
-    var reusedLiveCache = !!(cachedBefore && live && live === cachedBefore && live.charts);
+    var data = loadDashboard();
     visitCount = parseInt(data.todayVisit, 10) || 0;
-    renderDashStatNum('dashStaffCount', data.staffCount, 'staffCount', editable && !isExecDash);
-    renderDashStatNum('todayVisit', data.todayVisit, 'todayVisit', editable && !isExecDash);
-    renderDashStatNum('referralCount', data.referralCount, 'referralCount', editable && !isExecDash);
-    renderDashStatNum('screenedCount', data.screenedCount, 'screenedCount', editable && !isExecDash);
+    renderDashStatNum('dashStaffCount', data.staffCount, 'staffCount', editable);
+    renderDashStatNum('todayVisit', data.todayVisit, 'todayVisit', editable);
+    renderDashStatNum('referralCount', data.referralCount, 'referralCount', editable);
+    renderDashStatNum('screenedCount', data.screenedCount, 'screenedCount', editable);
     renderDashStatNum('alertCount', getActiveNurseAlerts().length, 'alertCount', false);
     renderSchoolCalendarBoard(loadDashboard(), editable);
     updateDashboardLayoutForRole();
     updateVisitCalendarLayout();
-    if (isExecDash) {
-      updateAdminChartPeriodNotes();
-      renderAdminDashboardExtras(live);
-      /* ไม่วาดกราฟทั้งชุดซ้ำถ้า settled / รายสัปดาห์ยังสด / ใช้ cache เดิม */
-      if (_adminChartsSettled || (typeof shouldSkipAutoChartRefresh_ === 'function' && shouldSkipAutoChartRefresh_() && _adminChartsRenderedForCache)) {
-        /* keep */
-      } else if (!reusedLiveCache || _adminChartsRenderedForCache !== live) {
-        scheduleAdminDashboardCharts(live);
-      }
-    } else {
-      renderGradeChart();
-      renderLiveCoverageChart();
-    }
+    renderGradeChart();
+    renderLiveCoverageChart();
     renderNurseAlerts();
     updateStudentCounts();
   }
@@ -14290,7 +14226,10 @@
   }
   function renderAdminDashboardExtras(live) {
     if (!isExecDashboardRole()) return;
-    if (!live) live = computeAdminLiveData();
+    if (!live) {
+      if (_adminLiveCache) live = _adminLiveCache;
+      else live = computeAdminLiveData({ lite: true, skipCharts: true });
+    }
     var xs = live.extraStats || {};
     renderAdminStatNum('admin-stat-chronic', xs.chronicCount);
     renderAdminStatNum('admin-stat-emergency', xs.emergencyYear);
@@ -16195,19 +16134,6 @@
         '</div><div class="dash-ring-label">' + escVisitHtml(it.label) + '</div></div>';
     }).join('') + '</div>';
   }
-  function computeAdminHealthProblems() {
-    var visits = loadVisitRecords().filter(isRecordThisYear);
-    var emergencies = loadEmergencyRecords().filter(isRecordThisYear);
-    var counts = {};
-    visits.concat(emergencies).forEach(function(r) {
-      var key = (r.diagnosis && r.diagnosis !== '-- เลือก --') ? r.diagnosis : (r.symptom || '').trim();
-      if (!key || key === '-- เลือก --') key = 'ไม่ระบุ';
-      counts[key] = (counts[key] || 0) + 1;
-    });
-    var items = Object.keys(counts).map(function(k) { return { label: k, count: counts[k] }; })
-      .sort(function(a, b) { return b.count - a.count; }).slice(0, 8);
-    return { items: items, isDemo: !items.length };
-  }
   function computeAdminReferralStats() {
     var visits = loadVisitRecords().filter(isRecordThisYear);
     var emergencies = loadEmergencyRecords().filter(isRecordThisYear);
@@ -16231,39 +16157,6 @@
     }).filter(function(it) { return it.count > 0; });
     return { items: items, isDemo: !items.length };
   }
-  function computeAdminClinicMonthly() {
-    var months = [];
-    var now = new Date();
-    for (var i = 5; i >= 0; i--) {
-      var d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      months.push({
-        label: d.toLocaleDateString('th-TH', { month: 'short' }),
-        year: d.getFullYear(),
-        month: d.getMonth(),
-        count: 0
-      });
-    }
-    loadVisitRecords().concat(loadEmergencyRecords()).forEach(function(r) {
-      var ts = r.savedAt || getRecordTimestamp(r);
-      if (!ts) return;
-      var rd = new Date(ts);
-      months.forEach(function(m) {
-        if (rd.getFullYear() === m.year && rd.getMonth() === m.month) m.count++;
-      });
-    });
-    return { items: months.map(function(m) { return { label: m.label, count: m.count }; }), isDemo: months.every(function(m) { return m.count === 0; }) };
-  }
-  function computeAdminVaccineStats() {
-    var vaccines = loadVaccineRecords().filter(isRecordThisYear);
-    var counts = {};
-    vaccines.forEach(function(r) {
-      var key = (r.vaccine || 'ไม่ระบุ').trim();
-      counts[key] = (counts[key] || 0) + 1;
-    });
-    var items = Object.keys(counts).map(function(k) { return { label: k, count: counts[k] }; })
-      .sort(function(a, b) { return b.count - a.count; }).slice(0, 8);
-    return { items: items, isDemo: !items.length };
-  }
   function setAdminChartDemoNote(noteId, isDemo, useSample) {
     var el = document.getElementById(noteId);
     if (!el) return;
@@ -16285,53 +16178,10 @@
   }
   function scheduleAdminDashboardCharts(live) {
     if (!isExecDashboardRole()) return;
-    if (_adminChartsSettled || (typeof shouldSkipAutoChartRefresh_ === 'function' && shouldSkipAutoChartRefresh_() && _adminChartsRenderedForCache)) {
-      return;
+    if (_adminChartsSettled) return;
+    if (typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
+      scheduleDeferredAdminChartsAfterLogin_();
     }
-    /* ช่วงหลังล็อกอิน — ห้ามเริ่มสร้างกราฟจนกว่า silence จะหมด (กันค้าง) */
-    if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
-      /* มี snapshot รายสัปดาห์ — อนุญาตให้ deferred โชว์เร็วได้ */
-      if (typeof loadAdminChartsWeeklySnapshot_ === 'function' && loadAdminChartsWeeklySnapshot_()) {
-        if (typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
-          scheduleDeferredAdminChartsAfterLogin_();
-        }
-        return;
-      }
-      if (typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
-        scheduleDeferredAdminChartsAfterLogin_();
-      }
-      return;
-    }
-    if (_adminChartRenderTimer) clearTimeout(_adminChartRenderTimer);
-    /* หน่วงหลัง quiet / bootstrap — ห้ามคำนวณกราฟซ้อนงานหนัก */
-    var quietLeft = 0;
-    try {
-      if (typeof _postLoginQuietUntil === 'number') quietLeft = Math.max(0, _postLoginQuietUntil - Date.now());
-    } catch (eQ) {}
-    var chartDelay = Math.max(
-      quietLeft + 500,
-      (_softBootstrapPending || _cloudBootstrapRunning) ? 1200 : 400
-    );
-    _adminChartRenderTimer = setTimeout(function() {
-      _adminChartRenderTimer = null;
-      if (!isExecDashboardRole()) return;
-      var dash = document.getElementById('section-dashboard');
-      if (!dash || !dash.classList.contains('active')) return;
-      if (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) {
-        scheduleAdminDashboardCharts(live);
-        return;
-      }
-      if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
-        scheduleDeferredAdminChartsAfterLogin_();
-        return;
-      }
-      if (_softBootstrapPending || _cloudBootstrapRunning ||
-          (typeof isPostLoginHeavyDeferred_ === 'function' && isPostLoginHeavyDeferred_())) {
-        scheduleAdminDashboardCharts(live);
-        return;
-      }
-      buildAndRenderAdminChartsChunked_();
-    }, chartDelay);
   }
   var _adminChartBuildTimer = null;
   var _visitReadCapForCharts = 0;
@@ -16394,10 +16244,7 @@
       }
       return;
     }
-    /* ไม่มี snapshot — อย่าคำนวณจาก visit (OOM); โชว์ตัวเลข + กราฟว่าง แล้วเก็บ snapshot เบา */
-    if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
-      /* โชว์ตัวเลขจากแดชบอร์ดทันที แม้ยังเงียบซิงค์ */
-    }
+    /* ไม่มี snapshot — โชว์ตัวเลข + กราฟว่าง แล้วเก็บ snapshot เบา (ห้ามคำนวณจาก visit) */
     var kick = function () {
       try {
         var dashData = loadDashboard();
@@ -16455,7 +16302,6 @@
     setTimeout(kick, 200);
   }
   function buildAndRenderAdminChartsChunked_() {
-    /* ปิดคำนวณกราฟจาก visit ทั้งชุด — ใช้ snapshot/กราฟว่างผ่าน runDeferred เท่านั้น */
     if (_adminChartsSettled) return;
     if (typeof runDeferredAdminChartsAfterLogin_ === 'function') {
       runDeferredAdminChartsAfterLogin_();
@@ -17325,17 +17171,6 @@
     }, 45000);
   }
   try { startAppointmentPolling(); } catch (eApptPoll) { console.warn('[SH appt poll]', eApptPoll); }
-
-  var _liveChartTimer = null;
-  function startLiveChartPolling() {
-    /* ปิด poll กราฟอัตโนมัติ — อัปเดตรายสัปดาห์จาก snapshot แทน (กันค้างหลังโหลดเสร็จ) */
-    if (_liveChartTimer) {
-      try { clearInterval(_liveChartTimer); } catch (eClr) {}
-      _liveChartTimer = null;
-    }
-    return;
-  }
-  try { startLiveChartPolling(); } catch (eChartPoll) { console.warn('[SH chart poll]', eChartPoll); }
 
   function formatInfoDateRange(item) {
     if (!item.dateStart) return '—';
