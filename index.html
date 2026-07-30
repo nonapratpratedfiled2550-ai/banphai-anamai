@@ -4495,9 +4495,9 @@
   </div>
 </div>
 
-<!-- SH_FREEZE_FIX:2026-07-30g oom-after-charts -->
+<!-- SH_FREEZE_FIX:2026-07-30h freeze-after-paint -->
 <script>
-  window.__SH_FREEZE_FIX = '2026-07-30g';
+  window.__SH_FREEZE_FIX = '2026-07-30h';
   /* ตัด RAM ตอนเปิดเว็บ: ลบ backup + ล้าง sh-visit ถ้าใหญ่เกิน (กัน Out of Memory ตอน parse) */
   (function pruneHeavyVisitStorageOnBoot_() {
     try { localStorage.removeItem('sh-visit-backup'); } catch (eB) {}
@@ -4513,6 +4513,14 @@
     } catch (eP) {
       try { localStorage.removeItem('sh-visit'); } catch (eRm) {}
     }
+    /* snapshot กราฟใหญ่เกิน — ลบแล้วโชว์ตัวเลขอย่างเดียว (กัน OOM ตอน parse snapshot) */
+    try {
+      var snap = localStorage.getItem('sh-admin-charts-weekly');
+      if (snap && snap.length > 400000) {
+        localStorage.removeItem('sh-admin-charts-weekly');
+        console.warn('[SH] cleared oversized weekly charts snapshot', snap.length);
+      }
+    } catch (eS) {}
   })();
 </script>
 <script src="auth-gate.js"></script>
@@ -9278,16 +9286,13 @@
     }
     if (id === 'dashboard') {
       renderDashboard();
-      /* กลับมาแดชบอร์ด — ใช้ snapshot รายสัปดาห์หรือโหลดกราฟครั้งเดียว */
-      if (typeof isExecDashboardRole === 'function' && isExecDashboardRole() &&
-          !_adminChartsSettled && !_adminChartsRenderedForCache &&
-          typeof runDeferredAdminChartsAfterLogin_ === 'function') {
-        setTimeout(function () {
-          try {
-            _deferredAdminChartsArmed = false;
-            runDeferredAdminChartsAfterLogin_();
-          } catch (eCh) {}
-        }, 400);
+      /* กลับมาแดชบอร์ด — ถ้า settle/snapshot แล้ว ห้ามรีเซ็ตคิวกราฟ */
+      if (typeof isExecDashboardRole === 'function' && isExecDashboardRole()) {
+        if (_adminChartsSettled || (typeof isAdminChartsWeeklyFresh_ === 'function' && isAdminChartsWeeklyFresh_())) {
+          /* keep painted */
+        } else if (!_adminChartsRenderedForCache && typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
+          scheduleDeferredAdminChartsAfterLogin_();
+        }
       }
     }
     if (id === 'school-calendar') {
@@ -9406,9 +9411,21 @@
       }
     }
     if (id === 'teacher') {
-      if (typeof initTeacherRegistryTable === 'function') initTeacherRegistryTable();
-      if (typeof updateTeacherCounts === 'function') updateTeacherCounts();
-      if (typeof refreshTeacherRegistryFromSheetForStaff === 'function') refreshTeacherRegistryFromSheetForStaff();
+      if (typeof ensureTeacherBasicDataLoaded === 'function') {
+        ensureTeacherBasicDataLoaded(function () {
+          if (typeof initTeacherRegistryTable === 'function') initTeacherRegistryTable();
+          if (typeof updateTeacherCounts === 'function') updateTeacherCounts();
+          if (typeof bootTeacherRegistrySearch_ === 'function') bootTeacherRegistrySearch_();
+          if (typeof refreshTeacherRegistryFromSheetForStaff === 'function') {
+            setTimeout(function () { refreshTeacherRegistryFromSheetForStaff(); }, 800);
+          }
+        });
+      } else {
+        if (typeof initTeacherRegistryTable === 'function') initTeacherRegistryTable();
+        if (typeof updateTeacherCounts === 'function') updateTeacherCounts();
+        if (typeof bootTeacherRegistrySearch_ === 'function') bootTeacherRegistrySearch_();
+        if (typeof refreshTeacherRegistryFromSheetForStaff === 'function') refreshTeacherRegistryFromSheetForStaff();
+      }
     }
     if (id === 'gshps' && typeof renderInfoHub === 'function') renderInfoHub();
     if (id === 'public') renderPublicHub();
@@ -12040,20 +12057,20 @@
     if (isAdminChartsWeeklyFresh_()) return true;
     return false;
   }
-  function markAdminChartsSettled_(live) {
+  function markAdminChartsSettled_(live, opts) {
+    opts = opts || {};
     if (live) {
       _adminLiveCache = live;
       _adminChartsRenderedForCache = live;
-      try { saveAdminChartsWeeklySnapshot_(live); } catch (eMk) {}
+      /* อย่า stringify snapshot ซ้ำตอนเพิ่งโหลดจากดิสก์ — จุด Out of Memory หลังโดนัทขึ้น */
+      if (!opts.skipSave) {
+        try { saveAdminChartsWeeklySnapshot_(live); } catch (eMk) {}
+      }
     }
     _adminChartsSettled = true;
     _visitReadCapForCharts = 0;
-    /* หลังกราฟเสร็จ — ตัด RAM: หั่น visit cache + ยกเลิก idle repair (จุด Out of Memory) */
-    try {
-      if (_visitRecordsMemCache && _visitRecordsMemCache.length > 60) {
-        _visitRecordsMemCache = _visitRecordsMemCache.slice(0, 60);
-      }
-    } catch (eTrim) {}
+    /* หลังกราฟเสร็จ — ตัด RAM: ล้าง visit cache + ยกเลิก idle repair */
+    try { _visitRecordsMemCache = null; } catch (eTrim) {}
     try {
       if (_visitRepairIdleTimer) {
         clearTimeout(_visitRepairIdleTimer);
@@ -14140,6 +14157,19 @@
     if (!role || STAFF_ROLES.indexOf(role) === -1) return;
     const editable = canEditSchoolCalendar();
     const isExecDash = isExecDashboardRole(role);
+    /* กราฟ/ตัวเลข settle แล้ว — ห้าม compute ซ้ำทุกเส้นทาง (ต้นตอ Out of Memory) */
+    if (isExecDash && _adminChartsSettled && _adminLiveCache) {
+      var settled0 = _adminLiveCache;
+      var s0 = settled0.display || loadDashboard();
+      visitCount = parseInt(s0.todayVisit, 10) || 0;
+      renderDashStatNum('dashStaffCount', s0.staffCount, 'staffCount', false);
+      renderDashStatNum('todayVisit', s0.todayVisit, 'todayVisit', false);
+      renderDashStatNum('referralCount', s0.referralCount, 'referralCount', false);
+      renderDashStatNum('screenedCount', s0.screenedCount, 'screenedCount', false);
+      renderDashStatNum('alertCount', s0.alertCount || 0, 'alertCount', false);
+      try { updateDashboardLayoutForRole(); } catch (eLay0) {}
+      return;
+    }
     /* ช่วงเงียบหลังล็อกอิน: โชว์ตัวเลขจาก cache เท่านั้น — ห้าม sync/compute/ปฏิทิน/กราฟ */
     if (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) {
       var quietData = loadDashboard();
@@ -14187,6 +14217,37 @@
       try { updateDashboardLayoutForRole(); } catch (eLayS) {}
       try { renderAdminDashboardExtras(settled); } catch (eExS) {}
       try { updateStudentCounts(); } catch (eCntS) {}
+      return;
+    }
+    /* ห้าม computeAdminLiveData เต็มบนแดชบอร์ด — ใช้ lite / snapshot เท่านั้น */
+    if (isExecDash) {
+      var snapEarly = typeof applyAdminChartsWeeklySnapshot_ === 'function' ? applyAdminChartsWeeklySnapshot_() : null;
+      if (snapEarly && snapEarly.charts) {
+        _adminLiveCache = snapEarly;
+        if (typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
+          scheduleDeferredAdminChartsAfterLogin_();
+        }
+        var dEarly = snapEarly.display || loadDashboard();
+        visitCount = parseInt(dEarly.todayVisit, 10) || 0;
+        renderDashStatNum('dashStaffCount', dEarly.staffCount, 'staffCount', false);
+        renderDashStatNum('todayVisit', dEarly.todayVisit, 'todayVisit', false);
+        renderDashStatNum('referralCount', dEarly.referralCount, 'referralCount', false);
+        renderDashStatNum('screenedCount', dEarly.screenedCount, 'screenedCount', false);
+        renderDashStatNum('alertCount', dEarly.alertCount || 0, 'alertCount', false);
+        try { updateDashboardLayoutForRole(); } catch (eLayE) {}
+        return;
+      }
+      var liteDash = loadDashboard();
+      visitCount = parseInt(liteDash.todayVisit, 10) || 0;
+      renderDashStatNum('dashStaffCount', liteDash.staffCount, 'staffCount', false);
+      renderDashStatNum('todayVisit', liteDash.todayVisit, 'todayVisit', false);
+      renderDashStatNum('referralCount', liteDash.referralCount, 'referralCount', false);
+      renderDashStatNum('screenedCount', liteDash.screenedCount, 'screenedCount', false);
+      renderDashStatNum('alertCount', liteDash.alertCount || 0, 'alertCount', false);
+      try { updateDashboardLayoutForRole(); } catch (eLayL) {}
+      if (typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
+        scheduleDeferredAdminChartsAfterLogin_();
+      }
       return;
     }
     var cachedBefore = _adminLiveCache;
@@ -16278,15 +16339,14 @@
   var _deferredAdminChartsArmed = false;
   function scheduleDeferredAdminChartsAfterLogin_() {
     if (_deferredAdminChartsArmed) return;
+    if (_adminChartsSettled) return;
     _deferredAdminChartsArmed = true;
     if (_deferredAdminChartsTimer) clearTimeout(_deferredAdminChartsTimer);
-    /* มี snapshot รายสัปดาห์ → โชว์เร็ว; ไม่มี → รอหลัง silence แล้วค่อยคำนวณ */
-    var waitMs = 150000;
+    /* snapshot หรือกราฟว่าง — โชว์เร็ว ไม่รอ silence ยาว */
+    var waitMs = 500;
     try {
       if (typeof loadAdminChartsWeeklySnapshot_ === 'function' && loadAdminChartsWeeklySnapshot_()) {
-        waitMs = 900;
-      } else if (typeof _postLoginNoAutoSheetSyncUntil === 'number') {
-        waitMs = Math.max(150000, (_postLoginNoAutoSheetSyncUntil - Date.now()) + 15000);
+        waitMs = 300;
       }
     } catch (eW) {}
     _deferredAdminChartsTimer = setTimeout(function () {
@@ -16307,42 +16367,41 @@
       _deferredAdminChartsTimer = setTimeout(runDeferredAdminChartsAfterLogin_, 5000);
       return;
     }
-    /* ใช้ snapshot รายสัปดาห์ก่อน — ไม่ต้องคำนวณใหม่ / ไม่ต้องรอ silence */
+    /* ใช้ snapshot รายสัปดาห์ก่อน — วาดครั้งเดียวแล้วหยุดสนิท (ห้ามรอบสอง/ปฏิทิน/stringify) */
     var snapLive = typeof applyAdminChartsWeeklySnapshot_ === 'function' ? applyAdminChartsWeeklySnapshot_() : null;
     if (snapLive && snapLive.charts) {
       try {
-        try { renderSchoolCalendarBoard(loadDashboard(), canEditSchoolCalendar()); } catch (eCal0) {}
+        /* settle ก่อน paint — กัน renderDashboardNow/ครู/ชีต วิ่งซ้อนตอนกำลังวาด */
+        _adminChartsSettled = true;
+        _adminLiveCache = snapLive;
+        _adminChartsRenderedForCache = snapLive;
         if (snapLive.display) {
-          var editable0 = canEditSchoolCalendar();
-          renderDashStatNum('dashStaffCount', snapLive.display.staffCount, 'staffCount', editable0 && !isExecDashboardRole());
-          renderDashStatNum('todayVisit', snapLive.display.todayVisit, 'todayVisit', editable0 && !isExecDashboardRole());
-          renderDashStatNum('referralCount', snapLive.display.referralCount, 'referralCount', editable0 && !isExecDashboardRole());
-          renderDashStatNum('screenedCount', snapLive.display.screenedCount, 'screenedCount', editable0 && !isExecDashboardRole());
+          var editable0 = false;
+          renderDashStatNum('dashStaffCount', snapLive.display.staffCount, 'staffCount', editable0);
+          renderDashStatNum('todayVisit', snapLive.display.todayVisit, 'todayVisit', editable0);
+          renderDashStatNum('referralCount', snapLive.display.referralCount, 'referralCount', editable0);
+          renderDashStatNum('screenedCount', snapLive.display.screenedCount, 'screenedCount', editable0);
           renderDashStatNum('alertCount', snapLive.display.alertCount || 0, 'alertCount', false);
         }
         renderAdminDashboardExtras(snapLive);
         renderAdminDashboardChartsMain_(snapLive);
-        setTimeout(function () {
-          try { renderAdminModuleCharts(snapLive); } catch (eMod0) {}
-          markAdminChartsSettled_(snapLive);
-        }, 60);
+        /* โมดูลจาก snapshot เท่านั้น — ห้าม getGradeRegistryCountsByLevel / STUDENT_BASIC */
+        try { renderAdminModuleCharts(snapLive, { fromSnapshot: true }); } catch (eMod0) {}
+        markAdminChartsSettled_(snapLive, { skipSave: true });
       } catch (eSnap) {
         console.warn('[SH weekly charts]', eSnap);
+        markAdminChartsSettled_(snapLive, { skipSave: true });
       }
       return;
     }
-    /* ไม่มี snapshot — รอหมดช่วงเงียบซิงค์แล้วค่อยคำนวณ */
+    /* ไม่มี snapshot — อย่าคำนวณจาก visit (OOM); โชว์ตัวเลข + กราฟว่าง แล้วเก็บ snapshot เบา */
     if (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) {
-      _deferredAdminChartsTimer = setTimeout(runDeferredAdminChartsAfterLogin_, 5000);
-      return;
+      /* โชว์ตัวเลขจากแดชบอร์ดทันที แม้ยังเงียบซิงค์ */
     }
     var kick = function () {
       try {
-        try { renderSchoolCalendarBoard(loadDashboard(), canEditSchoolCalendar()); } catch (eCal) {}
-        _visitReadCapForCharts = 50;
-        invalidateAdminLiveCache({ force: true });
-        /* ใช้ตัวเลขจากแดชบอร์ด cache — ห้าม computeAdminLiveData เต็ม (HPV/coverage/parse ซ้อน) */
         var dashData = loadDashboard();
+        var emptyBlock = { items: [], isDemo: true };
         var full = {
           display: {
             staffCount: dashData.staffCount || 0,
@@ -16357,86 +16416,50 @@
           alerts: [],
           kpi: [],
           recentActivity: [],
-          charts: {}
+          charts: {
+            healthSummary: emptyBlock,
+            healthTrend: { trend: { labels: [], series: [] }, isDemo: true },
+            health: emptyBlock,
+            gauges: emptyBlock,
+            clinicGrouped: emptyBlock,
+            vaccineRings: emptyBlock,
+            screening: emptyBlock,
+            nutrition: emptyBlock,
+            referralGrid: emptyBlock,
+            chronic: emptyBlock,
+            mental: emptyBlock,
+            diseaseWatch: emptyBlock,
+            emergencyMonthly: emptyBlock,
+            gradeVisits: emptyBlock,
+            medicineStock: emptyBlock,
+            appointmentGrid: emptyBlock
+          }
         };
+        _adminChartsSettled = true;
         _adminLiveCache = full;
+        _adminChartsRenderedForCache = full;
+        renderDashStatNum('dashStaffCount', full.display.staffCount, 'staffCount', false);
+        renderDashStatNum('todayVisit', full.display.todayVisit, 'todayVisit', false);
+        renderDashStatNum('referralCount', full.display.referralCount, 'referralCount', false);
+        renderDashStatNum('screenedCount', full.display.screenedCount, 'screenedCount', false);
+        renderDashStatNum('alertCount', full.display.alertCount || 0, 'alertCount', false);
         renderAdminDashboardExtras(full);
-        buildAndRenderAdminChartsChunked_();
+        try { renderAdminDashboardChartsMain_(full); } catch (eMain0) {}
+        try { renderAdminModuleCharts(full, { fromSnapshot: true }); } catch (eMod1) {}
+        markAdminChartsSettled_(full, { skipSave: false });
       } catch (eRun) {
         console.warn('[SH deferred charts]', eRun);
-        _visitReadCapForCharts = 0;
+        _adminChartsSettled = true;
       }
     };
-    if (typeof requestIdleCallback === 'function') {
-      requestIdleCallback(function () { kick(); }, { timeout: 20000 });
-    } else {
-      setTimeout(kick, 800);
-    }
+    setTimeout(kick, 200);
   }
   function buildAndRenderAdminChartsChunked_() {
-    if (_adminChartBuildTimer) {
-      clearTimeout(_adminChartBuildTimer);
-      _adminChartBuildTimer = null;
+    /* ปิดคำนวณกราฟจาก visit ทั้งชุด — ใช้ snapshot/กราฟว่างผ่าน runDeferred เท่านั้น */
+    if (_adminChartsSettled) return;
+    if (typeof runDeferredAdminChartsAfterLogin_ === 'function') {
+      runDeferredAdminChartsAfterLogin_();
     }
-    if (_visitReadCapForCharts <= 0) _visitReadCapForCharts = 50;
-    /* ห้าม computeAdminLiveData เต็ม (HPV/coverage/parse ซ้อน) — ใช้ cache แดชบอร์ด */
-    var data = (_adminLiveCache && typeof _adminLiveCache === 'object') ? _adminLiveCache : {
-      display: (typeof loadDashboard === 'function' ? loadDashboard() : {}),
-      extraStats: {},
-      alerts: [],
-      kpi: [],
-      recentActivity: [],
-      charts: {}
-    };
-    if (!data.charts) data.charts = {};
-    _adminLiveCache = data;
-    /* กราฟหลักน้อยชิ้น + หน่วงนาน — กัน peak RAM/CPU จน Out of Memory */
-    var jobs = [
-      function () { data.charts.healthSummary = computeAdminHealthSummary(); },
-      function () { data.charts.healthTrend = computeAdminHealthTrend(); },
-      function () { data.charts.health = computeAdminHealthProblems(); },
-      function () { data.charts.gauges = computeAdminGauges(); },
-      function () { data.charts.clinicGrouped = computeAdminClinicGrouped(); },
-      function () { data.charts.vaccineRings = computeAdminVaccineRings(); },
-      function () { data.charts.screening = computeAdminScreeningChart(); },
-      function () { data.charts.nutrition = computeAdminNutritionChart(); }
-    ];
-    var idx = 0;
-    function runOne() {
-      if (!isExecDashboardRole()) return;
-      var dash = document.getElementById('section-dashboard');
-      if (!dash || !dash.classList.contains('active')) return;
-      if (idx < jobs.length) {
-        try { jobs[idx](); } catch (eJob) { console.warn('[SH chart job]', eJob); }
-        idx += 1;
-        _adminChartBuildTimer = setTimeout(runOne, 120);
-        return;
-      }
-      _adminChartBuildTimer = null;
-      /* เติมบล็อกว่าง — โมดูลรองไม่ต้องคำนวณหนักรอบนี้ */
-      data.charts.referralGrid = data.charts.referralGrid || { items: [], isDemo: true };
-      data.charts.chronic = data.charts.chronic || { items: [], isDemo: true };
-      data.charts.mental = data.charts.mental || { items: [], isDemo: true };
-      data.charts.diseaseWatch = data.charts.diseaseWatch || { items: [], isDemo: true };
-      data.charts.emergencyMonthly = data.charts.emergencyMonthly || { items: [], isDemo: true };
-      data.charts.gradeVisits = data.charts.gradeVisits || { items: [], isDemo: true };
-      data.charts.medicineStock = data.charts.medicineStock || { items: [], isDemo: true };
-      data.charts.appointmentGrid = data.charts.appointmentGrid || { items: [], isDemo: true };
-      try {
-        renderAdminDashboardChartsMain_(data);
-      } catch (eMain) { console.warn('[SH chart main]', eMain); }
-      _adminChartBuildTimer = setTimeout(function () {
-        _adminChartBuildTimer = null;
-        try {
-          renderAdminModuleCharts(data);
-        } catch (eMod) { console.warn('[SH chart mod]', eMod); }
-        markAdminChartsSettled_(data);
-        try {
-          if (_visitRecordsMemCache) _visitRecordsMemCache = null;
-        } catch (eFree) {}
-      }, 200);
-    }
-    runOne();
   }
   function renderAdminDashboardChartsMain_(live) {
     if (!isExecDashboardRole()) return;
@@ -16465,15 +16488,19 @@
   }
   function renderAdminDashboardCharts(live) {
     if (!isExecDashboardRole()) return;
-    if (!live) live = computeAdminLiveData();
-    if (!live.charts) live.charts = buildAdminChartsBlock_();
-    renderAdminDashboardChartsMain_(live);
-    renderAdminModuleCharts(live);
-  }
-  function renderAdminModuleCharts(live) {
     if (!live) {
-      invalidateAdminLiveCache();
-      live = computeAdminLiveData();
+      if (_adminLiveCache && _adminLiveCache.charts) live = _adminLiveCache;
+      else return;
+    }
+    if (!live.charts) return;
+    renderAdminDashboardChartsMain_(live);
+    renderAdminModuleCharts(live, { fromSnapshot: true });
+  }
+  function renderAdminModuleCharts(live, opts) {
+    opts = opts || {};
+    if (!live) {
+      if (_adminChartsSettled && _adminLiveCache) live = _adminLiveCache;
+      else return;
     }
     var c = live.charts || {};
     function itemsOf_(block) {
@@ -16496,7 +16523,8 @@
     setAdminChartDemoNote('admin-chart-disease-note', demoOf_(c.diseaseWatch), false);
     renderAdminColumnBars('admin-chart-emergency', itemsOf_(c.emergencyMonthly), 'ยังไม่มีข้อมูล');
     setAdminChartDemoNote('admin-chart-emergency-note', demoOf_(c.emergencyMonthly), false);
-    var gradeItems = getGradeRegistryCountsByLevel() || itemsOf_(c.gradeVisits) || [];
+    /* ห้าม getGradeRegistryCountsByLevel / สแกน STUDENT_BASIC บนแดชบอร์ด (จุด OOM) */
+    var gradeItems = itemsOf_(c.gradeVisits);
     renderAdminColumnBars('admin-chart-student', gradeItems, 'ยังไม่มีข้อมูลทะเบียนนักเรียน');
     setAdminChartDemoNote('admin-chart-student-note', !gradeItems.length, false);
     renderAdminExecHorizBars('admin-chart-medicine', itemsOf_(c.medicineStock).map(function(it) {
@@ -20935,6 +20963,17 @@
     if (teacherCount < 10 && typeof isDeployedAppHost === 'function' && isDeployedAppHost()) {
       console.warn('[SH] teacher-basic-data.js อาจไม่ครบบน Vercel — พบครู', teacherCount, 'คน');
     }
+    /* อัปเดตจำนวนครูเบา ๆ — ห้ามสร้างตาราง/ดึงชีตตอนอยู่แดชบอร์ด (ซ้อนกราฟแล้ว OOM) */
+    try {
+      if (typeof updateStudentCounts === 'function') updateStudentCounts();
+    } catch (eCntT) {}
+    var dashT = document.getElementById('section-dashboard');
+    var onDash = dashT && dashT.classList.contains('active');
+    var silent = typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_();
+    if (onDash || silent || _adminChartsSettled) {
+      if (loggedInTeacherId && typeof updateRoleBadge === 'function') updateRoleBadge();
+      return;
+    }
     if (typeof initTeacherRegistryTable === 'function') initTeacherRegistryTable();
     if (loggedInTeacherId && typeof updateRoleBadge === 'function') updateRoleBadge();
     if (typeof isFullStaffRole === 'function' && isFullStaffRole()) {
@@ -22309,10 +22348,18 @@
   }
   function safeBootData() {
     try { updateStudentCounts(); } catch (e) { console.warn('[SH boot]', e); }
-    try { initReferralRecords(); } catch (e) { console.warn('[SH boot]', e); }
     var role = getCurrentRole();
     /* หน้า Welcome (ยังไม่ล็อกอิน) — ห้ามคำนวณแดชบอร์ด/กราฟ ทั้งชุด กันค้าง */
     if (!role) return;
+    /* หลังล็อกอิน staff — ห้าม initReferral + compute แดชบอร์ดเต็ม (OOM ซ้อนกราฟ) */
+    if (typeof isExecDashboardRole === 'function' && isExecDashboardRole(role)) {
+      if (_adminChartsSettled ||
+          (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) ||
+          (typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_())) {
+        return;
+      }
+    }
+    try { initReferralRecords(); } catch (e) { console.warn('[SH boot]', e); }
     var activePanel = document.querySelector('.section-panel.active');
     var activeId = activePanel && activePanel.id ? activePanel.id.replace(/^section-/, '') : '';
     if (activeId === 'dashboard') {
@@ -23053,11 +23100,20 @@
     }
     /* ทะเบียนครูเบา (~70KB) — โหลดได้ทันที */
     if (typeof ensureTeacherBasicDataLoaded === 'function') {
-      ensureTeacherBasicDataLoaded(function () {
-        try {
-          if (typeof initWhenTeacherDataReady === 'function') initWhenTeacherDataReady();
-        } catch (eT) {}
-      });
+      /* โหลดครูทีหลังแดชบอร์ด settle — ห้ามซ้อนตอนวาดกราฟ (OOM) */
+      function loadTeachersWhenSafe_() {
+        var dashEl = document.getElementById('section-dashboard');
+        if (dashEl && dashEl.classList.contains('active') && !_adminChartsSettled) {
+          setTimeout(loadTeachersWhenSafe_, 2000);
+          return;
+        }
+        ensureTeacherBasicDataLoaded(function () {
+          try {
+            if (typeof initWhenTeacherDataReady === 'function') initWhenTeacherDataReady();
+          } catch (eT) {}
+        });
+      }
+      setTimeout(loadTeachersWhenSafe_, 8000);
     }
     function stampStudentCountAndIndex_() {
       try {
@@ -23421,54 +23477,52 @@
     if (btn) btn.addEventListener('click', function(e) { e.preventDefault(); runFilter(); });
   })();
 
-  // ===== Teacher registry search =====
-  (function () {
-    function boot() {
-      if (typeof TEACHER_BASIC === 'undefined') {
-        setTimeout(boot, 100);
-        return;
-      }
-      var tbody = document.querySelector('#section-teacher tbody');
-      if (!tbody || !tbody.rows.length) {
-        if (typeof initTeacherRegistryTable === 'function') initTeacherRegistryTable();
-        setTimeout(boot, 120);
-        return;
-      }
-      var rows = Array.from(tbody.rows).map(function(tr) {
-        return {
-          tr: tr,
-          text: Array.from(tr.cells).slice(0, 7).map(function(c) { return c.textContent; }).join(' ').toLowerCase(),
-          group: tr.cells[2] ? tr.cells[2].textContent.trim() : ''
-        };
-      });
-      var total = rows.length;
-      var input = document.getElementById('search-teacher');
-      var sel = document.getElementById('filter-teacher-group');
-      var counter = document.getElementById('teacher-count');
-      function render() {
-        var q = (input && input.value ? input.value : '').trim().toLowerCase();
-        var g = (sel && sel.value) ? sel.value : '';
-        var shown = 0;
-        rows.forEach(function(r) {
-          var ok = (!q || r.text.indexOf(q) !== -1) && (!g || r.group === g);
-          r.tr.style.display = ok ? '' : 'none';
-          if (ok) shown++;
-        });
-        if (counter) {
-          counter.innerHTML = 'แสดง <strong>' + shown.toLocaleString('th-TH') +
-            '</strong> / ' + total.toLocaleString('th-TH') + ' คน';
-        }
-      }
-      var t;
-      var debounced = function() { clearTimeout(t); t = setTimeout(render, 150); };
-      if (input) input.addEventListener('input', debounced);
-      if (sel) sel.addEventListener('change', render);
-      var btn = document.getElementById('btn-search-teacher');
-      if (btn) btn.addEventListener('click', function(e) { e.preventDefault(); render(); });
-      render();
+  // ===== Teacher registry search (ไม่ boot อัตโนมัติ — กัน OOM ซ้อนแดชบอร์ด) =====
+  var _teacherSearchBooted = false;
+  function bootTeacherRegistrySearch_() {
+    if (_teacherSearchBooted) return;
+    if (typeof TEACHER_BASIC === 'undefined') return;
+    var tbody = document.querySelector('#section-teacher tbody');
+    if (!tbody || !tbody.rows.length) {
+      if (typeof initTeacherRegistryTable === 'function') initTeacherRegistryTable();
+      tbody = document.querySelector('#section-teacher tbody');
+      if (!tbody || !tbody.rows.length) return;
     }
-    boot();
-  })();
+    _teacherSearchBooted = true;
+    var rows = Array.from(tbody.rows).map(function(tr) {
+      return {
+        tr: tr,
+        text: Array.from(tr.cells).slice(0, 7).map(function(c) { return c.textContent; }).join(' ').toLowerCase(),
+        group: tr.cells[2] ? tr.cells[2].textContent.trim() : ''
+      };
+    });
+    var total = rows.length;
+    var input = document.getElementById('search-teacher');
+    var sel = document.getElementById('filter-teacher-group');
+    var counter = document.getElementById('teacher-count');
+    function render() {
+      var q = (input && input.value ? input.value : '').trim().toLowerCase();
+      var g = (sel && sel.value) ? sel.value : '';
+      var shown = 0;
+      rows.forEach(function(r) {
+        var ok = (!q || r.text.indexOf(q) !== -1) && (!g || r.group === g);
+        r.tr.style.display = ok ? '' : 'none';
+        if (ok) shown++;
+      });
+      if (counter) {
+        counter.innerHTML = 'แสดง <strong>' + shown.toLocaleString('th-TH') +
+          '</strong> / ' + total.toLocaleString('th-TH') + ' คน';
+      }
+    }
+    var t;
+    var debounced = function() { clearTimeout(t); t = setTimeout(render, 150); };
+    if (input) input.addEventListener('input', debounced);
+    if (sel) sel.addEventListener('change', render);
+    var btn = document.getElementById('btn-search-teacher');
+    if (btn) btn.addEventListener('click', function(e) { e.preventDefault(); render(); });
+    render();
+  }
+  window.bootTeacherRegistrySearch_ = bootTeacherRegistrySearch_;
 
   // ===== ADDED: Scroll-to-top button =====
   (function () {
