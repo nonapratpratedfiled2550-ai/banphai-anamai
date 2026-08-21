@@ -4495,16 +4495,21 @@
   </div>
 </div>
 
-<!-- SH_FREEZE_FIX:2026-07-30j no-double-snap-paint -->
+<!-- SH_FREEZE_FIX:2026-08-22a restore-safe-charts -->
 <script>
-  window.__SH_FREEZE_FIX = '2026-07-30j';
-  /* ตัด RAM ตอนเปิดเว็บ: ลบ backup + ล้าง sh-visit/snapshot ถ้าใหญ่เกิน (กัน Out of Memory) */
+  window.__SH_FREEZE_FIX = '2026-08-22a';
+  /* ตัด RAM ตอนเปิดเว็บ + เคลียร์ snapshot กราฟว่างที่เคยบันทึกผิด (ทำให้กราฟไม่ขึ้น) */
   (function pruneHeavyVisitStorageOnBoot_() {
     try { localStorage.removeItem('sh-visit-backup'); } catch (eB) {}
     try {
+      if (!localStorage.getItem('sh-charts-fix-20260822')) {
+        localStorage.removeItem('sh-admin-charts-weekly');
+        localStorage.setItem('sh-charts-fix-20260822', '1');
+      }
+    } catch (eFix) {}
+    try {
       var raw = localStorage.getItem('sh-visit');
-      if (!raw) { /* ok */ }
-      else if (raw.length > 200000) {
+      if (raw && raw.length > 200000) {
         localStorage.removeItem('sh-visit');
         console.warn('[SH] cleared oversized sh-visit on boot', raw.length);
       }
@@ -4513,7 +4518,6 @@
     }
     try {
       var snap = localStorage.getItem('sh-admin-charts-weekly');
-      /* ลดเพดาน — snapshot ใหญ่ + วาดกราฟทั้งชุดในเฟรมเดียว = Out of Memory */
       if (snap && snap.length > 120000) {
         localStorage.removeItem('sh-admin-charts-weekly');
         console.warn('[SH] cleared oversized weekly charts snapshot', snap.length);
@@ -9284,11 +9288,15 @@
     }
     if (id === 'dashboard') {
       renderDashboard();
-      /* กลับมาแดชบอร์ด — ถ้า settle/snapshot แล้ว ห้ามรีเซ็ตคิวกราฟ */
       if (typeof isExecDashboardRole === 'function' && isExecDashboardRole()) {
-        if (_adminChartsSettled || (typeof isAdminChartsWeeklyFresh_ === 'function' && isAdminChartsWeeklyFresh_())) {
+        var hasReal = _adminChartsRenderedForCache &&
+          typeof adminChartsHaveRealData_ === 'function' &&
+          adminChartsHaveRealData_(_adminChartsRenderedForCache.charts);
+        if (_adminChartsSettled && hasReal) {
           /* keep painted */
-        } else if (!_adminChartsRenderedForCache && typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
+        } else if (typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
+          _adminChartsSettled = false;
+          _deferredAdminChartsArmed = false;
           scheduleDeferredAdminChartsAfterLogin_();
         }
       }
@@ -12031,6 +12039,7 @@
   }
   function saveAdminChartsWeeklySnapshot_(live) {
     if (!live || !live.charts) return;
+    if (!adminChartsHaveRealData_(live.charts)) return;
     try {
       /* เก็บเฉพาะ display + extras + กราฟหลัก — ลดขนาด snapshot */
       var c = live.charts || {};
@@ -12065,10 +12074,33 @@
       _adminChartsWeeklyParsed = slim;
     } catch (eSave) {}
   }
+  function adminChartsHaveRealData_(charts) {
+    if (!charts || typeof charts !== 'object') return false;
+    try {
+      if (charts.healthSummary && charts.healthSummary.items && charts.healthSummary.items.length) return true;
+      if (charts.healthTrend && charts.healthTrend.trend && charts.healthTrend.trend.series &&
+          charts.healthTrend.trend.series.length) return true;
+      if (charts.health && charts.health.items && charts.health.items.length) return true;
+      if (charts.clinicGrouped && charts.clinicGrouped.items &&
+          charts.clinicGrouped.items.some(function (it) { return (it.visits || it.count || 0) > 0; })) return true;
+      if (charts.screening && charts.screening.items && charts.screening.items.length && !charts.screening.isDemo) return true;
+      if (charts.nutrition && charts.nutrition.items && charts.nutrition.items.length && !charts.nutrition.isDemo) return true;
+    } catch (eHas) {}
+    return false;
+  }
   function applyAdminChartsWeeklySnapshot_() {
-    if (_adminLiveCache && _adminLiveCache.charts) return _adminLiveCache;
+    if (_adminLiveCache && _adminLiveCache.charts && adminChartsHaveRealData_(_adminLiveCache.charts)) {
+      return _adminLiveCache;
+    }
     var snap = loadAdminChartsWeeklySnapshot_();
-    if (!snap) return null;
+    if (!snap || !snap.charts || !adminChartsHaveRealData_(snap.charts)) {
+      /* snapshot ว่าง/demo — อย่าใช้ (เคยทำให้กราฟขึ้นว่ายังไม่มีข้อมูลตลอด) */
+      if (snap) {
+        try { localStorage.removeItem(ADMIN_CHARTS_WEEKLY_KEY); } catch (eClr) {}
+        _adminChartsWeeklyParsed = null;
+      }
+      return null;
+    }
     var live = {
       display: snap.display || {},
       extraStats: snap.extraStats || {},
@@ -13431,6 +13463,20 @@
       trend: { labels: months.map(function(m) { return m.label; }), series: series },
       isDemo: !series.length
     };
+  }
+  function computeAdminHealthProblems() {
+    var visits = loadVisitRecords().filter(isRecordThisYear);
+    var emergencies = [];
+    try { emergencies = loadEmergencyRecords().filter(isRecordThisYear); } catch (eEm) {}
+    var counts = {};
+    visits.concat(emergencies).forEach(function(r) {
+      var key = (r.diagnosis && r.diagnosis !== '-- เลือก --') ? r.diagnosis : (r.symptom || '').trim();
+      if (!key || key === '-- เลือก --') key = 'ไม่ระบุ';
+      counts[key] = (counts[key] || 0) + 1;
+    });
+    var items = Object.keys(counts).map(function(k) { return { label: k, count: counts[k] }; })
+      .sort(function(a, b) { return b.count - a.count; }).slice(0, 8);
+    return { items: items, isDemo: !items.length };
   }
   function computeAdminGauges() {
     var gs = (typeof getGshpsResult === 'function') ? getGshpsResult() : null;
@@ -16210,6 +16256,7 @@
   }
   var _adminChartBuildTimer = null;
   var _visitReadCapForCharts = 0;
+  var _forceVisitReadForCharts = false;
   var _deferredAdminChartsTimer = null;
   var _deferredAdminChartsArmed = false;
   function scheduleDeferredAdminChartsAfterLogin_() {
@@ -16220,7 +16267,7 @@
     _deferredAdminChartsTimer = setTimeout(function () {
       _deferredAdminChartsTimer = null;
       runDeferredAdminChartsAfterLogin_();
-    }, 400);
+    }, 600);
   }
   function paintAdminChartsChunked_(live, skipSave) {
     if (!live || !live.charts) {
@@ -16240,14 +16287,116 @@
       }
       renderAdminDashboardExtras(live);
     } catch (eEx) {}
-    /* หั่นการวาดกราฟเป็น 2 เฟรม — กัน Out of Memory จาก DOM พร้อมกัน */
     setTimeout(function () {
       try { renderAdminDashboardChartsMain_(live); } catch (eMain) {}
       setTimeout(function () {
         try { renderAdminModuleCharts(live, { fromSnapshot: true }); } catch (eMod) {}
         markAdminChartsSettled_(live, { skipSave: !!skipSave });
-      }, 80);
-    }, 40);
+        try {
+          _forceVisitReadForCharts = false;
+          _visitReadCapForCharts = 0;
+          _visitRecordsMemCache = null;
+        } catch (eClr) {}
+      }, 100);
+    }, 50);
+  }
+  function buildAdminChartsSafelyOnce_() {
+    if (_adminChartBuildTimer) {
+      clearTimeout(_adminChartBuildTimer);
+      _adminChartBuildTimer = null;
+    }
+    var dashData = loadDashboard();
+    var emptyBlock = { items: [], isDemo: true };
+    var data = {
+      display: {
+        staffCount: dashData.staffCount || 0,
+        todayVisit: dashData.todayVisit || 0,
+        referralCount: dashData.referralCount || 0,
+        screenedCount: dashData.screenedCount || 0,
+        alertCount: dashData.alertCount || 0,
+        warningText: dashData.warningText || '',
+        coverage: dashData.coverage || []
+      },
+      extraStats: (_adminLiveCache && _adminLiveCache.extraStats) || {},
+      alerts: [],
+      kpi: [],
+      recentActivity: [],
+      charts: {
+        healthSummary: emptyBlock,
+        healthTrend: { trend: { labels: [], series: [] }, isDemo: true },
+        health: emptyBlock,
+        gauges: emptyBlock,
+        clinicGrouped: emptyBlock,
+        vaccineRings: emptyBlock,
+        screening: emptyBlock,
+        nutrition: emptyBlock,
+        referralGrid: emptyBlock,
+        chronic: emptyBlock,
+        mental: emptyBlock,
+        diseaseWatch: emptyBlock,
+        emergencyMonthly: emptyBlock,
+        gradeVisits: emptyBlock,
+        medicineStock: emptyBlock,
+        appointmentGrid: emptyBlock
+      }
+    };
+    _adminLiveCache = data;
+    _forceVisitReadForCharts = true;
+    _visitReadCapForCharts = 100;
+    /* คำนวณกราฟหลักทีละชิ้น — ไม่เรียก HPV/coverage หนัก */
+    var jobs = [
+      function () { data.charts.healthSummary = computeAdminHealthSummary(); },
+      function () { data.charts.healthTrend = computeAdminHealthTrend(); },
+      function () { data.charts.health = computeAdminHealthProblems(); },
+      function () { data.charts.clinicGrouped = computeAdminClinicGrouped(); },
+      function () {
+        try {
+          data.charts.screening = computeAdminScreeningChart();
+        } catch (eSc) { data.charts.screening = emptyBlock; }
+      },
+      function () {
+        try {
+          data.charts.nutrition = computeAdminNutritionChart();
+        } catch (eNu) { data.charts.nutrition = emptyBlock; }
+      },
+      function () {
+        /* gauges เบา — ใช้ coverage จากแดชบอร์ด ห้าม computeLiveCoverageItems */
+        var cov = (dashData.coverage || []).slice(0, 5);
+        data.charts.gauges = {
+          items: cov.map(function (c, i) {
+            return {
+              label: c.label || ('รายการ ' + (i + 1)),
+              pct: parseInt(c.pct, 10) || 0,
+              color: (typeof ADMIN_CHART_COLORS !== 'undefined' ? ADMIN_CHART_COLORS[i % ADMIN_CHART_COLORS.length] : '#3b82f6')
+            };
+          }),
+          isDemo: !cov.some(function (c) { return (c.count || c.pct || 0) > 0; })
+        };
+      }
+    ];
+    var idx = 0;
+    function runOne() {
+      if (!isExecDashboardRole()) {
+        _forceVisitReadForCharts = false;
+        return;
+      }
+      var dash = document.getElementById('section-dashboard');
+      if (!dash || !dash.classList.contains('active')) {
+        _forceVisitReadForCharts = false;
+        _deferredAdminChartsArmed = false;
+        return;
+      }
+      if (idx < jobs.length) {
+        try { jobs[idx](); } catch (eJob) { console.warn('[SH chart job]', eJob); }
+        idx += 1;
+        _adminChartBuildTimer = setTimeout(runOne, 100);
+        return;
+      }
+      _adminChartBuildTimer = null;
+      _forceVisitReadForCharts = false;
+      paintAdminChartsChunked_(data, false);
+    }
+    runOne();
   }
   function runDeferredAdminChartsAfterLogin_() {
     if (!isExecDashboardRole()) return;
@@ -16257,72 +16406,27 @@
     }
     var dash = document.getElementById('section-dashboard');
     if (!dash || !dash.classList.contains('active')) {
-      /* ยังไม่ได้อยู่แดชบอร์ด — ปลด armed เพื่อลองใหม่ตอนกลับมา */
       _deferredAdminChartsArmed = false;
       return;
     }
-    if (_adminChartsSettled && _adminChartsRenderedForCache) return;
+    if (_adminChartsSettled && _adminChartsRenderedForCache &&
+        adminChartsHaveRealData_(_adminChartsRenderedForCache.charts)) return;
     if (_softBootstrapPending || _cloudBootstrapRunning) {
       _deferredAdminChartsTimer = setTimeout(runDeferredAdminChartsAfterLogin_, 5000);
       return;
     }
-    /* ใช้ cache ในหน่วยความจำก่อน — ห้าม parse snapshot ซ้ำ */
-    var snapLive = (_adminLiveCache && _adminLiveCache.charts)
-      ? _adminLiveCache
-      : (typeof applyAdminChartsWeeklySnapshot_ === 'function' ? applyAdminChartsWeeklySnapshot_() : null);
-    if (snapLive && snapLive.charts) {
+    var snapLive = typeof applyAdminChartsWeeklySnapshot_ === 'function' ? applyAdminChartsWeeklySnapshot_() : null;
+    if (snapLive && snapLive.charts && adminChartsHaveRealData_(snapLive.charts)) {
       paintAdminChartsChunked_(snapLive, true);
       return;
     }
-    /* ไม่มี snapshot — ตัวเลข + กราฟว่าง (เบา) */
-    try {
-      var dashData = loadDashboard();
-      var emptyBlock = { items: [], isDemo: true };
-      var full = {
-        display: {
-          staffCount: dashData.staffCount || 0,
-          todayVisit: dashData.todayVisit || 0,
-          referralCount: dashData.referralCount || 0,
-          screenedCount: dashData.screenedCount || 0,
-          alertCount: dashData.alertCount || 0,
-          warningText: dashData.warningText || '',
-          coverage: dashData.coverage || []
-        },
-        extraStats: {},
-        alerts: [],
-        kpi: [],
-        recentActivity: [],
-        charts: {
-          healthSummary: emptyBlock,
-          healthTrend: { trend: { labels: [], series: [] }, isDemo: true },
-          health: emptyBlock,
-          gauges: emptyBlock,
-          clinicGrouped: emptyBlock,
-          vaccineRings: emptyBlock,
-          screening: emptyBlock,
-          nutrition: emptyBlock,
-          referralGrid: emptyBlock,
-          chronic: emptyBlock,
-          mental: emptyBlock,
-          diseaseWatch: emptyBlock,
-          emergencyMonthly: emptyBlock,
-          gradeVisits: emptyBlock,
-          medicineStock: emptyBlock,
-          appointmentGrid: emptyBlock
-        }
-      };
-      paintAdminChartsChunked_(full, false);
-    } catch (eRun) {
-      console.warn('[SH deferred charts]', eRun);
-      _adminChartsSettled = true;
-      _deferredAdminChartsArmed = false;
-    }
+    /* ไม่มี snapshot จริง — คำนวณกราฟแบบเบาครั้งเดียว แล้วเก็บรายสัปดาห์ */
+    buildAdminChartsSafelyOnce_();
   }
   function buildAndRenderAdminChartsChunked_() {
-    if (_adminChartsSettled) return;
-    if (typeof runDeferredAdminChartsAfterLogin_ === 'function') {
-      runDeferredAdminChartsAfterLogin_();
-    }
+    if (_adminChartsSettled && _adminChartsRenderedForCache &&
+        adminChartsHaveRealData_(_adminChartsRenderedForCache.charts)) return;
+    buildAdminChartsSafelyOnce_();
   }
   function renderAdminDashboardChartsMain_(live) {
     if (!isExecDashboardRole()) return;
@@ -17918,28 +18022,35 @@
       return _visitRecordsMemCache;
     }
     /* อยู่แดชบอร์ดหลังกราฟเสร็จ — ห้าม parse sh-visit (จุด Chrome Out of Memory) */
-    if (_adminChartsSettled) {
+    if (_adminChartsSettled && !_forceVisitReadForCharts) {
       var dashSettled = document.getElementById('section-dashboard');
       if (dashSettled && dashSettled.classList.contains('active')) {
         return [];
       }
     }
-    /* ช่วงหลังล็อกอิน — ห้าม JSON.parse sh-visit (อาจใหญ่จนค้าง) */
-    if ((typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) ||
+    /* ช่วงหลังล็อกอิน — ห้าม JSON.parse ยกเว้นตอนคำนวณกราฟแบบจำกัดจำนวน */
+    if (!_forceVisitReadForCharts &&
+        ((typeof isPostLoginQuiet_ === 'function' && isPostLoginQuiet_()) ||
         (typeof isPostLoginHeavyDeferred_ === 'function' && isPostLoginHeavyDeferred_()) ||
         (typeof isPostLoginSheetSyncSilent_ === 'function' && isPostLoginSheetSyncSilent_()) ||
-        _postLoginDashPending || _softBootstrapPending || _cloudBootstrapRunning) {
-      /* อย่า scheduleIdleVisitRepair ตอนนี้ — จะไป parse ซ้อนหลังกราฟขึ้นแล้ว OOM */
+        _postLoginDashPending || _softBootstrapPending || _cloudBootstrapRunning)) {
       return [];
     }
     let records = [];
-    try { records = JSON.parse(localStorage.getItem('sh-visit') || '[]'); } catch (e) {}
+    try {
+      var rawVisit = localStorage.getItem('sh-visit') || '[]';
+      if (rawVisit.length > 500000) {
+        console.warn('[SH visit] skip parse for charts — too large', rawVisit.length);
+        return [];
+      }
+      records = JSON.parse(rawVisit);
+    } catch (e) {}
     if (!Array.isArray(records)) records = [];
-    /* กู้จาก backup เฉพาะเมื่อหลักว่าง — ห้าม parse backup คู่ขนาน (กิน RAM เท่าตัว) */
-    if (!records.length) {
+    /* กู้จาก backup เฉพาะเมื่อหลักว่าง — ห้าม parse backup คู่ขนาน */
+    if (!records.length && !_forceVisitReadForCharts) {
       try {
         var bakRaw = localStorage.getItem('sh-visit-backup');
-        if (bakRaw) {
+        if (bakRaw && bakRaw.length < 200000) {
           var backup = JSON.parse(bakRaw);
           if (Array.isArray(backup) && backup.length) records = backup;
         }
@@ -17949,7 +18060,6 @@
       records = records.slice(0, VISIT_LOCAL_MAX_RECORDS);
     }
     _visitRecordsMemCache = records;
-    /* ซ่อมทั้งก้อน — เลื่อนไปตอนเปิดเมนูบันทึกรักษาเท่านั้น (กัน OOM หลังกราฟ) */
     if (_visitReadCapForCharts > 0 && records.length > _visitReadCapForCharts) {
       return records.slice(0, _visitReadCapForCharts);
     }
