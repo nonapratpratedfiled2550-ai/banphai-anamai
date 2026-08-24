@@ -188,6 +188,26 @@
     padding: 8px 12px;
     box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
   }
+  /* หน้า Welcome: ตัดแถบเขียวเข้มที่ติดมากับไฟล์ JPEG ด้านบนโลโก้ — ไม่แตะโลโก้แถบบนหลังล็อกอิน */
+  #role-screen .role-logo-glow {
+    overflow: hidden;
+    padding: 0;
+    background: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.42);
+    animation: none;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  }
+  #role-screen .brand-logo-role {
+    padding: 0;
+    box-shadow: none;
+    border-radius: 14px;
+    height: 70px;
+    width: 248px;
+    max-width: min(248px, 78vw);
+    object-fit: cover;
+    object-position: center 82%;
+    clip-path: inset(16% 2% 4% 2% round 12px);
+  }
   .site-title {
     font-size: 16px;
     font-weight: 700;
