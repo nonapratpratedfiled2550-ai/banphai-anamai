@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -5553,6 +5553,61 @@
         </div>
       </div>
 
+      <div id="sc-fitness" style="display:none;">
+        <div class="two-col">
+          <div class="card">
+            <div class="card-title"><span>💪</span>ทดสอบสมรรถภาพร่างกาย</div>
+            <div class="alert alert-info"><span>📋</span><div>แบบทดสอบสมรรถภาพทางกาย (Physical Fitness) ตามแนวทางสำนักทดสอบพลศึกษา กรมพลศึกษา (อายุ 10–13 ปี) — กรอกค่าที่วัดได้ ระบบจะตีความเกณฑ์อัตโนมัติ</div></div>
+            <div class="form-grid">
+              <div class="form-group"><label>เลขประจำตัว</label><input type="text" id="fit-id" placeholder="รหัสนักเรียน" onblur="fillScreeningFromId(this)" oninput="updateFitnessResult()"></div>
+              <div class="form-group"><label>ชื่อ-นามสกุล</label><input type="text" id="fit-name" placeholder="ชื่อ-นามสกุล"></div>
+              <div class="form-group"><label>ระดับชั้น</label><select id="fit-class"><option>ป.4</option><option>ป.5</option><option>ป.6</option><option>ม.1</option></select></div>
+              <div class="form-group"><label>เพศ</label><select id="fit-sex" onchange="onFitnessSexChange()"><option>ชาย</option><option>หญิง</option></select></div>
+              <div class="form-group"><label>อายุ (ปี)</label><input type="number" id="fit-age" min="10" max="13" readonly class="input-readonly" oninput="updateFitnessResult()"></div>
+            </div>
+
+            <div class="fit-test-list" style="margin-top:14px;">
+              <!-- รายการที่ 1: นั่งงอตัวไปข้างหน้า -->
+              <div class="fit-test-item">
+                <div class="fit-test-head"><strong>1. นั่งงอตัวไปข้างหน้า</strong><span class="fit-unit">เซนติเมตร</span></div>
+                <div style="font-size:11px;color:var(--gray-mid);margin:2px 0 4px;">เพื่อทดสอบความสามารถด้านความนิ่มเหลียวและดัดงอตัวตัว</div>
+                <div class="form-grid" style="margin-top:6px;">
+                  <div class="form-group" style="margin:0;"><label>ระยะที่วัดได้ (ซม.)</label><input type="number" id="fit-flex" step="1" min="-20" max="50" placeholder="เช่น 12" oninput="updateFitnessResult()"></div>
+                  <div class="form-group" style="margin:0;"><label>ผลการประเมิน</label><input type="text" id="fit-flex-level" readonly class="input-readonly" placeholder="—"></div>
+                </div>
+              </div>
+              <!-- รายการที่ 2: ลุกนั่ง 60 วินาที -->
+              <div class="fit-test-item">
+                <div class="fit-test-head"><strong>2. ลุกนั่ง 60 วินาที</strong><span class="fit-unit">ครั้ง</span></div>
+                <div style="font-size:11px;color:var(--gray-mid);margin:2px 0 4px;">เพื่อทดสอบความแข็งแรงและความ�
+dding:3px 6px;border:1px solid #ddd;">28–37</td><td style="padding:3px 6px;border:1px solid #ddd;">20–26</td><td style="padding:3px 6px;border:1px solid #ddd;">124–149</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="margin:8px 0 6px;"><strong>ค่ามาตรฐานนักเรียนหญิง (ครั้ง/ซม.)</strong></p>
+              <div class="table-wrap" style="font-size:11px;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead><tr style="background:var(--blue,#2f80b8);color:#fff;">
+                    <th style="padding:4px 6px;border:1px solid #ddd;">อายุ</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">นั่งงอตัว<br>(ซม.)</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">ลุกนั่ง 60 วิ<br>(ครั้ง)</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">ดันพื้น 30 วิ<br>(ครั้ง)</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">กระโดด 3 นาที<br>(ครั้ง)</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr><td style="padding:3px 6px;border:1px solid #ddd;">10 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">10–14</td><td style="padding:3px 6px;border:1px solid #ddd;">22–27</td><td style="padding:3px 6px;border:1px solid #ddd;">15–20</td><td style="padding:3px 6px;border:1px solid #ddd;">111–131</td></tr>
+                    <tr style="background:#f9f9f9;"><td style="padding:3px 6px;border:1px solid #ddd;">11 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">11–15</td><td style="padding:3px 6px;border:1px solid #ddd;">20–27</td><td style="padding:3px 6px;border:1px solid #ddd;">16–22</td><td style="padding:3px 6px;border:1px solid #ddd;">114–135</td></tr>
+                    <tr><td style="padding:3px 6px;border:1px solid #ddd;">12 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">11–15</td><td style="padding:3px 6px;border:1px solid #ddd;">22–28</td><td style="padding:3px 6px;border:1px solid #ddd;">17–22</td><td style="padding:3px 6px;border:1px solid #ddd;">117–138</td></tr>
+                    <tr style="background:#f9f9f9;"><td style="padding:3px 6px;border:1px solid #ddd;">13 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">12–16</td><td style="padding:3px 6px;border:1px solid #ddd;">24–32</td><td style="padding:3px 6px;border:1px solid #ddd;">18–23</td><td style="padding:3px 6px;border:1px solid #ddd;">118–139</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="margin:10px 0 0;font-size:11px;color:var(--gray-mid);">ที่มา: สำนักวิทยาศาสตร์การกีฬา กรมพลศึกษา กระทรวงการท่องเที่ยวและกีฬา, 2562</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div id="sc-blood" style="display:none;">
         <div class="card">
           <div class="card-title"><span>🩸</span>คัดกรองภาวะโลหิตจาง</div>
@@ -11020,114 +11075,86 @@
     alert('✅ บันทึกผลตรวจร่างกายสำเร็จ — ส่งข้อมูลไป Google Sheet (ตรวจคัดกรอง) แล้ว');
   }
 
-  /* ===== สมรรถภาพร่างกาย (แนวทางกรมพลศึกษา มัธยม) ===== */
-  var FITNESS_LEVELS = ['ดีมาก', 'ดี', 'ปานกลาง', 'ต่ำกว่าเกณฑ์', 'ต่ำมาก'];
-  function fitnessAgeBand_(age) {
-    var a = parseInt(age, 10);
-    if (isNaN(a)) return '';
-    if (a < 13) a = 13;
-    if (a <= 14) return '13-14';
-    if (a <= 16) return '15-16';
-    return '17-18';
-  }
-  function fitnessRankHigherBetter_(value, cuts) {
-    // cuts: [ดีมาก, ดี, ปานกลาง, ต่ำกว่าเกณฑ์] ascending thresholds
-    if (value == null || isNaN(value)) return '';
-    if (value >= cuts[0]) return FITNESS_LEVELS[0];
-    if (value >= cuts[1]) return FITNESS_LEVELS[1];
-    if (value >= cuts[2]) return FITNESS_LEVELS[2];
-    if (value >= cuts[3]) return FITNESS_LEVELS[3];
-    return FITNESS_LEVELS[4];
-  }
-  function fitnessRankLowerBetter_(value, cuts) {
-    // cuts: [ดีมาก, ดี, ปานกลาง, ต่ำกว่าเกณฑ์] descending thresholds (max allowed)
-    if (value == null || isNaN(value)) return '';
-    if (value <= cuts[0]) return FITNESS_LEVELS[0];
-    if (value <= cuts[1]) return FITNESS_LEVELS[1];
-    if (value <= cuts[2]) return FITNESS_LEVELS[2];
-    if (value <= cuts[3]) return FITNESS_LEVELS[3];
-    return FITNESS_LEVELS[4];
-  }
-  function getFitnessNorms_(sex, age) {
-    var band = fitnessAgeBand_(age);
-    if (!band) return null;
-    var isMale = String(sex || '').indexOf('หญิง') === -1;
-    // ค่าเกณฑ์อ้างอิงแนวทางกรมพลศึกษา (มัธยม) ปรับใช้ในโรงเรียน
-    var norms = {
-      male: {
-        '13-14': { sprint: [7.6, 8.1, 8.7, 9.4], jump: [210, 190, 170, 150], situp: [28, 23, 18, 13], pullup: [8, 5, 3, 1], runSec: [240, 270, 300, 340] },
-        '15-16': { sprint: [7.2, 7.7, 8.3, 9.0], jump: [225, 205, 185, 165], situp: [30, 25, 20, 15], pullup: [10, 7, 4, 2], runSec: [230, 260, 290, 330] },
-        '17-18': { sprint: [7.0, 7.5, 8.1, 8.8], jump: [235, 215, 195, 175], situp: [32, 27, 22, 16], pullup: [12, 8, 5, 2], runSec: [220, 250, 280, 320] }
-      },
-      female: {
-        '13-14': { sprint: [8.6, 9.2, 9.9, 10.7], jump: [170, 155, 140, 125], situp: [24, 20, 15, 10], hang: [18, 12, 8, 4], runSec: [270, 300, 340, 390] },
-        '15-16': { sprint: [8.4, 9.0, 9.7, 10.5], jump: [175, 160, 145, 130], situp: [25, 21, 16, 11], hang: [20, 14, 9, 5], runSec: [260, 290, 330, 380] },
-        '17-18': { sprint: [8.2, 8.8, 9.5, 10.3], jump: [180, 165, 150, 135], situp: [26, 22, 17, 12], hang: [22, 15, 10, 5], runSec: [250, 280, 320, 370] }
-      }
-    };
-    return (isMale ? norms.male : norms.female)[band];
-  }
+  /* ===== สมรรถภาพร่างกาย (Physical Fitness) ตามคู่มืออนามัยโรงเรียน อายุ 10-13 ปี ===== */
+  /* 4 รายการ: นั่งงอตัว, ลุกนั่ง 60 วิ, ดันพื้น 30 วิ, ยืนกระโดด 3 นาที */
+  /* ที่มา: สำนักวิทยาศาสตร์การกีฬา กรมพลศึกษา กระทรวงการท่องเที่ยวและกีฬา, 2562 */
+
   function parseFitnessNum_(id) {
     var el = document.getElementById(id);
     if (!el) return null;
     var v = parseFloat(String(el.value || '').trim());
     return isNaN(v) ? null : v;
   }
-  function fitnessRunTotalSec_() {
-    var min = parseFitnessNum_('fit-run-min');
-    var sec = parseFitnessNum_('fit-run-sec');
-    if (min == null && sec == null) return null;
-    return (min || 0) * 60 + (sec || 0);
+
+  /* ค่ามาตรฐาน: [min_pass, max_pass] ช่วงปกติ (เกณฑ์กลาง)
+     ต่ำกว่า min_pass = ต่ำกว่าเกณฑ์, อยู่ในช่วง = ปกติ/ผ่าน, สูงกว่า max_pass = ดี */
+  function getFitnessNorms_(sex, age) {
+    var a = parseInt(age, 10);
+    if (isNaN(a)) return null;
+    if (a < 10) a = 10;
+    if (a > 13) a = 13;
+    var isMale = String(sex || '').indexOf('หญิง') === -1;
+    // ตารางค่ามาตรฐาน [min_normal, max_normal] สำหรับแต่ละรายการ
+    // flex=นั่งงอตัว(ซม.), situp=ลุกนั่ง60วิ(ครั้ง), pushup=ดันพื้น30วิ(ครั้ง), jump=กระโดด3นาที(ครั้ง)
+    var norms = {
+      male: {
+        10: { flex: [8, 12],   situp: [22, 29], pushup: [17, 23], jump: [115, 139] },
+        11: { flex: [10, 14],  situp: [25, 32], pushup: [18, 24], jump: [121, 144] },
+        12: { flex: [10, 14],  situp: [26, 34], pushup: [19, 24], jump: [122, 145] },
+        13: { flex: [11, 15],  situp: [28, 37], pushup: [20, 26], jump: [124, 149] }
+      },
+      female: {
+        10: { flex: [10, 14],  situp: [22, 27], pushup: [15, 20], jump: [111, 131] },
+        11: { flex: [11, 15],  situp: [20, 27], pushup: [16, 22], jump: [114, 135] },
+        12: { flex: [11, 15],  situp: [22, 28], pushup: [17, 22], jump: [117, 138] },
+        13: { flex: [12, 16],  situp: [24, 32], pushup: [18, 23], jump: [118, 139] }
+      }
+    };
+    return (isMale ? norms.male : norms.female)[a] || null;
   }
+
+  /* ประเมินระดับโดยเทียบกับช่วงมาตรฐาน [min, max] */
+  function fitRangeLevel_(value, range) {
+    if (value == null || isNaN(value)) return '';
+    if (value >= range[1]) return 'ดี';
+    if (value >= range[0]) return 'ปกติ';
+    return 'ต่ำกว่าเกณฑ์';
+  }
+
   function onFitnessSexChange() {
-    var sex = (document.getElementById('fit-sex') || {}).value || 'ชาย';
-    var isFemale = String(sex).indexOf('หญิง') !== -1;
-    var boy = document.getElementById('fit-arm-boy');
-    var girl = document.getElementById('fit-arm-girl');
-    if (boy) boy.style.display = isFemale ? 'none' : '';
-    if (girl) girl.style.display = isFemale ? '' : 'none';
-    var title = document.getElementById('fit-endurance-title');
-    if (title) title.textContent = isFemale ? '5. วิ่งอึด 800 เมตร (หญิง)' : '5. วิ่งอึด 1,000 เมตร (ชาย)';
     updateFitnessResult();
   }
+
   function evaluateFitnessTests_() {
     var sex = (document.getElementById('fit-sex') || {}).value || 'ชาย';
     var age = (document.getElementById('fit-age') || {}).value || '';
     var norms = getFitnessNorms_(sex, age);
-    var empty = { sprint: '', jump: '', situp: '', arm: '', run: '' };
+    var empty = { flex: '', situp: '', pushup: '', jump: '' };
     if (!norms) return empty;
-    var isFemale = String(sex).indexOf('หญิง') !== -1;
-    var results = {
-      sprint: fitnessRankLowerBetter_(parseFitnessNum_('fit-sprint'), norms.sprint),
-      jump: fitnessRankHigherBetter_(parseFitnessNum_('fit-jump'), norms.jump),
-      situp: fitnessRankHigherBetter_(parseFitnessNum_('fit-situp'), norms.situp),
-      arm: '',
-      run: fitnessRankLowerBetter_(fitnessRunTotalSec_(), norms.runSec)
+    return {
+      flex:   fitRangeLevel_(parseFitnessNum_('fit-flex'),   norms.flex),
+      situp:  fitRangeLevel_(parseFitnessNum_('fit-situp'),  norms.situp),
+      pushup: fitRangeLevel_(parseFitnessNum_('fit-pushup'), norms.pushup),
+      jump:   fitRangeLevel_(parseFitnessNum_('fit-jump'),   norms.jump)
     };
-    if (isFemale) {
-      results.arm = fitnessRankHigherBetter_(parseFitnessNum_('fit-hang'), norms.hang);
-    } else {
-      results.arm = fitnessRankHigherBetter_(parseFitnessNum_('fit-pullup'), norms.pullup);
-    }
-    return results;
   }
+
   function fitnessLevelPass_(level) {
-    return level === 'ดีมาก' || level === 'ดี' || level === 'ปานกลาง';
+    return level === 'ดี' || level === 'ปกติ';
   }
+
   function updateFitnessResult() {
     var levels = evaluateFitnessTests_();
     var setLevel = function(id, text) {
       var el = document.getElementById(id);
       if (el) el.value = text || '';
     };
-    setLevel('fit-sprint-level', levels.sprint);
-    setLevel('fit-jump-level', levels.jump);
-    setLevel('fit-situp-level', levels.situp);
-    setLevel('fit-pullup-level', levels.arm);
-    setLevel('fit-hang-level', levels.arm);
-    setLevel('fit-run-level', levels.run);
+    setLevel('fit-flex-level',   levels.flex);
+    setLevel('fit-situp-level',  levels.situp);
+    setLevel('fit-pushup-level', levels.pushup);
+    setLevel('fit-jump-level',   levels.jump);
 
-    var done = [levels.sprint, levels.jump, levels.situp, levels.arm, levels.run].filter(Boolean);
+    var done = [levels.flex, levels.situp, levels.pushup, levels.jump].filter(Boolean);
     var pass = done.filter(fitnessLevelPass_).length;
     var preview = document.getElementById('fit-result-preview');
     var previewText = document.getElementById('fit-result-preview-text');
@@ -11136,17 +11163,18 @@
       preview.style.display = 'none';
       return;
     }
-    var summary = 'ประเมินแล้ว ' + done.length + '/5 รายการ · ผ่านเกณฑ์ ' + pass + '/' + done.length + ' รายการ';
-    if (done.length === 5) {
+    var summary = 'ประเมินแล้ว ' + done.length + '/4 รายการ · ผ่านเกณฑ์ ' + pass + '/' + done.length + ' รายการ';
+    if (done.length === 4) {
       summary += pass >= 4
         ? ' — สมรรถภาพโดยรวมดี'
-        : (pass >= 3 ? ' — สมรรถภาพปานกลาง ควรพัฒนาต่อ' : ' — สมรรถภาพต่ำกว่าเกณฑ์ แนะนำออกกำลังกายเพิ่ม');
+        : (pass >= 3 ? ' — สมรรถภาพปกติ ควรพัฒนาต่อ' : ' — สมรรถภาพต่ำกว่าเกณฑ์ แนะนำออกกำลังกายเพิ่ม');
     }
     previewText.textContent = summary;
     preview.className = 'alert ' + (pass >= Math.ceil(done.length * 0.6) ? 'alert-success' : 'alert-warning');
     preview.style.display = '';
     preview.querySelector('span').textContent = pass >= Math.ceil(done.length * 0.6) ? '✅' : '⚠️';
   }
+
   function saveScreeningFitness() {
     var id = (document.getElementById('fit-id').value || '').trim();
     var name = (document.getElementById('fit-name').value || '').trim();
@@ -11159,12 +11187,9 @@
     }
     updateFitnessResult();
     var levels = evaluateFitnessTests_();
-    var done = [levels.sprint, levels.jump, levels.situp, levels.arm, levels.run].filter(Boolean);
+    var done = [levels.flex, levels.situp, levels.pushup, levels.jump].filter(Boolean);
     if (!done.length) { alert('⚠️ กรุณากรอกผลการทดสอบอย่างน้อย 1 รายการ'); return; }
     var pass = done.filter(fitnessLevelPass_).length;
-    var sex = (document.getElementById('fit-sex') || {}).value || 'ชาย';
-    var isFemale = String(sex).indexOf('หญิง') !== -1;
-    var runSec = fitnessRunTotalSec_();
     var summary = 'ผ่าน ' + pass + '/' + done.length + ' รายการ';
     var now = new Date();
     addScreeningRecord(Object.assign({
@@ -11173,30 +11198,26 @@
       summary: summary,
       recordedAt: now.toLocaleString('th-TH'), savedAt: now.getTime(),
       detail: {
-        sprint: parseFitnessNum_('fit-sprint'),
-        sprintLevel: levels.sprint,
-        jump: parseFitnessNum_('fit-jump'),
-        jumpLevel: levels.jump,
-        situp: parseFitnessNum_('fit-situp'),
+        flex:       parseFitnessNum_('fit-flex'),
+        flexLevel:  levels.flex,
+        situp:      parseFitnessNum_('fit-situp'),
         situpLevel: levels.situp,
-        pullup: isFemale ? null : parseFitnessNum_('fit-pullup'),
-        hang: isFemale ? parseFitnessNum_('fit-hang') : null,
-        armLevel: levels.arm,
-        runSec: runSec,
-        runLevel: levels.run,
+        pushup:     parseFitnessNum_('fit-pushup'),
+        pushupLevel: levels.pushup,
+        jump:       parseFitnessNum_('fit-jump'),
+        jumpLevel:  levels.jump,
         pass: pass,
         total: done.length,
         note: (document.getElementById('fit-note') || {}).value || ''
       }
     }, screeningMetaFromPrefix('fit')));
-    ['fit-sprint', 'fit-jump', 'fit-situp', 'fit-pullup', 'fit-hang', 'fit-run-min', 'fit-run-sec', 'fit-note',
-     'fit-sprint-level', 'fit-jump-level', 'fit-situp-level', 'fit-pullup-level', 'fit-hang-level', 'fit-run-level'].forEach(function(fid) {
+    ['fit-flex', 'fit-situp', 'fit-pushup', 'fit-jump', 'fit-note',
+     'fit-flex-level', 'fit-situp-level', 'fit-pushup-level', 'fit-jump-level'].forEach(function(fid) {
       var el = document.getElementById(fid);
       if (el) el.value = '';
     });
     clearScreeningStudentBlock_('fit');
-    if (typeof onFitnessSexChange === 'function') onFitnessSexChange();
-    else updateFitnessResult();
+    updateFitnessResult();
     alert('✅ บันทึกผลสมรรถภาพร่างกายสำเร็จ — ส่งข้อมูลไป Google Sheet (ตรวจคัดกรอง) แล้ว');
   }
   window.onFitnessSexChange = onFitnessSexChange;
