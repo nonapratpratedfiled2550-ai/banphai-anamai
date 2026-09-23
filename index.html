@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="th">
 <head>
 <meta charset="UTF-8">
@@ -5553,61 +5553,6 @@
         </div>
       </div>
 
-      <div id="sc-fitness" style="display:none;">
-        <div class="two-col">
-          <div class="card">
-            <div class="card-title"><span>💪</span>ทดสอบสมรรถภาพร่างกาย</div>
-            <div class="alert alert-info"><span>📋</span><div>แบบทดสอบสมรรถภาพทางกาย (Physical Fitness) ตามแนวทางสำนักทดสอบพลศึกษา กรมพลศึกษา (อายุ 10–13 ปี) — กรอกค่าที่วัดได้ ระบบจะตีความเกณฑ์อัตโนมัติ</div></div>
-            <div class="form-grid">
-              <div class="form-group"><label>เลขประจำตัว</label><input type="text" id="fit-id" placeholder="รหัสนักเรียน" onblur="fillScreeningFromId(this)" oninput="updateFitnessResult()"></div>
-              <div class="form-group"><label>ชื่อ-นามสกุล</label><input type="text" id="fit-name" placeholder="ชื่อ-นามสกุล"></div>
-              <div class="form-group"><label>ระดับชั้น</label><select id="fit-class"><option>ป.4</option><option>ป.5</option><option>ป.6</option><option>ม.1</option></select></div>
-              <div class="form-group"><label>เพศ</label><select id="fit-sex" onchange="onFitnessSexChange()"><option>ชาย</option><option>หญิง</option></select></div>
-              <div class="form-group"><label>อายุ (ปี)</label><input type="number" id="fit-age" min="10" max="13" readonly class="input-readonly" oninput="updateFitnessResult()"></div>
-            </div>
-
-            <div class="fit-test-list" style="margin-top:14px;">
-              <!-- รายการที่ 1: นั่งงอตัวไปข้างหน้า -->
-              <div class="fit-test-item">
-                <div class="fit-test-head"><strong>1. นั่งงอตัวไปข้างหน้า</strong><span class="fit-unit">เซนติเมตร</span></div>
-                <div style="font-size:11px;color:var(--gray-mid);margin:2px 0 4px;">เพื่อทดสอบความสามารถด้านความนิ่มเหลียวและดัดงอตัวตัว</div>
-                <div class="form-grid" style="margin-top:6px;">
-                  <div class="form-group" style="margin:0;"><label>ระยะที่วัดได้ (ซม.)</label><input type="number" id="fit-flex" step="1" min="-20" max="50" placeholder="เช่น 12" oninput="updateFitnessResult()"></div>
-                  <div class="form-group" style="margin:0;"><label>ผลการประเมิน</label><input type="text" id="fit-flex-level" readonly class="input-readonly" placeholder="—"></div>
-                </div>
-              </div>
-              <!-- รายการที่ 2: ลุกนั่ง 60 วินาที -->
-              <div class="fit-test-item">
-                <div class="fit-test-head"><strong>2. ลุกนั่ง 60 วินาที</strong><span class="fit-unit">ครั้ง</span></div>
-                <div style="font-size:11px;color:var(--gray-mid);margin:2px 0 4px;">เพื่อทดสอบความแข็งแรงและความ�
-dding:3px 6px;border:1px solid #ddd;">28–37</td><td style="padding:3px 6px;border:1px solid #ddd;">20–26</td><td style="padding:3px 6px;border:1px solid #ddd;">124–149</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p style="margin:8px 0 6px;"><strong>ค่ามาตรฐานนักเรียนหญิง (ครั้ง/ซม.)</strong></p>
-              <div class="table-wrap" style="font-size:11px;">
-                <table style="width:100%;border-collapse:collapse;">
-                  <thead><tr style="background:var(--blue,#2f80b8);color:#fff;">
-                    <th style="padding:4px 6px;border:1px solid #ddd;">อายุ</th>
-                    <th style="padding:4px 6px;border:1px solid #ddd;">นั่งงอตัว<br>(ซม.)</th>
-                    <th style="padding:4px 6px;border:1px solid #ddd;">ลุกนั่ง 60 วิ<br>(ครั้ง)</th>
-                    <th style="padding:4px 6px;border:1px solid #ddd;">ดันพื้น 30 วิ<br>(ครั้ง)</th>
-                    <th style="padding:4px 6px;border:1px solid #ddd;">กระโดด 3 นาที<br>(ครั้ง)</th>
-                  </tr></thead>
-                  <tbody>
-                    <tr><td style="padding:3px 6px;border:1px solid #ddd;">10 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">10–14</td><td style="padding:3px 6px;border:1px solid #ddd;">22–27</td><td style="padding:3px 6px;border:1px solid #ddd;">15–20</td><td style="padding:3px 6px;border:1px solid #ddd;">111–131</td></tr>
-                    <tr style="background:#f9f9f9;"><td style="padding:3px 6px;border:1px solid #ddd;">11 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">11–15</td><td style="padding:3px 6px;border:1px solid #ddd;">20–27</td><td style="padding:3px 6px;border:1px solid #ddd;">16–22</td><td style="padding:3px 6px;border:1px solid #ddd;">114–135</td></tr>
-                    <tr><td style="padding:3px 6px;border:1px solid #ddd;">12 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">11–15</td><td style="padding:3px 6px;border:1px solid #ddd;">22–28</td><td style="padding:3px 6px;border:1px solid #ddd;">17–22</td><td style="padding:3px 6px;border:1px solid #ddd;">117–138</td></tr>
-                    <tr style="background:#f9f9f9;"><td style="padding:3px 6px;border:1px solid #ddd;">13 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">12–16</td><td style="padding:3px 6px;border:1px solid #ddd;">24–32</td><td style="padding:3px 6px;border:1px solid #ddd;">18–23</td><td style="padding:3px 6px;border:1px solid #ddd;">118–139</td></tr>
-                  </tbody>
-                </table>
-              </div>
-              <p style="margin:10px 0 0;font-size:11px;color:var(--gray-mid);">ที่มา: สำนักวิทยาศาสตร์การกีฬา กรมพลศึกษา กระทรวงการท่องเที่ยวและกีฬา, 2562</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div id="sc-blood" style="display:none;">
         <div class="card">
           <div class="card-title"><span>🩸</span>คัดกรองภาวะโลหิตจาง</div>
@@ -5736,57 +5681,46 @@ dding:3px 6px;border:1px solid #ddd;">28–37</td><td style="padding:3px 6px;bor
         <div class="two-col">
           <div class="card">
             <div class="card-title"><span>💪</span>ทดสอบสมรรถภาพร่างกาย</div>
-            <div class="alert alert-info"><span>📋</span><div>แบบทดสอบตามแนวทางกรมพลศึกษา (มัธยม อายุ 13–18 ปี) — กรอกค่าที่วัดได้ ระบบจะตีความเกณฑ์อัตโนมัติ</div></div>
+            <div class="alert alert-info"><span>📋</span><div>แบบทดสอบสมรรถภาพทางกายระดับมัธยมศึกษาตามเกณฑ์กรมพลศึกษา (อายุ 13–18 ปี) — ควรทดสอบอย่างน้อยปีละ 2 ครั้ง กรอกค่าที่วัดได้ ระบบจะแปลผลผ่าน/ไม่ผ่านอัตโนมัติ</div></div>
             <div class="form-grid">
               <div class="form-group"><label>เลขประจำตัว</label><input type="text" id="fit-id" placeholder="รหัสนักเรียน" onblur="fillScreeningFromId(this)" oninput="updateFitnessResult()"></div>
               <div class="form-group"><label>ชื่อ-นามสกุล</label><input type="text" id="fit-name" placeholder="ชื่อ-นามสกุล"></div>
               <div class="form-group"><label>ระดับชั้น</label><select id="fit-class"><option>ม.1</option><option>ม.2</option><option>ม.3</option><option>ม.4</option><option>ม.5</option><option>ม.6</option></select></div>
               <div class="form-group"><label>เพศ</label><select id="fit-sex" onchange="onFitnessSexChange()"><option>ชาย</option><option>หญิง</option></select></div>
-              <div class="form-group"><label>อายุ (ปี)</label><input type="number" id="fit-age" min="12" max="20" readonly class="input-readonly" oninput="updateFitnessResult()"></div>
+              <div class="form-group"><label>อายุ (ปี)</label><input type="number" id="fit-age" min="13" max="18" readonly class="input-readonly" oninput="updateFitnessResult()"></div>
             </div>
 
             <div class="fit-test-list" style="margin-top:14px;">
               <div class="fit-test-item">
-                <div class="fit-test-head"><strong>1. วิ่งเร็ว 50 เมตร</strong><span class="fit-unit">วินาที</span></div>
+                <div class="fit-test-head"><strong>1. นั่งงอตัวไปข้างหน้า</strong><span class="fit-unit">เซนติเมตร</span></div>
+                <div style="font-size:11px;color:var(--gray-mid);margin:2px 0 4px;">ทดสอบความอ่อนตัวของกล้ามเนื้อหลังและต้นขาด้านหลัง</div>
                 <div class="form-grid" style="margin-top:6px;">
-                  <div class="form-group" style="margin:0;"><label>เวลาที่ใช้</label><input type="number" id="fit-sprint" step="0.01" min="5" max="20" placeholder="เช่น 8.20" oninput="updateFitnessResult()"></div>
-                  <div class="form-group" style="margin:0;"><label>ผลการประเมิน</label><input type="text" id="fit-sprint-level" readonly class="input-readonly" placeholder="—"></div>
+                  <div class="form-group" style="margin:0;"><label>ระยะที่วัดได้ (ซม.)</label><input type="number" id="fit-flex" step="1" min="-20" max="50" placeholder="เช่น 12" oninput="updateFitnessResult()"></div>
+                  <div class="form-group" style="margin:0;"><label>ผลการประเมิน</label><input type="text" id="fit-flex-level" readonly class="input-readonly" placeholder="—"></div>
                 </div>
               </div>
               <div class="fit-test-item">
-                <div class="fit-test-head"><strong>2. ยืนกระโดดไกล</strong><span class="fit-unit">เซนติเมตร</span></div>
+                <div class="fit-test-head"><strong>2. ลุกนั่ง 60 วินาที</strong><span class="fit-unit">ครั้ง</span></div>
+                <div style="font-size:11px;color:var(--gray-mid);margin:2px 0 4px;">ทดสอบความแข็งแรงและความอดทนของกล้ามเนื้อหน้าท้อง</div>
                 <div class="form-grid" style="margin-top:6px;">
-                  <div class="form-group" style="margin:0;"><label>ระยะที่กระโดดได้</label><input type="number" id="fit-jump" step="1" min="50" max="350" placeholder="เช่น 185" oninput="updateFitnessResult()"></div>
-                  <div class="form-group" style="margin:0;"><label>ผลการประเมิน</label><input type="text" id="fit-jump-level" readonly class="input-readonly" placeholder="—"></div>
-                </div>
-              </div>
-              <div class="fit-test-item">
-                <div class="fit-test-head"><strong>3. ลุก-นั่ง 30 วินาที</strong><span class="fit-unit">ครั้ง</span></div>
-                <div class="form-grid" style="margin-top:6px;">
-                  <div class="form-group" style="margin:0;"><label>จำนวนครั้ง</label><input type="number" id="fit-situp" step="1" min="0" max="80" placeholder="เช่น 25" oninput="updateFitnessResult()"></div>
+                  <div class="form-group" style="margin:0;"><label>จำนวนครั้งใน 60 วินาที</label><input type="number" id="fit-situp" step="1" min="0" max="100" placeholder="เช่น 25" oninput="updateFitnessResult()"></div>
                   <div class="form-group" style="margin:0;"><label>ผลการประเมิน</label><input type="text" id="fit-situp-level" readonly class="input-readonly" placeholder="—"></div>
                 </div>
               </div>
-              <div class="fit-test-item" id="fit-arm-boy">
-                <div class="fit-test-head"><strong>4. ดึงข้อ (ชาย)</strong><span class="fit-unit">ครั้ง</span></div>
+              <div class="fit-test-item">
+                <div class="fit-test-head"><strong>3. ดันพื้นประยุกต์ 30 วินาที</strong><span class="fit-unit">ครั้ง</span></div>
+                <div style="font-size:11px;color:var(--gray-mid);margin:2px 0 4px;">ทดสอบความแข็งแรงและความอดทนของกล้ามเนื้อแขนและลำตัวส่วนบน (เข่าแตะพื้น)</div>
                 <div class="form-grid" style="margin-top:6px;">
-                  <div class="form-group" style="margin:0;"><label>จำนวนครั้ง</label><input type="number" id="fit-pullup" step="1" min="0" max="40" placeholder="เช่น 5" oninput="updateFitnessResult()"></div>
-                  <div class="form-group" style="margin:0;"><label>ผลการประเมิน</label><input type="text" id="fit-pullup-level" readonly class="input-readonly" placeholder="—"></div>
-                </div>
-              </div>
-              <div class="fit-test-item" id="fit-arm-girl" style="display:none;">
-                <div class="fit-test-head"><strong>4. งอแขนห้อยตัว (หญิง)</strong><span class="fit-unit">วินาที</span></div>
-                <div class="form-grid" style="margin-top:6px;">
-                  <div class="form-group" style="margin:0;"><label>เวลาที่ห้อยได้</label><input type="number" id="fit-hang" step="0.1" min="0" max="120" placeholder="เช่น 12.0" oninput="updateFitnessResult()"></div>
-                  <div class="form-group" style="margin:0;"><label>ผลการประเมิน</label><input type="text" id="fit-hang-level" readonly class="input-readonly" placeholder="—"></div>
+                  <div class="form-group" style="margin:0;"><label>จำนวนครั้งใน 30 วินาที</label><input type="number" id="fit-pushup" step="1" min="0" max="80" placeholder="เช่น 18" oninput="updateFitnessResult()"></div>
+                  <div class="form-group" style="margin:0;"><label>ผลการประเมิน</label><input type="text" id="fit-pushup-level" readonly class="input-readonly" placeholder="—"></div>
                 </div>
               </div>
               <div class="fit-test-item">
-                <div class="fit-test-head"><strong id="fit-endurance-title">5. วิ่งอึด 1,000 เมตร (ชาย)</strong><span class="fit-unit">นาที:วินาที</span></div>
+                <div class="fit-test-head"><strong>4. ยืนยกเข่าขึ้นลง 3 นาที</strong><span class="fit-unit">ครั้ง</span></div>
+                <div style="font-size:11px;color:var(--gray-mid);margin:2px 0 4px;">ทดสอบความอดทนของระบบหัวใจและไหลเวียนเลือด</div>
                 <div class="form-grid" style="margin-top:6px;">
-                  <div class="form-group" style="margin:0;"><label>นาที</label><input type="number" id="fit-run-min" step="1" min="0" max="30" placeholder="5" oninput="updateFitnessResult()"></div>
-                  <div class="form-group" style="margin:0;"><label>วินาที</label><input type="number" id="fit-run-sec" step="1" min="0" max="59" placeholder="20" oninput="updateFitnessResult()"></div>
-                  <div class="form-group" style="margin:0;"><label>ผลการประเมิน</label><input type="text" id="fit-run-level" readonly class="input-readonly" placeholder="—"></div>
+                  <div class="form-group" style="margin:0;"><label>จำนวนครั้งใน 3 นาที</label><input type="number" id="fit-jump" step="1" min="0" max="300" placeholder="เช่น 120" oninput="updateFitnessResult()"></div>
+                  <div class="form-group" style="margin:0;"><label>ผลการประเมิน</label><input type="text" id="fit-jump-level" readonly class="input-readonly" placeholder="—"></div>
                 </div>
               </div>
             </div>
@@ -5800,18 +5734,64 @@ dding:3px 6px;border:1px solid #ddd;">28–37</td><td style="padding:3px 6px;bor
           </div>
           <div class="card">
             <div class="card-title"><span>📌</span>เกณฑ์และวิธีทดสอบ</div>
-            <div class="alert alert-success"><span>✅</span><div><strong>ผ่านเกณฑ์:</strong> ได้ระดับ “ปานกลาง” ขึ้นไป ในแต่ละรายการ</div></div>
-            <div class="alert alert-warning"><span>⚠️</span><div><strong>ควรพัฒนา:</strong> ได้ระดับ “ต่ำกว่าเกณฑ์” หรือ “ต่ำมาก” — แนะนำออกกำลังกายเพิ่ม</div></div>
+            <div class="alert alert-success"><span>✅</span><div><strong>ผ่าน:</strong> ค่าที่วัดได้อยู่ในช่วงมาตรฐานหรือสูงกว่า</div></div>
+            <div class="alert alert-warning"><span>⚠️</span><div><strong>ไม่ผ่าน:</strong> ค่าที่วัดได้ต่ำกว่าช่วงมาตรฐาน — แนะนำปฏิบัติตามคำแนะนำครูพละ/ครูอนามัย</div></div>
             <div style="font-size:13px;color:var(--gray-dark);line-height:1.55;margin-top:10px;">
-              <p style="margin:0 0 8px;"><strong>รายการทดสอบ (5 ด้าน)</strong></p>
+              <p style="margin:0 0 8px;"><strong>รายการทดสอบ (4 ด้าน)</strong></p>
               <ol style="margin:0;padding-left:18px;">
-                <li>วิ่งเร็ว 50 ม. — ความเร็ว</li>
-                <li>ยืนกระโดดไกล — พลังกล้ามเนื้อขา</li>
-                <li>ลุก-นั่ง 30 วินาที — ความแข็งแรงลำตัว</li>
-                <li>ดึงข้อ (ชาย) / งอแขนห้อยตัว (หญิง) — กล้ามเนื้อแขน</li>
-                <li>วิ่งอึด 1,000 ม. (ชาย) / 800 ม. (หญิง) — ความอดทนของระบบหายใจไหลเวียน</li>
+                <li>นั่งงอตัวไปข้างหน้า — ความอ่อนตัว</li>
+                <li>ลุกนั่ง 60 วินาที — กล้ามเนื้อหน้าท้อง</li>
+                <li>ดันพื้นประยุกต์ 30 วินาที — กล้ามเนื้อแขนและลำตัวส่วนบน</li>
+                <li>ยืนยกเข่าขึ้นลง 3 นาที — ความอดทนหัวใจและไหลเวียน</li>
               </ol>
-              <p style="margin:12px 0 0;font-size:12px;color:var(--gray-mid);">เกณฑ์อ้างอิงแนวทางกรมพลศึกษา พ.ศ.2562 (มัธยม) ปรับใช้ในงานอนามัยโรงเรียน — ควรอุ่นเครื่องก่อนทดสอบ และงดทดสอบหากมีอาการเจ็บป่วย</p>
+              <p style="margin:12px 0 6px;"><strong>คำแนะนำก่อน–ระหว่าง–หลังทดสอบ</strong></p>
+              <ul style="margin:0;padding-left:18px;font-size:12px;">
+                <li>วันก่อน: หลีกเลี่ยงออกกำลังกายหนัก นอนหลับพักผ่อนให้เพียงพอ</li>
+                <li>ก่อนทดสอบ: รับประทานอาหารล่วงหน้า 1–2 ชม. งดชา กาแฟ เครื่องดื่มชูกำลัง แต่งกายชุดออกกำลังกาย และอบอุ่นร่างกาย</li>
+                <li>ระหว่างทดสอบ: ทำเต็มความสามารถ ห้ามแข่งกับผู้อื่น หากไม่สบายให้หยุดทันที</li>
+                <li>หลังทดสอบ: ดื่มน้ำให้เพียงพอ และยืดเหยียดกล้ามเนื้อ</li>
+              </ul>
+              <p style="margin:12px 0 6px;"><strong>ค่ามาตรฐานนักเรียนชาย (ช่วงปานกลาง)</strong></p>
+              <div class="table-wrap" style="font-size:11px;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead><tr style="background:#c47a3a;color:#fff;">
+                    <th style="padding:4px 6px;border:1px solid #ddd;">อายุ</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">นั่งงอตัว<br>(ซม.)</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">ลุกนั่ง 60 วิ<br>(ครั้ง)</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">ดันพื้น 30 วิ<br>(ครั้ง)</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">ยืนยกเข่า 3 นาที<br>(ครั้ง)</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr><td style="padding:3px 6px;border:1px solid #ddd;">13 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">11–15</td><td style="padding:3px 6px;border:1px solid #ddd;">28–37</td><td style="padding:3px 6px;border:1px solid #ddd;">20–26</td><td style="padding:3px 6px;border:1px solid #ddd;">124–149</td></tr>
+                    <tr style="background:#f9f9f9;"><td style="padding:3px 6px;border:1px solid #ddd;">14 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">12–16</td><td style="padding:3px 6px;border:1px solid #ddd;">30–38</td><td style="padding:3px 6px;border:1px solid #ddd;">21–27</td><td style="padding:3px 6px;border:1px solid #ddd;">130–154</td></tr>
+                    <tr><td style="padding:3px 6px;border:1px solid #ddd;">15 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">14–19</td><td style="padding:3px 6px;border:1px solid #ddd;">31–39</td><td style="padding:3px 6px;border:1px solid #ddd;">23–29</td><td style="padding:3px 6px;border:1px solid #ddd;">131–155</td></tr>
+                    <tr style="background:#f9f9f9;"><td style="padding:3px 6px;border:1px solid #ddd;">16 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">14–19</td><td style="padding:3px 6px;border:1px solid #ddd;">32–40</td><td style="padding:3px 6px;border:1px solid #ddd;">23–29</td><td style="padding:3px 6px;border:1px solid #ddd;">132–156</td></tr>
+                    <tr><td style="padding:3px 6px;border:1px solid #ddd;">17 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">14–20</td><td style="padding:3px 6px;border:1px solid #ddd;">32–41</td><td style="padding:3px 6px;border:1px solid #ddd;">25–32</td><td style="padding:3px 6px;border:1px solid #ddd;">136–161</td></tr>
+                    <tr style="background:#f9f9f9;"><td style="padding:3px 6px;border:1px solid #ddd;">18 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">16–21</td><td style="padding:3px 6px;border:1px solid #ddd;">32–41</td><td style="padding:3px 6px;border:1px solid #ddd;">26–32</td><td style="padding:3px 6px;border:1px solid #ddd;">136–162</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="margin:8px 0 6px;"><strong>ค่ามาตรฐานนักเรียนหญิง (ช่วงปานกลาง)</strong></p>
+              <div class="table-wrap" style="font-size:11px;">
+                <table style="width:100%;border-collapse:collapse;">
+                  <thead><tr style="background:#2f80b8;color:#fff;">
+                    <th style="padding:4px 6px;border:1px solid #ddd;">อายุ</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">นั่งงอตัว<br>(ซม.)</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">ลุกนั่ง 60 วิ<br>(ครั้ง)</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">ดันพื้น 30 วิ<br>(ครั้ง)</th>
+                    <th style="padding:4px 6px;border:1px solid #ddd;">ยืนยกเข่า 3 นาที<br>(ครั้ง)</th>
+                  </tr></thead>
+                  <tbody>
+                    <tr><td style="padding:3px 6px;border:1px solid #ddd;">13 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">12–16</td><td style="padding:3px 6px;border:1px solid #ddd;">24–32</td><td style="padding:3px 6px;border:1px solid #ddd;">18–23</td><td style="padding:3px 6px;border:1px solid #ddd;">118–139</td></tr>
+                    <tr style="background:#f9f9f9;"><td style="padding:3px 6px;border:1px solid #ddd;">14 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">14–18</td><td style="padding:3px 6px;border:1px solid #ddd;">25–33</td><td style="padding:3px 6px;border:1px solid #ddd;">18–24</td><td style="padding:3px 6px;border:1px solid #ddd;">124–146</td></tr>
+                    <tr><td style="padding:3px 6px;border:1px solid #ddd;">15 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">15–20</td><td style="padding:3px 6px;border:1px solid #ddd;">27–35</td><td style="padding:3px 6px;border:1px solid #ddd;">20–26</td><td style="padding:3px 6px;border:1px solid #ddd;">125–147</td></tr>
+                    <tr style="background:#f9f9f9;"><td style="padding:3px 6px;border:1px solid #ddd;">16 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">15–21</td><td style="padding:3px 6px;border:1px solid #ddd;">29–37</td><td style="padding:3px 6px;border:1px solid #ddd;">22–28</td><td style="padding:3px 6px;border:1px solid #ddd;">126–149</td></tr>
+                    <tr><td style="padding:3px 6px;border:1px solid #ddd;">17 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">16–21</td><td style="padding:3px 6px;border:1px solid #ddd;">31–39</td><td style="padding:3px 6px;border:1px solid #ddd;">23–29</td><td style="padding:3px 6px;border:1px solid #ddd;">130–153</td></tr>
+                    <tr style="background:#f9f9f9;"><td style="padding:3px 6px;border:1px solid #ddd;">18 ปี</td><td style="padding:3px 6px;border:1px solid #ddd;">16–22</td><td style="padding:3px 6px;border:1px solid #ddd;">32–40</td><td style="padding:3px 6px;border:1px solid #ddd;">25–31</td><td style="padding:3px 6px;border:1px solid #ddd;">132–156</td></tr>
+                  </tbody>
+                </table>
+              </div>
+              <p style="margin:10px 0 0;font-size:11px;color:var(--gray-mid);">ที่มา: แบบทดสอบและเกณฑ์มาตรฐานสมรรถภาพทางกายของนักเรียนระดับมัธยมศึกษา (อายุ 13–18 ปี) สำนักวิทยาศาสตร์การกีฬา กรมพลศึกษา, 2562</p>
             </div>
           </div>
         </div>
@@ -11075,9 +11055,9 @@ dding:3px 6px;border:1px solid #ddd;">28–37</td><td style="padding:3px 6px;bor
     alert('✅ บันทึกผลตรวจร่างกายสำเร็จ — ส่งข้อมูลไป Google Sheet (ตรวจคัดกรอง) แล้ว');
   }
 
-  /* ===== สมรรถภาพร่างกาย (Physical Fitness) ตามคู่มืออนามัยโรงเรียน อายุ 10-13 ปี ===== */
-  /* 4 รายการ: นั่งงอตัว, ลุกนั่ง 60 วิ, ดันพื้น 30 วิ, ยืนกระโดด 3 นาที */
-  /* ที่มา: สำนักวิทยาศาสตร์การกีฬา กรมพลศึกษา กระทรวงการท่องเที่ยวและกีฬา, 2562 */
+  /* ===== สมรรถภาพร่างกาย (Physical Fitness) ตามเกณฑ์กรมพลศึกษา อายุ 13-18 ปี ===== */
+  /* 4 รายการ: นั่งงอตัว, ลุกนั่ง 60 วิ, ดันพื้นประยุกต์ 30 วิ, ยืนยกเข่าขึ้นลง 3 นาที */
+  /* ที่มา: สำนักวิทยาศาสตร์การกีฬา กรมพลศึกษา กระทรวงการท่องเที่ยวและกีฬา, 2562 (มัธยมศึกษา) */
 
   function parseFitnessNum_(id) {
     var el = document.getElementById(id);
@@ -11086,39 +11066,41 @@ dding:3px 6px;border:1px solid #ddd;">28–37</td><td style="padding:3px 6px;bor
     return isNaN(v) ? null : v;
   }
 
-  /* ค่ามาตรฐาน: [min_pass, max_pass] ช่วงปกติ (เกณฑ์กลาง)
-     ต่ำกว่า min_pass = ต่ำกว่าเกณฑ์, อยู่ในช่วง = ปกติ/ผ่าน, สูงกว่า max_pass = ดี */
+  /* ค่ามาตรฐานช่วง “ปานกลาง” [min, max]
+     ต่ำกว่า min = ไม่ผ่าน, อยู่ในช่วงหรือสูงกว่า = ผ่าน */
   function getFitnessNorms_(sex, age) {
     var a = parseInt(age, 10);
     if (isNaN(a)) return null;
-    if (a < 10) a = 10;
-    if (a > 13) a = 13;
+    if (a < 13) a = 13;
+    if (a > 18) a = 18;
     var isMale = String(sex || '').indexOf('หญิง') === -1;
-    // ตารางค่ามาตรฐาน [min_normal, max_normal] สำหรับแต่ละรายการ
-    // flex=นั่งงอตัว(ซม.), situp=ลุกนั่ง60วิ(ครั้ง), pushup=ดันพื้น30วิ(ครั้ง), jump=กระโดด3นาที(ครั้ง)
+    // flex=นั่งงอตัว(ซม.), situp=ลุกนั่ง60วิ, pushup=ดันพื้น30วิ, jump=ยืนยกเข่า3นาที
     var norms = {
       male: {
-        10: { flex: [8, 12],   situp: [22, 29], pushup: [17, 23], jump: [115, 139] },
-        11: { flex: [10, 14],  situp: [25, 32], pushup: [18, 24], jump: [121, 144] },
-        12: { flex: [10, 14],  situp: [26, 34], pushup: [19, 24], jump: [122, 145] },
-        13: { flex: [11, 15],  situp: [28, 37], pushup: [20, 26], jump: [124, 149] }
+        13: { flex: [11, 15], situp: [28, 37], pushup: [20, 26], jump: [124, 149] },
+        14: { flex: [12, 16], situp: [30, 38], pushup: [21, 27], jump: [130, 154] },
+        15: { flex: [14, 19], situp: [31, 39], pushup: [23, 29], jump: [131, 155] },
+        16: { flex: [14, 19], situp: [32, 40], pushup: [23, 29], jump: [132, 156] },
+        17: { flex: [14, 20], situp: [32, 41], pushup: [25, 32], jump: [136, 161] },
+        18: { flex: [16, 21], situp: [32, 41], pushup: [26, 32], jump: [136, 162] }
       },
       female: {
-        10: { flex: [10, 14],  situp: [22, 27], pushup: [15, 20], jump: [111, 131] },
-        11: { flex: [11, 15],  situp: [20, 27], pushup: [16, 22], jump: [114, 135] },
-        12: { flex: [11, 15],  situp: [22, 28], pushup: [17, 22], jump: [117, 138] },
-        13: { flex: [12, 16],  situp: [24, 32], pushup: [18, 23], jump: [118, 139] }
+        13: { flex: [12, 16], situp: [24, 32], pushup: [18, 23], jump: [118, 139] },
+        14: { flex: [14, 18], situp: [25, 33], pushup: [18, 24], jump: [124, 146] },
+        15: { flex: [15, 20], situp: [27, 35], pushup: [20, 26], jump: [125, 147] },
+        16: { flex: [15, 21], situp: [29, 37], pushup: [22, 28], jump: [126, 149] },
+        17: { flex: [16, 21], situp: [31, 39], pushup: [23, 29], jump: [130, 153] },
+        18: { flex: [16, 22], situp: [32, 40], pushup: [25, 31], jump: [132, 156] }
       }
     };
     return (isMale ? norms.male : norms.female)[a] || null;
   }
 
-  /* ประเมินระดับโดยเทียบกับช่วงมาตรฐาน [min, max] */
+  /* แปลผลตามคู่มือ: ผ่าน = อยู่ในช่วงหรือสูงกว่า / ไม่ผ่าน = ต่ำกว่าช่วง */
   function fitRangeLevel_(value, range) {
-    if (value == null || isNaN(value)) return '';
-    if (value >= range[1]) return 'ดี';
-    if (value >= range[0]) return 'ปกติ';
-    return 'ต่ำกว่าเกณฑ์';
+    if (value == null || isNaN(value) || !range) return '';
+    if (value >= range[0]) return 'ผ่าน';
+    return 'ไม่ผ่าน';
   }
 
   function onFitnessSexChange() {
@@ -11140,7 +11122,7 @@ dding:3px 6px;border:1px solid #ddd;">28–37</td><td style="padding:3px 6px;bor
   }
 
   function fitnessLevelPass_(level) {
-    return level === 'ดี' || level === 'ปกติ';
+    return level === 'ผ่าน' || level === 'ดี' || level === 'ปกติ';
   }
 
   function updateFitnessResult() {
@@ -11163,11 +11145,11 @@ dding:3px 6px;border:1px solid #ddd;">28–37</td><td style="padding:3px 6px;bor
       preview.style.display = 'none';
       return;
     }
-    var summary = 'ประเมินแล้ว ' + done.length + '/4 รายการ · ผ่านเกณฑ์ ' + pass + '/' + done.length + ' รายการ';
+    var summary = 'ประเมินแล้ว ' + done.length + '/4 รายการ · ผ่าน ' + pass + '/' + done.length + ' รายการ';
     if (done.length === 4) {
       summary += pass >= 4
-        ? ' — สมรรถภาพโดยรวมดี'
-        : (pass >= 3 ? ' — สมรรถภาพปกติ ควรพัฒนาต่อ' : ' — สมรรถภาพต่ำกว่าเกณฑ์ แนะนำออกกำลังกายเพิ่ม');
+        ? ' — ผ่านทุกด้าน'
+        : (pass >= 3 ? ' — ส่วนใหญ่ผ่าน ควรพัฒนาด้านที่ไม่ผ่าน' : ' — ไม่ผ่านหลายด้าน แนะนำปรึกษาครูพละ/ครูอนามัย');
     }
     previewText.textContent = summary;
     preview.className = 'alert ' + (pass >= Math.ceil(done.length * 0.6) ? 'alert-success' : 'alert-warning');

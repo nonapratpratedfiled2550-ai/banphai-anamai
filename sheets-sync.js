@@ -1083,15 +1083,23 @@ function formatScreeningDetail_(record) {
   }
   if (record.type === 'fitness') {
     var parts = [];
+    if (d.flex != null) parts.push('นั่งงอตัว ' + d.flex + ' ซม.' + (d.flexLevel ? ' (' + d.flexLevel + ')' : ''));
+    if (d.situp != null) parts.push('ลุกนั่ง 60วิ ' + d.situp + ' ครั้ง' + (d.situpLevel ? ' (' + d.situpLevel + ')' : ''));
+    if (d.pushup != null) parts.push('ดันพื้น 30วิ ' + d.pushup + ' ครั้ง' + (d.pushupLevel ? ' (' + d.pushupLevel + ')' : ''));
+    if (d.jump != null) {
+      if (d.flex != null || d.pushup != null) {
+        parts.push('ยืนยกเข่า 3นาที ' + d.jump + ' ครั้ง' + (d.jumpLevel ? ' (' + d.jumpLevel + ')' : ''));
+      } else {
+        parts.push('กระโดดไกล ' + d.jump + ' ซม.' + (d.jumpLevel ? ' (' + d.jumpLevel + ')' : ''));
+      }
+    }
     if (d.sprint != null) parts.push('50ม. ' + d.sprint + 'วิ' + (d.sprintLevel ? ' (' + d.sprintLevel + ')' : ''));
-    if (d.jump != null) parts.push('กระโดด ' + d.jump + 'ซม.' + (d.jumpLevel ? ' (' + d.jumpLevel + ')' : ''));
-    if (d.situp != null) parts.push('ลุกนั่ง ' + d.situp + (d.situpLevel ? ' (' + d.situpLevel + ')' : ''));
     if (d.pullup != null) parts.push('ดึงข้อ ' + d.pullup + (d.armLevel ? ' (' + d.armLevel + ')' : ''));
     if (d.hang != null) parts.push('ห้อยตัว ' + d.hang + 'วิ' + (d.armLevel ? ' (' + d.armLevel + ')' : ''));
     if (d.runSec != null) {
       var m = Math.floor(d.runSec / 60);
-      var s = d.runSec % 60;
-      parts.push('วิ่งอึด ' + m + ':' + (s < 10 ? '0' : '') + s + (d.runLevel ? ' (' + d.runLevel + ')' : ''));
+      var sec = d.runSec % 60;
+      parts.push('วิ่งอึด ' + m + ':' + (sec < 10 ? '0' : '') + sec + (d.runLevel ? ' (' + d.runLevel + ')' : ''));
     }
     if (d.note) parts.push(d.note);
     return parts.join(' · ') || (record.summary || '');
