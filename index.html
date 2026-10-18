@@ -4525,9 +4525,9 @@
   </div>
 </div>
 
-<!-- SH_FREEZE_FIX:2026-08-23a bugfix-pass -->
+<!-- SH_FREEZE_FIX:2026-10-18a freeze-stop-empty-retry -->
 <script>
-  window.__SH_FREEZE_FIX = '2026-08-23a';
+  window.__SH_FREEZE_FIX = '2026-10-18a';
   /* ตัด RAM ตอนเปิดเว็บ + เคลียร์ snapshot กราฟว่างที่เคยบันทึกผิด */
   (function pruneHeavyVisitStorageOnBoot_() {
     try {
@@ -4537,8 +4537,9 @@
       }
     } catch (eFix) {}
     try {
+      /* ลดเกณฑ์ — สตริง 150KB+ มักทำให้ Chrome ค้างตอน JSON.parse หลังล็อกอิน */
       var raw = localStorage.getItem('sh-visit');
-      if (raw && raw.length > 200000) {
+      if (raw && raw.length > 150000) {
         localStorage.removeItem('sh-visit');
         try { localStorage.removeItem('sh-visit-backup'); } catch (eB1) {}
         console.warn('[SH] cleared oversized sh-visit on boot', raw.length);
@@ -4548,7 +4549,7 @@
     }
     try {
       var snap = localStorage.getItem('sh-admin-charts-weekly');
-      if (snap && snap.length > 120000) {
+      if (snap && snap.length > 80000) {
         localStorage.removeItem('sh-admin-charts-weekly');
         console.warn('[SH] cleared oversized weekly charts snapshot', snap.length);
       }
@@ -9368,6 +9369,7 @@
         } else if (typeof scheduleDeferredAdminChartsAfterLogin_ === 'function') {
           _adminChartsSettled = false;
           _deferredAdminChartsArmed = false;
+          _adminChartsEmptyAttempts = 0;
           scheduleDeferredAdminChartsAfterLogin_();
         }
       }
@@ -9387,6 +9389,12 @@
     if (id === 'environment') renderEnvironmentResults();
     if (id === 'visit') {
       updateLimitedUserVisitLabels(getCurrentRole());
+      /* ล้าง cache ที่เคยหั่นตอนวาดกราฟ — ให้เมนูรักษาอ่านรายการเต็ม */
+      try {
+        if (_visitRecordsMemCache && _visitRecordsMemCache.length <= 80) {
+          _visitRecordsMemCache = null;
+        }
+      } catch (eVisMem) {}
       if (isLimitedUser()) {
         updateVisitCalendarLayout();
         fillVisitMyForm();
@@ -12181,10 +12189,10 @@
     }
     _adminChartsSettled = true;
     _visitReadCapForCharts = 0;
-    /* หลังกราฟเสร็จ — ตัด RAM แต่คง cache เยี่ยมเล็ก ๆ ให้เมนูรักษาอ่านได้ทันที */
+    /* หลังกราฟเสร็จ — ตัด RAM แต่คง cache เยี่ยมเล็ก ๆ */
     try {
-      if (_visitRecordsMemCache && _visitRecordsMemCache.length > 80) {
-        _visitRecordsMemCache = _visitRecordsMemCache.slice(0, 80);
+      if (_visitRecordsMemCache && _visitRecordsMemCache.length > 60) {
+        _visitRecordsMemCache = _visitRecordsMemCache.slice(0, 60);
       }
     } catch (eTrim) {}
     try {
@@ -16318,6 +16326,8 @@
   var _forceVisitReadForCharts = false;
   var _deferredAdminChartsTimer = null;
   var _deferredAdminChartsArmed = false;
+  var _adminChartsEmptyAttempts = 0;
+  var ADMIN_CHARTS_EMPTY_MAX_ATTEMPTS = 2;
   function scheduleDeferredAdminChartsAfterLogin_() {
     if (_deferredAdminChartsArmed) return;
     if (_adminChartsSettled && _adminChartsRenderedForCache &&
@@ -16328,22 +16338,30 @@
     _deferredAdminChartsTimer = setTimeout(function () {
       _deferredAdminChartsTimer = null;
       runDeferredAdminChartsAfterLogin_();
-    }, 600);
+    }, 900);
   }
   function paintAdminChartsChunked_(live, skipSave) {
     if (!live || !live.charts) {
+      _adminChartsEmptyAttempts += 1;
+      if (_adminChartsEmptyAttempts >= ADMIN_CHARTS_EMPTY_MAX_ATTEMPTS) {
+        /* หยุดวนซ้ำ — settle แบบเบา กัน Chrome ค้างเป็นรอบ */
+        markAdminChartsSettled_(live || { charts: {}, display: {} }, { skipSave: true });
+        _deferredAdminChartsArmed = true;
+        return;
+      }
       _adminChartsSettled = false;
       _deferredAdminChartsArmed = false;
       if (_deferredAdminChartsTimer) clearTimeout(_deferredAdminChartsTimer);
       _deferredAdminChartsTimer = setTimeout(function () {
         _deferredAdminChartsTimer = null;
         runDeferredAdminChartsAfterLogin_();
-      }, 8000);
+      }, 12000);
       return;
     }
     var hasReal = typeof adminChartsHaveRealData_ === 'function' && adminChartsHaveRealData_(live.charts);
     if (!hasReal) {
-      /* ยังไม่มีข้อมูลจริง — โชว์สถานะว่างชั่วคราว แต่ไม่ settle ถาวร */
+      _adminChartsEmptyAttempts += 1;
+      /* ว่าง: อัปเดตตัวเลขเบา ๆ เท่านั้น — ห้ามวาดกราฟโมดูลทั้งชุดซ้ำ (จุดค้าง) */
       try {
         if (live.display) {
           renderDashStatNum('dashStaffCount', live.display.staffCount, 'staffCount', false);
@@ -16352,21 +16370,33 @@
           renderDashStatNum('screenedCount', live.display.screenedCount, 'screenedCount', false);
           renderDashStatNum('alertCount', live.display.alertCount || 0, 'alertCount', false);
         }
-        renderAdminDashboardExtras(live);
-        renderAdminDashboardChartsMain_(live);
-        renderAdminModuleCharts(live, { fromSnapshot: true });
+        if (_adminChartsEmptyAttempts === 1) {
+          try { renderAdminDashboardExtras(live); } catch (eEx0) {}
+          try { renderAdminDashboardChartsMain_(live); } catch (eMain0) {}
+        }
       } catch (eEmpty) {}
-      _adminChartsSettled = false;
-      _deferredAdminChartsArmed = false;
       _forceVisitReadForCharts = false;
       _visitReadCapForCharts = 0;
+      if (_adminChartsEmptyAttempts >= ADMIN_CHARTS_EMPTY_MAX_ATTEMPTS) {
+        /* ไม่มีข้อมูลจริงหลังลองครบ — settle + ห้ามบันทึก snapshot ว่าง */
+        markAdminChartsSettled_(live, { skipSave: true });
+        _deferredAdminChartsArmed = true;
+        if (_deferredAdminChartsTimer) {
+          clearTimeout(_deferredAdminChartsTimer);
+          _deferredAdminChartsTimer = null;
+        }
+        return;
+      }
+      _adminChartsSettled = false;
+      _deferredAdminChartsArmed = false;
       if (_deferredAdminChartsTimer) clearTimeout(_deferredAdminChartsTimer);
       _deferredAdminChartsTimer = setTimeout(function () {
         _deferredAdminChartsTimer = null;
         runDeferredAdminChartsAfterLogin_();
-      }, 10000);
+      }, 12000);
       return;
     }
+    _adminChartsEmptyAttempts = 0;
     _adminChartsSettled = true;
     _adminLiveCache = live;
     _adminChartsRenderedForCache = live;
@@ -16389,12 +16419,12 @@
           _forceVisitReadForCharts = false;
           _visitReadCapForCharts = 0;
           /* หั่น cache ไม่ล้างทั้งก้อน — เมนูบันทึกรักษาต้องอ่านได้ทันที */
-          if (_visitRecordsMemCache && _visitRecordsMemCache.length > 80) {
-            _visitRecordsMemCache = _visitRecordsMemCache.slice(0, 80);
+          if (_visitRecordsMemCache && _visitRecordsMemCache.length > 60) {
+            _visitRecordsMemCache = _visitRecordsMemCache.slice(0, 60);
           }
         } catch (eClr) {}
-      }, 100);
-    }, 50);
+      }, 180);
+    }, 120);
   }
   function buildAdminChartsSafelyOnce_() {
     if (_adminChartBuildTimer) {
@@ -16438,7 +16468,7 @@
     };
     _adminLiveCache = data;
     _forceVisitReadForCharts = true;
-    _visitReadCapForCharts = 100;
+    _visitReadCapForCharts = 60;
     /* คำนวณกราฟหลักทีละชิ้น — ไม่เรียก HPV/coverage หนัก */
     var jobs = [
       function () { data.charts.healthSummary = computeAdminHealthSummary(); },
@@ -16486,7 +16516,7 @@
       if (idx < jobs.length) {
         try { jobs[idx](); } catch (eJob) { console.warn('[SH chart job]', eJob); }
         idx += 1;
-        _adminChartBuildTimer = setTimeout(runOne, 100);
+        _adminChartBuildTimer = setTimeout(runOne, 180);
         return;
       }
       _adminChartBuildTimer = null;
@@ -18135,18 +18165,20 @@
     let records = [];
     try {
       var rawVisit = localStorage.getItem('sh-visit') || '[]';
-      if (rawVisit.length > 500000) {
-        console.warn('[SH visit] skip parse for charts — too large', rawVisit.length);
+      /* ตอนสร้างกราฟ: ข้าม parse ถ้าใหญ่ — กันค้าง; เมนูรักษาใช้เกณฑ์สูงกว่า */
+      var maxRaw = _forceVisitReadForCharts ? 150000 : 400000;
+      if (rawVisit.length > maxRaw) {
+        console.warn('[SH visit] skip parse — too large', rawVisit.length, _forceVisitReadForCharts ? 'charts' : 'full');
         return [];
       }
       records = JSON.parse(rawVisit);
     } catch (e) {}
     if (!Array.isArray(records)) records = [];
-    /* กู้จาก backup เฉพาะเมื่อหลักว่าง — ห้าม parse backup คู่ขนาน */
+    /* กู้จาก backup เฉพาะเมื่อหลักว่าง — ห้าม parse backup คู่ขนาน / ตอนกราฟ */
     if (!records.length && !_forceVisitReadForCharts) {
       try {
         var bakRaw = localStorage.getItem('sh-visit-backup');
-        if (bakRaw && bakRaw.length < 200000) {
+        if (bakRaw && bakRaw.length < 150000) {
           var backup = JSON.parse(bakRaw);
           if (Array.isArray(backup) && backup.length) records = backup;
         }
@@ -18155,10 +18187,11 @@
     if (records.length > VISIT_LOCAL_MAX_RECORDS) {
       records = records.slice(0, VISIT_LOCAL_MAX_RECORDS);
     }
-    _visitRecordsMemCache = records;
-    if (_visitReadCapForCharts > 0 && records.length > _visitReadCapForCharts) {
-      return records.slice(0, _visitReadCapForCharts);
+    /* ตอนกราฟ: เก็บใน mem เฉพาะก้อนเล็ก — ห้ามค้าง RAM ทั้งก้อน */
+    if (_forceVisitReadForCharts && _visitReadCapForCharts > 0 && records.length > _visitReadCapForCharts) {
+      records = records.slice(0, _visitReadCapForCharts);
     }
+    _visitRecordsMemCache = records;
     return records;
   }
   var _visitRepairIdleTimer = null;
